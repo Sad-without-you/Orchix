@@ -1,0 +1,91 @@
+# ========================================
+# ORCHIX .gitignore
+# ========================================
+
+# Environment variables (IMPORTANT!)
+.env
+.env.local
+.env.*.local
+
+# License files (IMPORTANT!)
+.orchix_license
+data/license.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+audit/
+
+# ORCHIX Data
+data/
+backups/
+migrations/
+docker-compose-*.yml
+Dockerfile-*
+
+# Backups
+*.backup
+*.bak
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS specific
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Sensitive files
+*.key
+*.pem
+*.crt
+*.cert
+*.p12
+.secrets/

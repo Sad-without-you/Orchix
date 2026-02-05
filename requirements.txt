@@ -1,0 +1,61 @@
+# ========================================
+# ORCHIX v1.1 - Container Management Platform
+# Python Dependencies
+# ========================================
+
+# ----------------------------------------
+# Core Dependencies (Required)
+# ----------------------------------------
+
+# Interactive CLI menus and prompts
+inquirer>=3.1.3,<4.0.0
+
+# Rich terminal output with colors, tables, and progress bars
+rich>=13.7.0,<14.0.0
+
+# YAML configuration file parsing
+pyyaml>=6.0.1,<7.0.0
+
+# Environment variable management (.env files)
+python-dotenv>=1.0.0,<2.0.0
+
+# System and process monitoring utilities
+psutil>=5.9.0,<6.0.0
+
+# Curses support for Windows (required for dashboard)
+windows-curses>=2.3.0; sys_platform == "win32"
+
+# HTTP requests for license validation and downloads
+requests>=2.31.0,<3.0.0
+
+# ----------------------------------------
+# Security & Audit
+# ----------------------------------------
+# Audit logging is built-in and requires no external dependencies
+# License validation uses built-in hashlib and json modules
+
+# ----------------------------------------
+# Optional Dependencies (Not Currently Used)
+# ----------------------------------------
+# Uncomment and install if needed for future features:
+
+# Direct Docker API access (alternative to CLI commands)
+# docker>=7.0.0,<8.0.0
+
+# Encryption for backup files and sensitive data
+# cryptography>=42.0.0,<43.0.0
+
+# Enhanced date/time handling
+# python-dateutil>=2.8.2,<3.0.0
+
+# ----------------------------------------
+# Development Dependencies (Optional)
+# ----------------------------------------
+# Install with: pip install -r requirements-dev.txt
+
+# pytest>=8.0.0          # Unit testing framework
+# pytest-cov>=4.1.0      # Test coverage reporting
+# black>=24.0.0          # Code formatter
+# flake8>=7.0.0          # Linting and style checker
+# mypy>=1.8.0            # Static type checker
+# pylint>=3.0.0          # Code analysis
