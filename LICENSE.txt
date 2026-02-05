@@ -1,0 +1,95 @@
+ORCHIX v1.1 Commercial Software License
+
+Copyright (c) 2026 ORCHIX
+All rights reserved.
+
+ORCHIX is proprietary commercial software. This license governs the use of ORCHIX software ("Software").
+
+1. LICENSE GRANT
+
+Subject to the terms of this Agreement and payment of applicable fees, ORCHIX grants you a limited, non-exclusive, non-transferable license to use the Software in accordance with your purchased license tier (FREE or PRO).
+
+2. LICENSE TIERS
+
+2.1 FREE TIER
+- Maximum 3 containers
+- Access to all 13+ applications (n8n, PostgreSQL, Redis, Nginx, Vaultwarden, LightRAG, Qdrant, Grafana, Jellyfin, Nextcloud, Stirling-PDF, and more)
+- Basic management features (install, update, uninstall)
+- Community support only
+- No commercial support
+
+2.2 PRO TIER (€29/month)
+- Unlimited containers
+- Access to all 13+ applications
+- Automated backup and restore features
+- Health monitoring and performance tracking
+- Audit logging for compliance
+- Server migration tools
+- Multi-instance support
+- Priority email support (24-48h response time)
+- Requires valid license key and active subscription
+
+3. RESTRICTIONS
+
+You may NOT:
+- Modify, adapt, translate, or create derivative works of the Software
+- Reverse engineer, decompile, disassemble, or attempt to discover the source code
+- Remove, alter, or obscure any proprietary notices on the Software
+- Rent, lease, lend, sell, sublicense, or transfer the Software
+- Use the Software for any illegal purpose
+- Circumvent or bypass the license validation mechanism
+- Share, distribute, or publish license keys
+- Use the Software in a way that competes with ORCHIX's business
+
+4. INTELLECTUAL PROPERTY
+
+The Software is licensed, not sold. ORCHIX retains all right, title, and interest in and to the Software, including all intellectual property rights.
+
+5. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+IMPORTANT: This is pre-alpha software under active development. Bugs and issues may occur. Users are encouraged to report bugs via GitHub Issues to help improve the software.
+
+6. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL ORCHIX BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+7. TERMINATION
+
+This license is effective until terminated. Your rights under this license will terminate automatically without notice if you fail to comply with any term of this Agreement. Upon termination, you must cease all use of the Software and destroy all copies.
+
+8. PAYMENT TERMS
+
+PRO tier licenses require ongoing subscription payments. Failure to maintain payment will result in automatic downgrade to FREE tier. No refunds will be provided for partial subscription periods.
+
+9. DATA COLLECTION
+
+The Software may collect license validation data, including but not limited to:
+- License key validation requests
+- System information for compatibility checking
+- Usage statistics for feature improvement
+
+10. UPDATES AND SUPPORT
+
+ORCHIX may provide updates and bug fixes at its discretion. PRO tier users receive priority support with 24-48 hour response times. FREE tier users have access to community support only.
+
+11. GOVERNING LAW
+
+This Agreement shall be governed by and construed in accordance with the laws of Germany.
+
+12. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between you and ORCHIX regarding the Software and supersedes all prior agreements and understandings.
+
+13. CONTACT
+
+For licensing inquiries, support, or other questions:
+Email: support@orchix.dev
+Website: https://github.com/Sad-without-you/ORCHIX
+
+Creator:
+Georgios Sevastakis
+LinkedIn: https://www.linkedin.com/in/georgios-sevastakis-578a02322/
+
+By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this Agreement.
