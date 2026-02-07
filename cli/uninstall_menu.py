@@ -199,7 +199,7 @@ def uninstall_container(container_name):
         docker_compose_cmd = get_docker_compose_command()
 
         result = safe_docker_run(
-            docker_compose_cmd + ['-f', compose_file, 'down', '-v', '--remove-orphans'],
+            docker_compose_cmd + ['-f', compose_file, 'down', '-v'],
             capture_output=True,
             text=True
         )
