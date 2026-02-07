@@ -334,7 +334,9 @@ def uninstall_container(container_name):
     show_step("Docker cleanup...", "active")
 
     # Get all images currently used by OTHER containers
-    images_in_use = set()
+    # Compare at REPOSITORY level because docker ps may return 'n8nio/n8n'
+    # while images_to_remove contains 'n8nio/n8n:latest'
+    repos_in_use = set()
     result = safe_docker_run(
         ['docker', 'ps', '-a', '--format', '{{.Image}}'],
         capture_output=True, text=True
@@ -343,11 +345,14 @@ def uninstall_container(container_name):
         for img in result.stdout.strip().split('\n'):
             img = img.strip()
             if img:
-                images_in_use.add(img)
+                # Extract repository (without tag) for comparison
+                repo = img.rsplit(':', 1)[0] if ':' in img else img
+                repos_in_use.add(repo)
 
-    # Remove images only if no other container still uses them
+    # Remove images only if their repository is not used by any other container
     for image in images_to_remove:
-        if image in images_in_use:
+        img_repo = image.rsplit(':', 1)[0] if ':' in image else image
+        if img_repo in repos_in_use:
             show_step_detail(f"Image {image} still in use, skipping")
             continue
         remove_result = safe_docker_run(
