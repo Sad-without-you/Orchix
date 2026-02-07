@@ -7,7 +7,9 @@ from license.audit_logger import get_audit_logger, AuditEventType
 import subprocess
 from utils.license_check import can_install_app, get_app_badge, show_upgrade_prompt_for_app
 from cli.license_menu import _activate_pro_license
-from utils.docker_utils import safe_docker_run
+from utils.docker_utils import safe_docker_run, get_docker_compose_command
+import re
+import os
 
 def check_container_exists(container_name):
     '''Check if container already exists'''
@@ -39,6 +41,49 @@ def find_free_port(start_port=5678, max_attempts=10):
         if not is_port_in_use(port):
             return port
     return start_port  # Fallback
+
+
+def _tag_instance_image(instance_name, compose_file):
+    '''Tag Docker image with instance-specific name to isolate instances'''
+    if not os.path.exists(compose_file):
+        return
+
+    with open(compose_file, 'r') as f:
+        content = f.read()
+
+    # Find the image line in compose file
+    match = re.search(r'image:\s*(.+)', content)
+    if not match:
+        return
+
+    original_image = match.group(1).strip()
+    instance_image = f"{instance_name}:orchix"
+
+    # Skip if already instance-specific (e.g. lightrag builds its own)
+    if instance_name in original_image.split(':')[0].split('/')[-1]:
+        return
+
+    # Tag the original image for this instance
+    result = safe_docker_run(
+        ['docker', 'tag', original_image, instance_image],
+        capture_output=True, text=True
+    )
+    if not result or result.returncode != 0:
+        return
+
+    # Update compose file: store original as comment, use instance tag
+    new_content = f"# orchix_source_image: {original_image}\n"
+    new_content += content.replace(f'image: {original_image}', f'image: {instance_image}')
+
+    with open(compose_file, 'w') as f:
+        f.write(new_content)
+
+    # Recreate container with tagged image (fast - same layers)
+    docker_compose_cmd = get_docker_compose_command()
+    safe_docker_run(
+        docker_compose_cmd + ['-f', compose_file, 'up', '-d'],
+        capture_output=True, text=True
+    )
 
 
 def show_install_menu():
@@ -335,8 +380,12 @@ def install_app(app_name, manifest):
     success = installer.install(config, instance_name)
     
     if success:
+        # Tag image with instance-specific name for safe uninstall
+        compose_file = f"docker-compose-{instance_name}.yml"
+        _tag_instance_image(instance_name, compose_file)
+
         show_step_final(f"{manifest['display_name']} installed successfully!", True)
-        
+
         # Log audit event for PRO users
         license_manager = get_license_manager()
         audit_logger = get_audit_logger(enabled=license_manager.is_pro())

@@ -333,9 +333,19 @@ def uninstall_container(container_name):
     # 7. Docker cleanup - remove images only if no other container uses them
     show_step("Docker cleanup...", "active")
 
-    # Get all images currently used by OTHER containers
-    # Compare at REPOSITORY level because docker ps may return 'n8nio/n8n'
-    # while images_to_remove contains 'n8nio/n8n:latest'
+    # Remove instance-specific image tag (e.g. n8n:orchix, n8n2:orchix)
+    # These are unique per instance, so safe to remove without in-use checks
+    instance_image = f"{container_name}:orchix"
+    result = safe_docker_run(
+        ['docker', 'rmi', instance_image],
+        capture_output=True, text=True
+    )
+    if result and result.returncode == 0:
+        show_step_detail(f"Instance image removed: {instance_image}")
+        removal_details['files_removed'].append(f"Image: {instance_image}")
+
+    # Fallback for old-style containers (pre instance-tagging)
+    # Only remove shared images if NO other container uses the same repository
     repos_in_use = set()
     result = safe_docker_run(
         ['docker', 'ps', '-a', '--format', '{{.Image}}'],
@@ -345,20 +355,19 @@ def uninstall_container(container_name):
         for img in result.stdout.strip().split('\n'):
             img = img.strip()
             if img:
-                # Extract repository (without tag) for comparison
                 repo = img.rsplit(':', 1)[0] if ':' in img else img
                 repos_in_use.add(repo)
 
-    # Remove images only if their repository is not used by any other container
     for image in images_to_remove:
+        if image == instance_image:
+            continue  # Already handled above
         img_repo = image.rsplit(':', 1)[0] if ':' in image else image
         if img_repo in repos_in_use:
             show_step_detail(f"Image {image} still in use, skipping")
             continue
         remove_result = safe_docker_run(
             ['docker', 'rmi', image],
-            capture_output=True,
-            text=True
+            capture_output=True, text=True
         )
         if remove_result is None:
             continue

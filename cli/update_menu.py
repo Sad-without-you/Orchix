@@ -1,9 +1,11 @@
-from cli.ui import select_from_list, show_panel, show_success, show_error, show_info, show_step, show_step_final
+from cli.ui import select_from_list, show_panel, show_success, show_error, show_info, show_step, show_step_final, show_step_detail
 from apps.manifest_loader import load_all_manifests
 from license.audit_logger import get_audit_logger, AuditEventType
 from license import get_license_manager
 import subprocess
-from utils.docker_utils import safe_docker_run
+import re
+import os
+from utils.docker_utils import safe_docker_run, get_docker_compose_command
 
 
 def get_installed_containers():
@@ -137,6 +139,8 @@ def update_app(container_name, manifest):
         success = False
 
     if success:
+        # Re-tag image for orchix-tagged containers
+        _retag_after_update(container_name)
         show_step_final("Update complete!", True)
     else:
         show_step_final("Update failed!", False)
@@ -196,3 +200,41 @@ def _resolve_manifest(container_name, manifests):
         return manifests[best_match]
 
     return None
+
+
+def _retag_after_update(container_name):
+    '''Re-tag the source image after an update for orchix-tagged containers'''
+    compose_file = f"docker-compose-{container_name}.yml"
+    if not os.path.exists(compose_file):
+        return
+
+    with open(compose_file, 'r') as f:
+        content = f.read()
+
+    # Check if this is an orchix-tagged container
+    instance_image = f"{container_name}:orchix"
+    if f'image: {instance_image}' not in content:
+        return  # Old-style container, no re-tagging needed
+
+    # Read source image from comment
+    match = re.search(r'# orchix_source_image:\s*(.+)', content)
+    if not match:
+        return
+
+    source_image = match.group(1).strip()
+
+    # Re-tag the (newly pulled) source image as the instance tag
+    result = safe_docker_run(
+        ['docker', 'tag', source_image, instance_image],
+        capture_output=True, text=True
+    )
+    if not result or result.returncode != 0:
+        return
+
+    # Recreate container with the updated image
+    show_step_detail("Applying updated image...")
+    docker_compose_cmd = get_docker_compose_command()
+    safe_docker_run(
+        docker_compose_cmd + ['-f', compose_file, 'up', '-d'],
+        capture_output=True, text=True
+    )
