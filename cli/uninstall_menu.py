@@ -193,61 +193,59 @@ def uninstall_container(container_name):
     # 0. Collect images BEFORE removal (inspect won't work after container is gone)
     images_to_remove = _get_container_images(container_name, compose_file)
 
-    # 1. Use docker compose down -v to remove container AND all associated volumes
-    if os.path.exists(compose_file):
-        show_step("Removing container and volumes...", "active")
-        docker_compose_cmd = get_docker_compose_command()
+    # 1. Stop and remove container directly (NOT docker compose down, which
+    # shares a project name across all compose files in the same directory
+    # and can stop/remove OTHER containers from the same project)
+    show_step("Removing container...", "active")
 
-        result = safe_docker_run(
-            docker_compose_cmd + ['-f', compose_file, 'down', '-v'],
-            capture_output=True,
-            text=True
-        )
+    # Stop the container
+    result = safe_docker_run(
+        ['docker', 'stop', container_name],
+        capture_output=True, text=True
+    )
+    if result is None:
+        show_step("Docker is not available!", "error")
+        removal_details['errors'].append("Docker not available")
+    elif result and result.returncode == 0:
+        show_step_detail(f"Container {container_name} stopped")
 
-        if result is None:
-            show_step("Docker is not available!", "error")
-            removal_details['errors'].append("Docker not available for compose down")
-        elif result.returncode == 0:
-            show_step("Container and volumes removed")
-            removal_details['volumes_removed'] = volumes_to_delete
-        else:
-            show_step(f"Compose down failed: {result.stderr.strip()}", "error")
-            removal_details['errors'].append(f"Docker compose error: {result.stderr.strip()}")
+    # Remove the container
+    result = safe_docker_run(
+        ['docker', 'rm', '-f', container_name],
+        capture_output=True, text=True
+    )
+    if result and result.returncode == 0:
+        show_step_detail(f"Container {container_name} removed")
+    elif result and "No such container" not in result.stderr:
+        removal_details['errors'].append(f"Container removal: {result.stderr.strip()}")
 
-    # Force-remove the main container if it still exists (compose down may have missed it)
-    _force_remove_container(container_name, removal_details)
+    show_step("Container removed")
 
-    # Also remove any stopped containers from the same compose project
-    _remove_project_containers(container_name, removal_details)
+    # 1b. Remove volumes belonging to THIS instance only
+    show_step("Removing volumes...", "active")
+    result = safe_docker_run(
+        ['docker', 'volume', 'ls', '--format', '{{.Name}}'],
+        capture_output=True, text=True
+    )
+    if result is not None and result.returncode == 0:
+        all_volumes = result.stdout.strip().split('\n')
+        for vol in all_volumes:
+            if vol and _volume_belongs_to_instance(vol, container_name):
+                remove_result = safe_docker_run(
+                    ['docker', 'volume', 'rm', '-f', vol],
+                    capture_output=True, text=True
+                )
+                if remove_result is None:
+                    continue
+                if remove_result.returncode == 0:
+                    show_step_detail(f"Volume {vol} removed")
+                    removal_details['volumes_removed'].append(vol)
+                else:
+                    if "no such volume" not in remove_result.stderr.lower():
+                        show_step_detail(f"Volume {vol}: {remove_result.stderr.strip()}")
+                        removal_details['errors'].append(f"Volume {vol}: {remove_result.stderr.strip()}")
 
-    if not os.path.exists(compose_file):
-        # Remove volumes belonging to THIS instance only (not other instances)
-        # e.g. uninstalling "n8n" must NOT delete "n8n2_data"
-        result = safe_docker_run(
-            ['docker', 'volume', 'ls', '--format', '{{.Name}}'],
-            capture_output=True,
-            text=True
-        )
-
-        if result is not None and result.returncode == 0:
-            all_volumes = result.stdout.strip().split('\n')
-            for vol in all_volumes:
-                if vol and _volume_belongs_to_instance(vol, container_name):
-                    remove_result = safe_docker_run(
-                        ['docker', 'volume', 'rm', '-f', vol],
-                        capture_output=True,
-                        text=True
-                    )
-
-                    if remove_result is None:
-                        continue
-                    if remove_result.returncode == 0:
-                        show_step_detail(f"Volume {vol} removed")
-                        removal_details['volumes_removed'].append(vol)
-                    else:
-                        if "no such volume" not in remove_result.stderr.lower():
-                            show_step_detail(f"Volume {vol}: {remove_result.stderr.strip()}")
-                            removal_details['errors'].append(f"Volume {vol}: {remove_result.stderr.strip()}")
+    show_step("Volumes removed")
     
     # 2. Remove compose file
     show_step("Cleaning up files...", "active")
