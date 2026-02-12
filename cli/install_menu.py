@@ -97,7 +97,7 @@ def show_install_menu():
     if not docker_status['installed']:
         show_panel("Install Applications", "Docker Required")
         print()
-        show_error("❌ Docker is not installed!")
+        show_error("Docker is not installed!")
         print()
         show_info("Docker is required to install applications.")
         print()
@@ -148,7 +148,7 @@ def show_install_menu():
             return
 
         if result.returncode != 0 and "permission denied" in result.stderr.lower():
-            show_warning("💡 Permission issue detected!")
+            show_warning("Permission issue detected!")
             print()
             if not is_windows():
                 print("  Add user to docker group:")
@@ -172,7 +172,7 @@ def show_install_menu():
         if container_status['reached'] and license_manager.is_free():
             show_panel("Install Applications", "Container limit reached")
             print()
-            show_warning(f"⚠️  You have reached the FREE tier limit ({container_status['limit']} containers)")
+            show_warning(f"You have reached the FREE tier limit ({container_status['limit']} containers)")
             print()
             show_info("To install more containers, upgrade to PRO:")
             print("  • Unlimited containers")
@@ -184,7 +184,7 @@ def show_install_menu():
             
             choice = select_from_list(
                 "What would you like to do?",
-                ["⭐ Upgrade to PRO", "⬅️  Back to Main Menu"]
+                ["⬆️  Upgrade to PRO", "⬅️  Back to Main Menu"]
             )
             
             if "Upgrade" in choice:
@@ -217,11 +217,20 @@ def show_install_menu():
             
             # Get license badge (dynamic!)
             badge = get_app_badge(manifest)
-            
-            if display_name:
-                choices.append(f"{icon} {name} - {display_name}{badge}")
+
+            # Format download size
+            size_mb = manifest.get('image_size_mb', 0)
+            if size_mb >= 1000:
+                size_str = f" (~{size_mb / 1024:.1f} GB)"
+            elif size_mb > 0:
+                size_str = f" (~{size_mb} MB)"
             else:
-                choices.append(f"{icon} {name}{badge}")
+                size_str = ""
+
+            if display_name:
+                choices.append(f"{icon} {name} - {display_name}{size_str}{badge}")
+            else:
+                choices.append(f"{icon} {name}{size_str}{badge}")
 
         choices.append("⬅️  Back to Main Menu")
         
@@ -253,8 +262,17 @@ def show_install_menu():
 def install_app(app_name, manifest):
     '''Install a specific app'''
     
-    show_panel(f"Installing {manifest['display_name']}", "Setting up container...")
-    
+    # Show download size info
+    size_mb = manifest.get('image_size_mb', 0)
+    if size_mb >= 1000:
+        size_info = f"Download size: ~{size_mb / 1024:.1f} GB"
+    elif size_mb > 0:
+        size_info = f"Download size: ~{size_mb} MB"
+    else:
+        size_info = "Setting up container..."
+
+    show_panel(f"Installing {manifest['display_name']}", size_info)
+
     # Check if default instance exists
     if check_container_exists(app_name):
         show_warning(f"Container '{app_name}' already exists!")
@@ -273,7 +291,7 @@ def install_app(app_name, manifest):
         license_manager = get_license_manager()
             
         if license_manager.is_free():
-            show_warning(f"⚠️  Multi-Instance feature is PRO only!")
+            show_warning(f"Multi-Instance feature is PRO only!")
             print()
             show_info(f"You already have: {app_name}")
             show_info("FREE tier allows only ONE instance per app")
@@ -283,12 +301,12 @@ def install_app(app_name, manifest):
             print("  • Unlimited containers")
             print("  • Backup & Restore")
             print()
-            show_info(f"💰 Only {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
+            show_info(f"Price: {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
             print()
-            
+
             choice = select_from_list(
                 "What would you like to do?",
-                ["⭐ Upgrade to PRO", "⬅️  Cancel Installation"]
+                ["⬆️  Upgrade to PRO", "⬅️  Cancel Installation"]
             )
             
             if "Upgrade" in choice:

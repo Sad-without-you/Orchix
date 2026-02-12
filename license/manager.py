@@ -114,15 +114,15 @@ class LicenseManager:
         result = LicenseKeyValidator.validate_key(key)
         
         if not result['valid']:
-            print(f"❌ License validation failed: {result['message']}")
+            print(f"  License validation failed: {result['message']}")
             return False
-        
+
         # Check if expired
         if LicenseKeyValidator.check_expiry(key):
-            print("❌ License has expired")
+            print("  License has expired")
             return False
-        
-        print(f"✅ License validated successfully")
+
+        print(f"  License validated successfully")
         return True
     
     def deactivate(self):

@@ -1,81 +1,88 @@
-# ORCHIX v1.1
-import importlib
+# ORCHIX v1.2 - Template-only manifest loader
+import json
 from pathlib import Path
 
 
-def load_manifest(app_name):
-    ''' load_manifest(app_name) -> dict'''
+def _load_templates():
+    '''Load all apps from templates.json and build synthetic manifests.'''
+    templates_file = Path('apps') / 'templates.json'
+    if not templates_file.exists():
+        return {}
+
     try:
-        # Build module name
-        module_name = f'apps.{app_name}.manifest'
-        
-        # Import
-        module = importlib.import_module(module_name)
-        
-        # Check if MANIFEST exists
-        if hasattr(module, 'MANIFEST'):
-            return module.MANIFEST
-        else:
-            raise ValueError(f"No MANIFEST in {module_name}")
-    
-    except ModuleNotFoundError:
-        # app does not exist
-        raise ValueError(f"App '{app_name}' not found")
-    
-    except Exception as e:
-        # Other errors
-        raise ValueError(f"Error loading {app_name}: {e}")
+        with open(templates_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    manifests = {}
+    for t in data.get('templates', []):
+        name = t.get('name')
+        if not name:
+            continue
+
+        manifest = {
+            'name': name,
+            'display_name': t.get('display_name', name),
+            'description': t.get('description', ''),
+            'icon': t.get('icon', ''),
+            'version': t.get('version', 'latest'),
+            'license_required': t.get('license_required'),
+            'requires': {'system': ['docker'], 'containers': []},
+            'default_ports': [p['default_host'] for p in t.get('ports', [])],
+            'volumes': [
+                f"{name}_{v['name_suffix']}" for v in t.get('volumes', [])
+                if v.get('name_suffix')
+            ],
+            'networks': [],
+            'hooks': {},
+            'image_size_mb': t.get('image_size_mb', 0),
+            '_template': t,
+            '_is_template': True,
+        }
+
+        manifest['installer_class'] = _make_installer_class(t)
+        manifest['updater_class'] = _make_updater_class(t)
+
+        manifests[name] = manifest
+
+    return manifests
 
 
-def discover_apps():
-    '''Discover all available apps'''
-    
-    # 1. Get apps directory
-    apps_dir = Path('apps')
-    
-    # 2. Create empty list
-    apps = []
-    
-    # 3. Iterate through items
-    for item in apps_dir.iterdir():
-        
-        # 4. Check if directory
-        if item.is_dir():
-            
-            # 5. Exclude special dirs
-            if item.name not in ['__pycache__', 'generic']:
-                
-                # 6. Check if has manifest.py
-                if (item / 'manifest.py').exists():
-                    
-                    # 7. Add to list
-                    apps.append(item.name)
-    
-    # 8. Return sorted
-    return sorted(apps)
+def _make_installer_class(template):
+    """Return a class that creates a TemplateInstaller with template data."""
+    from apps.template_installer import TemplateInstaller
+
+    class BoundTemplateInstaller(TemplateInstaller):
+        def __init__(self, manifest):
+            super().__init__(manifest, template)
+
+    return BoundTemplateInstaller
+
+
+def _make_updater_class(template):
+    """Return a class that creates a TemplateUpdater with template data."""
+    from apps.template_updater import TemplateUpdater
+
+    class BoundTemplateUpdater(TemplateUpdater):
+        def __init__(self, manifest):
+            super().__init__(manifest, template)
+
+    return BoundTemplateUpdater
+
+
+def load_manifest(app_name):
+    '''Load a single app manifest by name.'''
+    templates = _load_templates()
+    if app_name in templates:
+        return templates[app_name]
+    raise ValueError(f"App '{app_name}' not found")
 
 
 def load_all_manifests():
-    '''Load manifests for all discovered apps'''
-    
-    # 1. Create empty dict
-    manifests = {}
-    
-    # 2. Discover all apps
-    apps = discover_apps()
-    
-    # 3. Loop through apps
-    for app_name in apps:
-        try:
-            # 4. Load manifest
-            manifest = load_manifest(app_name)
-            
-            # 5. Save to dict
-            manifests[app_name] = manifest
-            
-        except Exception as e:
-            # 6. Handle errors (print warning, continue)
-            print(f"Warning: Could not load {app_name}: {e}")
-    
-    # 7. Return dict
-    return manifests
+    '''Load manifests for all template apps.'''
+    try:
+        return _load_templates()
+    except Exception as e:
+        print(f"Warning: Could not load templates: {e}")
+        return {}

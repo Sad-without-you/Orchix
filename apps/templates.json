@@ -1,0 +1,666 @@
+{
+  "templates": [
+    {
+      "name": "wordpress",
+      "display_name": "WordPress",
+      "description": "Open-source CMS and blogging platform",
+      "icon": "📝",
+      "category": "Web",
+      "version": "6.x",
+      "image": "wordpress:latest",
+      "image_size_mb": 260,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "HTTP"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/var/www/html"}
+      ],
+      "env": [
+        {"key": "WORDPRESS_DB_HOST", "label": "Database Host", "default": "localhost:3306", "required": true},
+        {"key": "WORDPRESS_DB_USER", "label": "Database User", "default": "wordpress", "required": true},
+        {"key": "WORDPRESS_DB_PASSWORD", "label": "Database Password", "type": "password", "generate": true},
+        {"key": "WORDPRESS_DB_NAME", "label": "Database Name", "default": "wordpress", "required": true}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "gitea",
+      "display_name": "Gitea",
+      "description": "Lightweight self-hosted Git service",
+      "icon": "🦊",
+      "category": "Development",
+      "version": "1.x",
+      "image": "gitea/gitea:latest",
+      "image_size_mb": 105,
+      "license_required": null,
+      "ports": [
+        {"container": 3000, "default_host": 3000, "label": "Web UI"},
+        {"container": 22, "default_host": 2222, "label": "SSH"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/data"}
+      ],
+      "env": [
+        {"key": "USER_UID", "label": "User UID", "default": "1000"},
+        {"key": "USER_GID", "label": "User GID", "default": "1000"},
+        {"key": "GITEA__database__DB_TYPE", "label": "Database Type", "default": "sqlite3"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "uptime_kuma",
+      "display_name": "Uptime Kuma",
+      "description": "Self-hosted monitoring tool like Uptime Robot",
+      "icon": "📡",
+      "category": "Monitoring",
+      "version": "1.x",
+      "image": "louislam/uptime-kuma:1",
+      "image_size_mb": 175,
+      "license_required": null,
+      "ports": [
+        {"container": 3001, "default_host": 3001, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/app/data"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "pihole",
+      "display_name": "Pi-hole",
+      "description": "Network-wide ad blocking DNS server",
+      "icon": "🛡️",
+      "category": "Network",
+      "version": "5.x",
+      "image": "pihole/pihole:latest",
+      "image_size_mb": 200,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "Web UI"},
+        {"container": 53, "default_host": 53, "label": "DNS", "protocol": "tcp/udp"}
+      ],
+      "volumes": [
+        {"name_suffix": "config", "mount": "/etc/pihole"},
+        {"name_suffix": "dnsmasq", "mount": "/etc/dnsmasq.d"}
+      ],
+      "env": [
+        {"key": "WEBPASSWORD", "label": "Admin Password", "type": "password", "generate": true},
+        {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "heimdall",
+      "display_name": "Heimdall",
+      "description": "Application dashboard and launcher",
+      "icon": "🏠",
+      "category": "Dashboard",
+      "version": "2.x",
+      "image": "linuxserver/heimdall:latest",
+      "image_size_mb": 75,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "HTTP"}
+      ],
+      "volumes": [
+        {"name_suffix": "config", "mount": "/config"}
+      ],
+      "env": [
+        {"key": "PUID", "label": "User ID", "default": "1000"},
+        {"key": "PGID", "label": "Group ID", "default": "1000"},
+        {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "adminer",
+      "display_name": "Adminer",
+      "description": "Database management tool (MySQL, PostgreSQL, SQLite)",
+      "icon": "🗄️",
+      "category": "Database",
+      "version": "4.x",
+      "image": "adminer:latest",
+      "image_size_mb": 85,
+      "license_required": null,
+      "ports": [
+        {"container": 8080, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [],
+      "env": [
+        {"key": "ADMINER_DEFAULT_SERVER", "label": "Default DB Server", "default": ""}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "phpmyadmin",
+      "display_name": "phpMyAdmin",
+      "description": "Web interface for MySQL/MariaDB administration",
+      "icon": "🐬",
+      "category": "Database",
+      "version": "5.x",
+      "image": "phpmyadmin:latest",
+      "image_size_mb": 195,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [],
+      "env": [
+        {"key": "PMA_HOST", "label": "MySQL Host", "default": "localhost", "required": true},
+        {"key": "PMA_PORT", "label": "MySQL Port", "default": "3306"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "watchtower",
+      "display_name": "Watchtower",
+      "description": "Automatic Docker container updates",
+      "icon": "🔄",
+      "category": "Management",
+      "version": "1.x",
+      "image": "containrrr/watchtower:latest",
+      "image_size_mb": 15,
+      "license_required": null,
+      "ports": [],
+      "volumes": [
+        {"bind": "/var/run/docker.sock", "mount": "/var/run/docker.sock"}
+      ],
+      "env": [
+        {"key": "WATCHTOWER_CLEANUP", "label": "Remove old images", "default": "true"},
+        {"key": "WATCHTOWER_POLL_INTERVAL", "label": "Check interval (seconds)", "default": "86400"},
+        {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "traefik",
+      "display_name": "Traefik",
+      "description": "Modern reverse proxy and load balancer",
+      "icon": "🔀",
+      "category": "Network",
+      "version": "3.x",
+      "image": "traefik:v3.0",
+      "image_size_mb": 55,
+      "license_required": null,
+      "command": "--api.insecure=true --providers.docker=true --entrypoints.web.address=:80 --entrypoints.websecure.address=:443",
+      "ports": [
+        {"container": 80, "default_host": 80, "label": "HTTP"},
+        {"container": 443, "default_host": 443, "label": "HTTPS"},
+        {"container": 8080, "default_host": 8081, "label": "Dashboard"}
+      ],
+      "volumes": [
+        {"bind": "/var/run/docker.sock", "mount": "/var/run/docker.sock"},
+        {"name_suffix": "letsencrypt", "mount": "/letsencrypt"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "mosquitto",
+      "display_name": "Eclipse Mosquitto",
+      "description": "Lightweight MQTT message broker for IoT",
+      "icon": "📨",
+      "category": "IoT",
+      "version": "2.x",
+      "image": "eclipse-mosquitto:2",
+      "image_size_mb": 8,
+      "license_required": null,
+      "ports": [
+        {"container": 1883, "default_host": 1883, "label": "MQTT"},
+        {"container": 9001, "default_host": 9001, "label": "WebSocket"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/mosquitto/data"},
+        {"name_suffix": "log", "mount": "/mosquitto/log"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "influxdb",
+      "display_name": "InfluxDB",
+      "description": "Time-series database for metrics and analytics",
+      "icon": "📈",
+      "category": "Database",
+      "version": "2.x",
+      "image": "influxdb:2",
+      "image_size_mb": 310,
+      "license_required": null,
+      "ports": [
+        {"container": 8086, "default_host": 8086, "label": "HTTP API"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/var/lib/influxdb2"},
+        {"name_suffix": "config", "mount": "/etc/influxdb2"}
+      ],
+      "env": [
+        {"key": "DOCKER_INFLUXDB_INIT_MODE", "label": "Init Mode", "default": "setup"},
+        {"key": "DOCKER_INFLUXDB_INIT_USERNAME", "label": "Admin Username", "default": "admin", "required": true},
+        {"key": "DOCKER_INFLUXDB_INIT_PASSWORD", "label": "Admin Password", "type": "password", "generate": true},
+        {"key": "DOCKER_INFLUXDB_INIT_ORG", "label": "Organization", "default": "orchix", "required": true},
+        {"key": "DOCKER_INFLUXDB_INIT_BUCKET", "label": "Default Bucket", "default": "default", "required": true}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "minio",
+      "display_name": "MinIO",
+      "description": "S3-compatible object storage server",
+      "icon": "💾",
+      "category": "Storage",
+      "version": "latest",
+      "image": "minio/minio:latest",
+      "image_size_mb": 100,
+      "license_required": null,
+      "command": "server /data --console-address \":9001\"",
+      "ports": [
+        {"container": 9000, "default_host": 9000, "label": "API"},
+        {"container": 9001, "default_host": 9001, "label": "Console"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/data"}
+      ],
+      "env": [
+        {"key": "MINIO_ROOT_USER", "label": "Root User", "default": "minioadmin", "required": true},
+        {"key": "MINIO_ROOT_PASSWORD", "label": "Root Password", "type": "password", "generate": true}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "filebrowser",
+      "display_name": "File Browser",
+      "description": "Web-based file manager with sharing capabilities",
+      "icon": "📁",
+      "category": "Storage",
+      "version": "2.x",
+      "image": "filebrowser/filebrowser:latest",
+      "image_size_mb": 28,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/srv"},
+        {"name_suffix": "db", "mount": "/database"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "homer",
+      "display_name": "Homer",
+      "description": "Simple static homepage for your server services",
+      "icon": "🏡",
+      "category": "Dashboard",
+      "version": "latest",
+      "image": "b4bz/homer:latest",
+      "image_size_mb": 23,
+      "license_required": null,
+      "ports": [
+        {"container": 8080, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "assets", "mount": "/www/assets"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "dozzle",
+      "display_name": "Dozzle",
+      "description": "Real-time Docker container log viewer",
+      "icon": "📋",
+      "category": "Monitoring",
+      "version": "latest",
+      "image": "amir20/dozzle:latest",
+      "image_size_mb": 27,
+      "license_required": null,
+      "ports": [
+        {"container": 8080, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"bind": "/var/run/docker.sock", "mount": "/var/run/docker.sock:ro"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "duplicati",
+      "display_name": "Duplicati",
+      "description": "Encrypted cloud backup solution",
+      "icon": "💿",
+      "category": "Backup",
+      "version": "2.x",
+      "image": "linuxserver/duplicati:latest",
+      "image_size_mb": 240,
+      "license_required": null,
+      "ports": [
+        {"container": 8200, "default_host": 8200, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "config", "mount": "/config"},
+        {"name_suffix": "backups", "mount": "/backups"}
+      ],
+      "env": [
+        {"key": "PUID", "label": "User ID", "default": "1000"},
+        {"key": "PGID", "label": "Group ID", "default": "1000"},
+        {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "homarr",
+      "display_name": "Homarr",
+      "description": "Customizable dashboard for your server",
+      "icon": "🎯",
+      "category": "Dashboard",
+      "version": "0.x",
+      "image": "ghcr.io/ajnart/homarr:latest",
+      "image_size_mb": 200,
+      "license_required": null,
+      "ports": [
+        {"container": 7575, "default_host": 7575, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "config", "mount": "/app/data/configs"},
+        {"name_suffix": "icons", "mount": "/app/public/icons"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "it_tools",
+      "display_name": "IT-Tools",
+      "description": "Collection of handy online tools for developers",
+      "icon": "🛠️",
+      "category": "Utilities",
+      "version": "latest",
+      "image": "corentinth/it-tools:latest",
+      "image_size_mb": 30,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "changedetection",
+      "display_name": "Changedetection.io",
+      "description": "Website change detection and monitoring",
+      "icon": "👁️",
+      "category": "Monitoring",
+      "version": "latest",
+      "image": "dgtlmoon/changedetection.io:latest",
+      "image_size_mb": 200,
+      "license_required": null,
+      "ports": [
+        {"container": 5000, "default_host": 5000, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/datastore"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "mariadb",
+      "display_name": "MariaDB",
+      "description": "Popular MySQL-compatible relational database",
+      "icon": "🗃️",
+      "category": "Database",
+      "version": "11.x",
+      "image": "mariadb:latest",
+      "image_size_mb": 150,
+      "license_required": null,
+      "ports": [
+        {"container": 3306, "default_host": 3306, "label": "MySQL"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/var/lib/mysql"}
+      ],
+      "env": [
+        {"key": "MARIADB_ROOT_PASSWORD", "label": "Root Password", "type": "password", "generate": true},
+        {"key": "MARIADB_DATABASE", "label": "Database Name", "default": "app"},
+        {"key": "MARIADB_USER", "label": "Database User", "default": "user"},
+        {"key": "MARIADB_PASSWORD", "label": "Database Password", "type": "password", "generate": true}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "n8n",
+      "display_name": "n8n Workflow Automation",
+      "description": "The workflow automation platform",
+      "icon": "⚡",
+      "category": "Automation",
+      "version": "latest",
+      "image": "n8nio/n8n:latest",
+      "image_size_mb": 390,
+      "license_required": null,
+      "ports": [
+        {"container": 5678, "default_host": 5678, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/home/node/.n8n"}
+      ],
+      "env": [
+        {"key": "N8N_PROTOCOL", "label": "Protocol", "default": "http"},
+        {"key": "N8N_SECURE_COOKIE", "label": "Secure Cookie", "default": "false"},
+        {"key": "N8N_ENCRYPTION_KEY", "label": "Encryption Key", "type": "password", "generate": true},
+        {"key": "N8N_HOST", "label": "Host", "default": "0.0.0.0"},
+        {"key": "GENERIC_TIMEZONE", "label": "Timezone", "default": "Europe/Berlin"},
+        {"key": "WEBHOOK_URL", "label": "Webhook URL", "default": ""}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "nginx",
+      "display_name": "Nginx Proxy Manager",
+      "description": "Easy SSL reverse proxy with Let's Encrypt",
+      "icon": "🔒",
+      "category": "Network",
+      "version": "latest",
+      "image": "jc21/nginx-proxy-manager:latest",
+      "image_size_mb": 180,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "HTTP"},
+        {"container": 81, "default_host": 8081, "label": "Admin UI"},
+        {"container": 443, "default_host": 8443, "label": "HTTPS"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/data"},
+        {"name_suffix": "letsencrypt", "mount": "/etc/letsencrypt"}
+      ],
+      "env": [
+        {"key": "DISABLE_IPV6", "label": "Disable IPv6", "default": "true"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "postgres",
+      "display_name": "PostgreSQL",
+      "description": "Open source relational database",
+      "icon": "🐘",
+      "category": "Database",
+      "version": "16",
+      "image": "postgres:16",
+      "image_size_mb": 110,
+      "license_required": null,
+      "ports": [
+        {"container": 5432, "default_host": 5432, "label": "PostgreSQL"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/var/lib/postgresql/data"}
+      ],
+      "env": [
+        {"key": "POSTGRES_DB", "label": "Database Name", "default": "postgres"},
+        {"key": "POSTGRES_USER", "label": "Username", "default": "postgres"},
+        {"key": "POSTGRES_PASSWORD", "label": "Password", "type": "password", "generate": true}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "redis",
+      "display_name": "Redis",
+      "description": "In-memory data structure store and cache",
+      "icon": "🔴",
+      "category": "Database",
+      "version": "7.x",
+      "image": "redis:7-alpine",
+      "image_size_mb": 12,
+      "license_required": null,
+      "command": "redis-server --appendonly yes --save 900 1 --save 300 10 --save 60 10000 --maxmemory 512mb --maxmemory-policy allkeys-lru",
+      "ports": [
+        {"container": 6379, "default_host": 6379, "label": "Redis"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/data"}
+      ],
+      "env": [],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "grafana",
+      "display_name": "Grafana",
+      "description": "Monitoring and observability platform",
+      "icon": "📊",
+      "category": "Monitoring",
+      "version": "latest",
+      "image": "grafana/grafana:latest",
+      "image_size_mb": 115,
+      "license_required": null,
+      "ports": [
+        {"container": 3000, "default_host": 3000, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/var/lib/grafana"}
+      ],
+      "env": [
+        {"key": "GF_SECURITY_ADMIN_USER", "label": "Admin Username", "default": "admin"},
+        {"key": "GF_SECURITY_ADMIN_PASSWORD", "label": "Admin Password", "type": "password", "generate": true},
+        {"key": "GF_AUTH_ANONYMOUS_ENABLED", "label": "Anonymous Access", "default": "false"},
+        {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "qdrant",
+      "display_name": "Qdrant Vector Database",
+      "description": "Vector similarity search engine",
+      "icon": "🔍",
+      "category": "Database",
+      "version": "latest",
+      "image": "qdrant/qdrant:latest",
+      "image_size_mb": 95,
+      "license_required": null,
+      "ports": [
+        {"container": 6333, "default_host": 6333, "label": "HTTP API"},
+        {"container": 6334, "default_host": 6334, "label": "gRPC"}
+      ],
+      "volumes": [
+        {"name_suffix": "storage", "mount": "/qdrant/storage"}
+      ],
+      "env": [
+        {"key": "QDRANT__SERVICE__API_KEY", "label": "API Key", "type": "password", "generate": true}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "jellyfin",
+      "display_name": "Jellyfin Media Server",
+      "description": "Free Software Media Server",
+      "icon": "🎬",
+      "category": "Media",
+      "version": "latest",
+      "image": "jellyfin/jellyfin:latest",
+      "image_size_mb": 310,
+      "license_required": null,
+      "ports": [
+        {"container": 8096, "default_host": 8096, "label": "Web UI"},
+        {"container": 8920, "default_host": 8920, "label": "HTTPS"},
+        {"container": 7359, "default_host": 7359, "label": "Discovery", "protocol": "tcp/udp"},
+        {"container": 1900, "default_host": 1900, "label": "DLNA", "protocol": "tcp/udp"}
+      ],
+      "volumes": [
+        {"name_suffix": "config", "mount": "/config"},
+        {"name_suffix": "cache", "mount": "/cache"}
+      ],
+      "env": [
+        {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "nextcloud",
+      "display_name": "Nextcloud",
+      "description": "Self-hosted cloud storage solution",
+      "icon": "☁️",
+      "category": "Storage",
+      "version": "latest",
+      "image": "nextcloud:latest",
+      "image_size_mb": 350,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8085, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/var/www/html"}
+      ],
+      "env": [
+        {"key": "SQLITE_DATABASE", "label": "Database", "default": "nextcloud"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "vaultwarden",
+      "display_name": "Vaultwarden",
+      "description": "Lightweight Bitwarden-compatible password manager",
+      "icon": "🔐",
+      "category": "Security",
+      "version": "latest",
+      "image": "vaultwarden/server:latest",
+      "image_size_mb": 28,
+      "license_required": null,
+      "ports": [
+        {"container": 80, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "data", "mount": "/data"}
+      ],
+      "env": [
+        {"key": "DOMAIN", "label": "Domain URL", "default": "http://localhost:8080", "required": true},
+        {"key": "SIGNUPS_ALLOWED", "label": "Allow Signups", "default": "false"},
+        {"key": "INVITATIONS_ALLOWED", "label": "Allow Invitations", "default": "true"},
+        {"key": "SHOW_PASSWORD_HINT", "label": "Show Password Hint", "default": "false"},
+        {"key": "WEB_VAULT_ENABLED", "label": "Enable Web Vault", "default": "true"},
+        {"key": "ADMIN_TOKEN", "label": "Admin Token", "type": "password", "generate": true}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "stirling_pdf",
+      "display_name": "Stirling PDF",
+      "description": "Free and open-source PDF tool",
+      "icon": "📄",
+      "category": "Utilities",
+      "version": "latest",
+      "image": "stirlingtools/stirling-pdf:latest",
+      "image_size_mb": 450,
+      "license_required": null,
+      "ports": [
+        {"container": 8080, "default_host": 8080, "label": "Web UI"}
+      ],
+      "volumes": [
+        {"name_suffix": "logs", "mount": "/logs"}
+      ],
+      "env": [
+        {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
+      ],
+      "restart": "unless-stopped"
+    }
+  ]
+}

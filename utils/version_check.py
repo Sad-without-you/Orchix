@@ -1,7 +1,7 @@
 import urllib.request
 import json
 
-CURRENT_VERSION = "1.1"
+CURRENT_VERSION = "1.2"
 GITHUB_REPO = "Sad-without-you/ORCHIX"
 
 
@@ -16,7 +16,13 @@ def check_for_updates():
             tags = json.loads(resp.read().decode())
 
         if not tags:
-            return None
+            # Repo exists but no release tags yet
+            return {
+                'update_available': False,
+                'latest_version': CURRENT_VERSION,
+                'current_version': CURRENT_VERSION,
+                'message': ''
+            }
 
         # Get latest tag (first in list)
         latest_tag = tags[0]['name'].lstrip('v')
@@ -28,7 +34,12 @@ def check_for_updates():
                 'message': f"ORCHIX v{latest_tag} available! (current: v{CURRENT_VERSION})"
             }
 
-        return {'update_available': False, 'latest_version': latest_tag, 'message': ''}
+        return {
+            'update_available': False,
+            'latest_version': latest_tag,
+            'current_version': CURRENT_VERSION,
+            'message': ''
+        }
 
     except Exception:
         return None

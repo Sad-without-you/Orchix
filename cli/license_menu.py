@@ -1,4 +1,4 @@
-# ORCHIX v1.1
+# ORCHIX v1.2
 from cli.ui import show_panel, select_from_list, show_info, show_success, show_error, show_warning
 from license import get_license_manager, PRICING
 from license.features import get_pro_benefits
@@ -16,7 +16,7 @@ def show_license_menu():
         
         show_panel("License Manager", f"Current Tier: {info['tier_display']}")
         
-        table = Table(title="📋 License Information", show_header=True, header_style="bold cyan")
+        table = Table(title="License Information", show_header=True, header_style="bold cyan")
         table.add_column("Feature", style="cyan", width=30)
         table.add_column("Status", style="white", width=30)
 
@@ -84,20 +84,20 @@ def show_license_menu():
         # Show what FREE users can unlock
         if license_manager.is_free():
             unlock_table = Table(
-                title="🔓 Unlock with PRO",
+                title="Unlock with PRO",
                 show_header=False,
                 border_style="yellow",
                 padding=(0, 1)
             )
             unlock_table.add_column("Feature", style="yellow", width=60)
-            
+
             # Core PRO features
-            unlock_table.add_row("💾 Backup & Restore - Protect your data")
-            unlock_table.add_row("🔗 Multi-Instance - Run multiple instances per app")
-            unlock_table.add_row("✨ Unlimited Containers - No 3 container limit")
-            unlock_table.add_row("🚀 Server Migration - Migrate to other servers")
-            unlock_table.add_row("📊 Audit Logging - Track user actions and changes")
-            unlock_table.add_row("🎯 Priority Support - Get help faster")
+            unlock_table.add_row("+ Backup & Restore - Protect your data")
+            unlock_table.add_row("+ Multi-Instance - Run multiple instances per app")
+            unlock_table.add_row("+ Unlimited Containers - No 3 container limit")
+            unlock_table.add_row("+ Server Migration - Migrate to other servers")
+            unlock_table.add_row("+ Audit Logging - Track user actions and changes")
+            unlock_table.add_row("+ Priority Support - Get help faster")
             
             # Dynamically add PRO-only apps
             from apps.manifest_loader import load_all_manifests
@@ -123,7 +123,7 @@ def show_license_menu():
             
             # Pricing highlight
             from license import PRICING
-            pricing_info = f"[bold cyan]💰 Only {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}[/bold cyan]"
+            pricing_info = f"[bold cyan]Price: {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}[/bold cyan]"
             console.print(pricing_info, justify="center")
             print()
         
@@ -131,13 +131,13 @@ def show_license_menu():
         choices = []
         
         if license_manager.is_free():
-            choices.append("⭐ Upgrade to PRO")
+            choices.append("⬆️  Upgrade to PRO")
         else:
             choices.extend([
-                "📋 View License Details",
-                "🔓 Deactivate License",
+                "📄 View License Details",
+                "🔒 Deactivate License",
             ])
-        
+
         choices.append("⬅️  Back to Main Menu")
         
         choice = select_from_list("License Options", choices)
@@ -177,15 +177,17 @@ def _activate_pro_license():
     license_manager = get_license_manager()
     
     if license_manager.activate_pro(license_key):
+        print()
         show_success("PRO License activated!")
         print()
         show_info("You now have access to:")
         for benefit in get_pro_benefits():
-            print(f"  {benefit}")
+            if benefit:  # skip empty separator lines
+                print(f"  {benefit}")
         print()
     else:
-        show_error("Invalid license key!")
         print()
+        show_error("Invalid license key!")
         show_info("Please check your key and try again.")
         print()
     
@@ -203,7 +205,7 @@ def _show_license_details():
     show_panel("License Details", "Your PRO License Information")
     
     # Features Table
-    table = Table(title="✨ Enabled Features", show_header=True, header_style="bold cyan")
+    table = Table(title="Enabled Features", show_header=True, header_style="bold cyan")
     table.add_column("Feature", style="cyan", width=30)
     table.add_column("Status", style="white", width=30)
     
@@ -218,7 +220,7 @@ def _show_license_details():
     print()
     
     # Usage Table
-    usage_table = Table(title="📊 Current Usage", show_header=True, header_style="bold green")
+    usage_table = Table(title="Current Usage", show_header=True, header_style="bold green")
     usage_table.add_column("Metric", style="cyan", width=30)
     usage_table.add_column("Value", style="white", width=30)
     

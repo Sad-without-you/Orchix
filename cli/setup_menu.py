@@ -1,4 +1,4 @@
-# ORCHIX v1.1
+# ORCHIX v1.2
 from cli.ui import select_from_list, show_panel, show_success, show_error, show_info, show_warning
 from utils.system import (
     detect_os, detect_package_manager, check_docker, check_dependencies,
@@ -23,6 +23,7 @@ def show_setup_menu():
             "🐳 Install Docker",
             "📦 Install Dependencies",
             "✅ Verify Installation",
+            "🔄 Check for ORCHIX Updates",
             "⬅️  Back to Main Menu"
         ]
         
@@ -45,6 +46,8 @@ def show_setup_menu():
             install_dependencies_menu()
         elif "Verify" in choice:
             verify_installation()
+        elif "ORCHIX Updates" in choice:
+            check_orchix_updates()
 
 
 def check_system_requirements():
@@ -363,6 +366,120 @@ def install_dependencies_menu():
     if "Yes" in confirm:
         install_basic_tools(pkg_manager)
     
+    print()
+    input("Press Enter...")
+
+
+def check_orchix_updates():
+    '''Check for ORCHIX updates from GitHub'''
+
+    show_panel("ORCHIX Update Check", "Checking for new versions...")
+    print()
+
+    try:
+        from utils.version_check import check_for_updates, CURRENT_VERSION
+
+        show_info(f"Current version: v{CURRENT_VERSION}")
+        show_info("Checking GitHub for updates...")
+        print()
+
+        result = check_for_updates()
+
+        if result is None:
+            show_error("Could not reach GitHub. Check your internet connection.")
+        elif result['update_available']:
+            show_warning(f"New version available: v{result['latest_version']}")
+            print()
+
+            table = Table(show_header=True, header_style="bold cyan")
+            table.add_column("", style="cyan", width=20)
+            table.add_column("", style="white", width=30)
+            table.add_row("Current Version", f"v{CURRENT_VERSION}")
+            table.add_row("Latest Version", f"v{result['latest_version']}")
+            console.print(table)
+            print()
+
+            show_info("To update, run these commands:")
+            print("  cd /path/to/ORCHIX")
+            print("  git pull")
+            print("  pip install -r requirements.txt")
+            print()
+
+            choice = select_from_list(
+                "Would you like to update now?",
+                ["🔄 Update now (git pull)", "⬅️  Later"]
+            )
+
+            if "Update now" in choice:
+                _run_update()
+                return
+        else:
+            show_success(f"You are up to date! (v{CURRENT_VERSION})")
+    except Exception as e:
+        show_error(f"Update check failed: {e}")
+
+    print()
+    input("Press Enter...")
+
+
+def _run_update():
+    '''Run git pull to update ORCHIX'''
+    import subprocess
+    import os
+
+    show_info("Updating ORCHIX...")
+    print()
+
+    orchix_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    try:
+        # Git pull
+        result = subprocess.run(
+            ['git', 'pull'],
+            cwd=orchix_dir,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='ignore',
+            timeout=30
+        )
+
+        if result.returncode == 0:
+            print(result.stdout)
+            show_success("Git pull completed!")
+            print()
+
+            # Install updated dependencies
+            show_info("Updating dependencies...")
+            pip_result = subprocess.run(
+                ['pip', 'install', '-r', 'requirements.txt'],
+                cwd=orchix_dir,
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='ignore',
+                timeout=120
+            )
+
+            if pip_result.returncode == 0:
+                show_success("Dependencies updated!")
+            else:
+                show_warning("Dependency update had issues:")
+                print(pip_result.stderr[:500] if pip_result.stderr else "")
+
+            print()
+            show_warning("Please restart ORCHIX to apply updates.")
+        else:
+            show_error("Git pull failed:")
+            print(result.stderr[:500] if result.stderr else "Unknown error")
+
+    except subprocess.TimeoutExpired:
+        show_error("Update timed out. Check your internet connection.")
+    except FileNotFoundError:
+        show_error("Git not found. Please install git or update manually.")
+    except Exception as e:
+        show_error(f"Update failed: {e}")
+
     print()
     input("Press Enter...")
 

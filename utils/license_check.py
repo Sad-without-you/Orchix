@@ -1,4 +1,4 @@
-# ORCHIX v1.1
+# ORCHIX v1.2
 '''Centralized license checking for apps'''
 
 from license import get_license_manager, PRICING
@@ -55,20 +55,20 @@ def show_upgrade_prompt_for_app(manifest):
     
     show_panel("PRO Feature Required", "Upgrade to install this app")
     print()
-    show_warning(f"🔒 {manifest['display_name']} requires a PRO license!")
+    show_warning(f"{manifest['display_name']} requires a PRO license!")
     print()
     show_info("Upgrade to PRO to unlock:")
-    print("  • PRO-exclusive apps")
-    print("  • Unlimited containers")
-    print("  • Backup & Restore")
-    print("  • Migration tools")
+    print("  + PRO-exclusive apps")
+    print("  + Unlimited containers")
+    print("  + Backup & Restore")
+    print("  + Migration tools")
     print()
-    show_info(f"💰 Only {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
+    show_info(f"Price: {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
     print()
-    
+
     choice = select_from_list(
         "What would you like to do?",
-        ["⭐ Upgrade to PRO", "⬅️  Back to Apps"]
+        ["⬆️  Upgrade to PRO", "⬅️  Back to Apps"]
     )
     
     if "Upgrade" in choice:

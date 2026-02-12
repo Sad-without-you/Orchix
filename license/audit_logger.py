@@ -1,4 +1,4 @@
-# ORCHIX v1.1
+# ORCHIX v1.2
 import json
 import os
 from pathlib import Path

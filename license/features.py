@@ -1,4 +1,4 @@
-# ORCHIX v1.1
+# ORCHIX v1.2
 # FREE TIER
 FREE_FEATURES = {
     'max_containers': 3,
@@ -8,7 +8,7 @@ FREE_FEATURES = {
     'audit_log': False,
     'apps': ['n8n', 'postgres', 'redis'],
     'tier_name': 'FREE',
-    'tier_display': '🆓 FREE'
+    'tier_display': 'FREE'
 }
 
 # PRO TIER  
@@ -20,7 +20,7 @@ PRO_FEATURES = {
     'audit_log': True,
     'apps': ['*'],
     'tier_name': 'PRO',
-    'tier_display': '⭐ PRO'
+    'tier_display': 'PRO'
 }
 
 # Feature descriptions for UI
@@ -35,13 +35,13 @@ FEATURE_DESCRIPTIONS = {
 
 # Base PRO Benefits (static features)
 _BASE_PRO_BENEFITS = [
-    "✅ Unlimited Containers",
-    "✅ Backup & Restore",
-    "✅ Multi-Instance Support",
-    "✅ Server Migration Tools",
-    "✅ Audit Logging",
-    "✅ Priority Updates",
-    "✅ Email Support",
+    "+ Unlimited Containers",
+    "+ Backup & Restore",
+    "+ Multi-Instance Support",
+    "+ Server Migration Tools",
+    "+ Audit Logging",
+    "+ Priority Updates",
+    "+ Email Support",
 ]
 
 def get_pro_benefits():
@@ -58,7 +58,7 @@ def get_pro_benefits():
             if manifest.get('license_required') == 'pro':
                 icon = manifest.get('icon', '🔒')
                 display_name = manifest.get('display_name', manifest['name'])
-                pro_apps.append(f"✅ {icon} {display_name}")
+                pro_apps.append(f"+ {display_name}")
         
         # Add PRO apps to benefits
         if pro_apps:

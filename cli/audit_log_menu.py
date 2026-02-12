@@ -1,4 +1,4 @@
-# ORCHIX v1.1
+# ORCHIX v1.2
 from cli.ui import select_from_list, show_panel, show_info, show_warning, show_error
 from license import get_license_manager
 from license.audit_logger import get_audit_logger, AuditEventType

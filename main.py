@@ -22,32 +22,47 @@ def check_sudo():
 
 
 def print_header():
-    '''Print ORCHIX header with Rich'''
+    '''Print ORCHIX startup header with Rich'''
 
-    
     console = Console()
-    
-    # Create title
-    title = Text()
-    title.append("ORCHIX v1.1\n", style="bold cyan")
-    title.append("DevOps Container Management System", style="dim")
-    
-    # Show panel
+
+    logo = Text()
+    logo.append("   ___  ____   ____ _   _ _____  __\n", style="bold cyan")
+    logo.append("  / _ \\|  _ \\ / ___| | | |_ _\\ \\/ /\n", style="bold cyan")
+    logo.append(" | | | | |_) | |   | |_| || | \\  / \n", style="cyan")
+    logo.append(" | |_| |  _ <| |___|  _  || | /  \\ \n", style="cyan")
+    logo.append("  \\___/|_| \\_\\\\____|_| |_|___/_/\\_\\\n\n", style="dim cyan")
+    logo.append("  v1.2", style="bold white")
+    logo.append("  |  Container Management System", style="dim")
+
     panel = Panel(
-        title,
+        logo,
         border_style="cyan",
         padding=(1, 2)
     )
-    
+
     console.print()
     console.print(panel)
     console.print()
 
 
 if __name__ == "__main__":
-    # Check sudo
-    check_sudo()
+    if '--web' in sys.argv:
+        # Web UI mode
+        port = 5000
+        for i, arg in enumerate(sys.argv):
+            if arg == '--port' and i + 1 < len(sys.argv):
+                try:
+                    port = int(sys.argv[i + 1])
+                except ValueError:
+                    pass
 
-    # Run main loop
-    from cli.main_menu import run_main_loop
-    run_main_loop()
+        print_header()
+        from web.server import run_web
+        run_web(port=port)
+    else:
+        # CLI mode
+        check_sudo()
+        print_header()
+        from cli.main_menu import run_main_loop
+        run_main_loop()

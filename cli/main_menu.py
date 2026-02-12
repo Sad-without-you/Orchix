@@ -23,21 +23,21 @@ def _show_pro_upgrade_prompt(feature_name):
     
     show_panel("PRO Feature Required", f"Upgrade to use {feature_name}")
     print()
-    show_warning(f"🔒 {feature_name} requires a PRO license!")
+    show_warning(f"{feature_name} requires a PRO license!")
     print()
     show_info("Upgrade to PRO to unlock:")
-    print("  • Backup & Restore")
-    print("  • Server Migration")
-    print("  • Unlimited containers")
-    print("  • Multi-instance support")
-    print("  • PRO-exclusive apps")
+    print("  + Backup & Restore")
+    print("  + Server Migration")
+    print("  + Unlimited containers")
+    print("  + Multi-instance support")
+    print("  + PRO-exclusive apps")
     print()
-    show_info(f"💰 Only {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
+    show_info(f"Price: {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
     print()
-    
+
     choice = select_from_list(
         "What would you like to do?",
-        ["⭐ Upgrade to PRO", "⬅️  Back to Menu"]
+        ["⬆️  Upgrade to PRO", "⬅️  Back to Menu"]
     )
     
     if "Upgrade" in choice:
@@ -55,8 +55,8 @@ def run_main_loop():
         from utils.version_check import check_for_updates
         update_info = check_for_updates()
         if update_info and update_info.get('update_available'):
-            show_warning(f"🆕 {update_info['message']}")
-            show_warning("   Update: git pull && pip install -r requirements.txt")
+            show_warning(f"{update_info['message']}")
+            show_warning("  Update: git pull && pip install -r requirements.txt")
             print()
     except Exception:
         pass
@@ -109,7 +109,7 @@ def run_main_loop():
             ])
 
         choices.extend([
-            "📊 License Manager",
+            "🔑 License Manager",
             "⚙️  System Setup",
             "❌ Exit"
         ])
@@ -177,27 +177,27 @@ def _show_upgrade_prompt(feature_name):
 
     console = Console()
     
-    show_warning(f"⭐ PRO Feature: {FEATURE_DESCRIPTIONS.get(feature_name, 'This feature')}")
+    show_warning(f"PRO Feature: {FEATURE_DESCRIPTIONS.get(feature_name, 'This feature')}")
     print()
-    
+
     # Clean benefits table
     table = Table(
-        title="✨ Upgrade to ORCHIX PRO",
+        title="Upgrade to ORCHIX PRO",
         show_header=False,
         border_style="cyan",
         padding=(0, 1)
     )
     table.add_column("", style="green", width=50)
-    
+
     for benefit in get_pro_benefits():
         table.add_row(benefit)
-    
+
     # Add separator
     table.add_row("")
-    
+
     # Add pricing
-    table.add_row(f"[bold cyan]💰 {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}[/bold cyan]")
-    table.add_row("[dim]🌐 https://orchix.dev/pricing[/dim]")
+    table.add_row(f"[bold cyan]{PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}[/bold cyan]")
+    table.add_row("[dim]https://orchix.dev/pricing[/dim]")
     
     console.print(table)
     print()

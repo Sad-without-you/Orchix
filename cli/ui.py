@@ -1,5 +1,6 @@
 from rich.console import Console
 from rich.panel import Panel
+from rich.text import Text
 import inquirer
 import os
 
@@ -12,34 +13,38 @@ def clear_screen():
 
 def show_success(message):
     '''Show success message in green'''
-    
-    console.print(f"✅ {message}", style="bold green")
+    console.print(f"  ✅ {message}", style="bold green")
 
 def show_error(message):
     '''Show error message in red'''
-    
-    console.print(f"❌ {message}", style="bold red")  
+    console.print(f"  ❌ {message}", style="bold red")
 
 def show_warning(message):
     '''Show warning message in yellow'''
-    
-    console.print(f"⚠ {message}", style="yellow")
+    console.print(f"  ⚠️  {message}", style="yellow")
 
 def show_info(message):
     '''Show info message in blue'''
-    
-    console.print(f"ℹ {message}", style="bold blue")
+    console.print(f"  ℹ️  {message}", style="bold blue")
+
+def _print_orchix_header():
+    '''Print the ORCHIX ASCII art header'''
+    logo = Text()
+    logo.append("   ___  ____   ____ _   _ _____  __\n", style="bold cyan")
+    logo.append("  / _ \\|  _ \\ / ___| | | |_ _\\ \\/ /\n", style="bold cyan")
+    logo.append(" | | | | |_) | |   | |_| || | \\  / \n", style="cyan")
+    logo.append(" | |_| |  _ <| |___|  _  || | /  \\ \n", style="cyan")
+    logo.append("  \\___/|_| \\_\\\\____|_| |_|___/_/\\_\\\n\n", style="dim cyan")
+    logo.append("  v1.2", style="bold white")
+    logo.append("  |  Container Management System", style="dim")
+    console.print(Panel(logo, border_style="cyan", padding=(1, 2)))
 
 def show_panel(title, content, style="cyan"):
     '''Show content in a panel with border'''
     clear_screen()
 
-    # Persistent ORCHIX header
-    console.print(Panel(
-        "[bold cyan]ORCHIX v1.1[/bold cyan]\n[dim]DevOps Container Management System[/dim]",
-        border_style="cyan",
-        padding=(1, 2)
-    ))
+    # Always show ORCHIX header after clear
+    _print_orchix_header()
 
     panel = Panel(
         content,

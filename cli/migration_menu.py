@@ -27,7 +27,7 @@ def show_migration_menu():
     if license_manager.is_free():
         show_panel("Migration Manager", "⭐ PRO Feature")
         print()
-        show_warning("🚀 Migration is a PRO feature!")
+        show_warning("Migration is a PRO feature!")
         print()
         show_info("Upgrade to PRO to unlock:")
         print("  • Export migration packages")
@@ -36,12 +36,12 @@ def show_migration_menu():
         print("  • Backup + Compose files in one package")
         print()
         
-        show_info(f"💰 Only {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
+        show_info(f"Price: {PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}")
         print()
         
         choice = select_from_list(
             "What would you like to do?",
-            ["⭐ Upgrade to PRO", "⬅️  Back to Main Menu"]
+            ["⬆️  Upgrade to PRO", "⬅️  Back to Main Menu"]
         )
         
         if "Upgrade" in choice:
@@ -52,7 +52,7 @@ def show_migration_menu():
     
     # PRO User - Show menu
     while True:
-        show_panel("Migration Manager", "⭐ PRO Feature - Server Migration")
+        show_panel("Migration Manager", "PRO Feature - Server Migration")
         
         choices = [
             "📤 Export Migration Package",
@@ -123,7 +123,7 @@ def export_migration_package():
         return
     
     print()
-    show_info(f"📦 Found {len(containers)} container(s)")
+    show_info(f"Found {len(containers)} container(s)")
     print()
     
     # Step 1: Ask if select all or pick specific
@@ -273,7 +273,7 @@ def export_migration_package():
     
     # Process each container
     for container in selected_containers:
-        show_info(f"📦 Processing {container}...")
+        show_info(f"Processing {container}...")
         
         container_data = {
             'name': container,
@@ -355,16 +355,16 @@ Notes:
     
     # Show success
     print()
-    show_success("✅ Migration package created!")
+    show_success("Migration package created!")
     print()
-    show_info(f"📦 Package: {tarball_path}")
-    show_info(f"📊 Size: {_get_file_size(tarball_path)}")
-    show_info(f"🎯 Target: {'Windows' if target_is_windows else 'Linux'}")
+    show_info(f"Package: {tarball_path}")
+    show_info(f"Size: {_get_file_size(tarball_path)}")
+    show_info(f"Target: {'Windows' if target_is_windows else 'Linux'}")
     print()
-    show_info("🚀 Transfer to new server:")
+    show_info("Transfer to new server:")
     print(f"   scp {tarball_path} user@new-server:/path/to/ORCHIX/migrations/")
     print()
-    show_info("📝 Then on new server:")
+    show_info("Then on new server:")
     print("   ORCHIX → Migration → Import Migration Package")
     print()
     
@@ -605,7 +605,7 @@ def import_migration_package():
     
     # Show package info
     print()
-    show_info("📋 Migration Package Info:")
+    show_info("Migration Package Info:")
     print(f"  Version: {manifest_data.get('version', 'unknown')}")
     print(f"  Created: {manifest_data.get('timestamp', 'unknown')}")
     print(f"  Source: {manifest_data.get('source_hostname', 'unknown')}")
@@ -642,7 +642,7 @@ def import_migration_package():
     
     for container_data in manifest_data.get('containers', []):
         container_name = container_data.get('name')
-        show_info(f"📦 Importing {container_name}...")
+        show_info(f"Importing {container_name}...")
         
         # Check if container already exists
         result = subprocess.run(
@@ -749,7 +749,7 @@ def import_migration_package():
     shutil.rmtree(extract_dir)
     
     print()
-    show_success("🎉 Migration complete!")
+    show_success("Migration complete!")
     print()
     show_info("All containers have been imported and restored.")
     print()
@@ -772,7 +772,7 @@ def list_migration_packages():
     if not packages:
         show_warning("No migration packages found!")
     else:
-        table = Table(title="📦 Available Migration Packages", show_header=True, header_style="bold cyan")
+        table = Table(title="Available Migration Packages", show_header=True, header_style="bold cyan")
         table.add_column("Package", style="cyan", width=40)
         table.add_column("Size", style="white", width=15)
         table.add_column("Created", style="dim", width=20)

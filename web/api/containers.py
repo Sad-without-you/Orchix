@@ -1,0 +1,311 @@
+import json as json_mod
+import os
+import shutil
+from pathlib import Path
+from flask import Blueprint, jsonify, request
+from web.auth import login_required
+from utils.docker_utils import safe_docker_run
+from utils.validation import validate_container_name
+
+bp = Blueprint('api_containers', __name__, url_prefix='/api')
+
+
+def _log_audit(event_type, app_name, details=None):
+    try:
+        from license import get_license_manager
+        from license.audit_logger import get_audit_logger, AuditEventType
+        lm = get_license_manager()
+        logger = get_audit_logger(enabled=lm.is_pro())
+        logger.log_event(AuditEventType[event_type], app_name, details or {'source': 'web_ui'})
+    except Exception:
+        pass
+
+
+@bp.route('/containers')
+@login_required
+def list_containers():
+    from cli.container_menu import get_all_containers, get_container_status
+
+    containers = get_all_containers()
+    result = []
+
+    # Try to get sizes (optional, may be slow)
+    sizes = {}
+    try:
+        size_result = safe_docker_run(
+            ['docker', 'ps', '-a', '--format', '{{.Names}}|{{.Size}}'],
+            capture_output=True, text=True, timeout=10
+        )
+        if size_result and size_result.returncode == 0:
+            import re
+            for line in size_result.stdout.strip().split('\n'):
+                if '|' in line:
+                    parts = line.split('|', 1)
+                    raw_size = parts[1].strip()
+                    # Docker returns "4.1kB (virtual 43.4MB)"
+                    # Extract just the virtual size (actual image size on disk)
+                    virtual_match = re.search(r'virtual\s+([\d.]+\s*[kKMGT]?B)', raw_size)
+                    if virtual_match:
+                        sizes[parts[0].strip()] = virtual_match.group(1)
+                    else:
+                        # Fallback: use the first size value
+                        sizes[parts[0].strip()] = raw_size.split('(')[0].strip()
+    except Exception:
+        pass
+
+    for name in containers:
+        status = get_container_status(name)
+        result.append({
+            'name': name,
+            'status': status,
+            'size': sizes.get(name, '')
+        })
+    return jsonify(result)
+
+
+@bp.route('/containers/<name>/start', methods=['POST'])
+@login_required
+def start_container(name):
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    result = safe_docker_run(['docker', 'start', name], capture_output=True, text=True)
+    if result and result.returncode == 0:
+        _log_audit('CONTAINER_START', name)
+        return jsonify({'success': True, 'message': f'{name} started'})
+    return jsonify({'success': False, 'message': result.stderr.strip() if result else 'Docker unavailable'}), 500
+
+
+@bp.route('/containers/<name>/stop', methods=['POST'])
+@login_required
+def stop_container(name):
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    result = safe_docker_run(['docker', 'stop', name], capture_output=True, text=True)
+    if result and result.returncode == 0:
+        _log_audit('CONTAINER_STOP', name)
+        return jsonify({'success': True, 'message': f'{name} stopped'})
+    return jsonify({'success': False, 'message': result.stderr.strip() if result else 'Docker unavailable'}), 500
+
+
+@bp.route('/containers/<name>/restart', methods=['POST'])
+@login_required
+def restart_container(name):
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    result = safe_docker_run(['docker', 'restart', name], capture_output=True, text=True)
+    if result and result.returncode == 0:
+        return jsonify({'success': True, 'message': f'{name} restarted'})
+    return jsonify({'success': False, 'message': result.stderr.strip() if result else 'Docker unavailable'}), 500
+
+
+@bp.route('/containers/<name>/logs')
+@login_required
+def get_logs(name):
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    tail = request.args.get('tail', '100')
+    result = safe_docker_run(
+        ['docker', 'logs', '--tail', str(tail), name],
+        capture_output=True, text=True
+    )
+    if result:
+        return jsonify({'logs': result.stdout, 'stderr': result.stderr})
+    return jsonify({'logs': '', 'error': 'Docker unavailable'}), 500
+
+
+@bp.route('/containers/<name>/inspect')
+@login_required
+def inspect_container(name):
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    result = safe_docker_run(['docker', 'inspect', name], capture_output=True, text=True)
+    if result and result.returncode == 0:
+        data = json_mod.loads(result.stdout)[0]
+        state = data.get('State', {})
+        config = data.get('Config', {})
+        network = data.get('NetworkSettings', {})
+
+        ports = {}
+        for port, bindings in (network.get('Ports') or {}).items():
+            if bindings:
+                ports[port] = [{'HostPort': b.get('HostPort', ''), 'HostIp': b.get('HostIp', '')} for b in bindings]
+
+        return jsonify({
+            'name': name,
+            'status': state.get('Status', 'unknown'),
+            'running': state.get('Running', False),
+            'started_at': state.get('StartedAt', 'N/A')[:19],
+            'image': config.get('Image', 'N/A'),
+            'ports': ports,
+            'env': [e.split('=', 1)[0] for e in (config.get('Env') or []) if '=' in e][:20]
+        })
+    return jsonify({'error': 'Failed to inspect container'}), 500
+
+
+@bp.route('/containers/<name>/compose')
+@login_required
+def get_compose(name):
+    """Read the docker-compose YAML file for a container."""
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'error': str(e), 'content': ''}), 400
+    compose_file = f"docker-compose-{name}.yml"
+    if not os.path.exists(compose_file):
+        return jsonify({'error': 'No compose file found', 'content': ''}), 404
+    try:
+        with open(compose_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return jsonify({'content': content, 'filename': compose_file})
+    except Exception as e:
+        return jsonify({'error': str(e), 'content': ''}), 500
+
+
+@bp.route('/containers/<name>/compose', methods=['POST'])
+@login_required
+def save_compose(name):
+    """Save changes to the docker-compose YAML file for a container."""
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    compose_file = f"docker-compose-{name}.yml"
+    if not os.path.exists(compose_file):
+        return jsonify({'success': False, 'message': 'No compose file found'}), 404
+
+    data = request.get_json()
+    content = data.get('content', '')
+    if not content.strip():
+        return jsonify({'success': False, 'message': 'Content cannot be empty'}), 400
+
+    try:
+        import yaml
+        yaml.safe_load(content)
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Invalid YAML: {e}'}), 400
+
+    try:
+        with open(compose_file, 'w', encoding='utf-8') as f:
+            f.write(content)
+        _log_audit('UPDATE', name, {'action': 'compose_edit', 'source': 'web_ui'})
+        return jsonify({'success': True, 'message': 'Compose file saved. Recreate the container to apply changes.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/containers/<name>/uninstall', methods=['POST'])
+@login_required
+def uninstall_container(name):
+    """Completely uninstall a container, volumes, images, and files."""
+    try:
+        name = validate_container_name(name)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    from cli.uninstall_menu import (
+        _get_container_images, _volume_belongs_to_instance
+    )
+
+    removal_details = {'volumes_removed': [], 'files_removed': [], 'errors': []}
+    compose_file = f"docker-compose-{name}.yml"
+
+    # Collect images before removal
+    images_to_remove = _get_container_images(name, compose_file)
+
+    # Collect ALL volumes attached to this container (including anonymous ones)
+    container_volumes = set()
+    inspect_result = safe_docker_run(
+        ['docker', 'inspect', '--format', '{{range .Mounts}}{{.Name}} {{end}}', name],
+        capture_output=True, text=True
+    )
+    if inspect_result and inspect_result.returncode == 0:
+        for vol in inspect_result.stdout.strip().split():
+            if vol.strip():
+                container_volumes.add(vol.strip())
+
+    # 1. Stop and remove container
+    safe_docker_run(['docker', 'stop', name], capture_output=True, text=True)
+    result = safe_docker_run(['docker', 'rm', '-f', name], capture_output=True, text=True)
+    if result and result.returncode != 0 and result.stderr and "No such container" not in result.stderr:
+        removal_details['errors'].append(f"Container: {result.stderr.strip()}")
+
+    # 2. Remove volumes: both name-matched and container-attached (anonymous)
+    result = safe_docker_run(
+        ['docker', 'volume', 'ls', '--format', '{{.Name}}'],
+        capture_output=True, text=True
+    )
+    if result and result.returncode == 0:
+        for vol in result.stdout.strip().split('\n'):
+            if vol and (_volume_belongs_to_instance(vol, name) or vol in container_volumes):
+                r = safe_docker_run(['docker', 'volume', 'rm', '-f', vol], capture_output=True, text=True)
+                if r and r.returncode == 0:
+                    removal_details['volumes_removed'].append(vol)
+
+    # 3. Remove compose file, Dockerfile, config, backup files
+    for path in [compose_file, f"Dockerfile-{name}"]:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                removal_details['files_removed'].append(path)
+            except Exception:
+                pass
+
+    for dir_path, pattern in [("config", f"{name}*"), ("backups", f"*{name}*")]:
+        d = Path(dir_path)
+        if d.exists():
+            for f in d.glob(pattern):
+                try:
+                    if f.is_file():
+                        f.unlink()
+                    elif f.is_dir():
+                        shutil.rmtree(f)
+                    removal_details['files_removed'].append(str(f))
+                except Exception:
+                    pass
+
+    # 4. Remove instance-specific image tag
+    instance_image = f"{name}:orchix"
+    r = safe_docker_run(['docker', 'rmi', instance_image], capture_output=True, text=True)
+    if r and r.returncode == 0:
+        removal_details['files_removed'].append(f"Image: {instance_image}")
+
+    # Remove shared images only if not used by other containers
+    repos_in_use = set()
+    r = safe_docker_run(['docker', 'ps', '-a', '--format', '{{.Image}}'], capture_output=True, text=True)
+    if r and r.returncode == 0:
+        for img in r.stdout.strip().split('\n'):
+            img = img.strip()
+            if img:
+                repo = img.rsplit(':', 1)[0] if ':' in img else img
+                repos_in_use.add(repo)
+
+    for image in images_to_remove:
+        if image == instance_image:
+            continue
+        img_repo = image.rsplit(':', 1)[0] if ':' in image else image
+        if img_repo in repos_in_use:
+            continue
+        r = safe_docker_run(['docker', 'rmi', image], capture_output=True, text=True)
+        if r and r.returncode == 0:
+            removal_details['files_removed'].append(f"Image: {image}")
+
+    # 5. Prune unused networks
+    safe_docker_run(['docker', 'network', 'prune', '-f'], capture_output=True, text=True)
+
+    # 6. Audit log
+    _log_audit('UNINSTALL', name, removal_details)
+
+    return jsonify({
+        'success': True,
+        'message': f'{name} completely uninstalled',
+        'details': removal_details
+    })

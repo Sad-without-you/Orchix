@@ -1,4 +1,4 @@
-# ORCHIX v1.1
+# ORCHIX v1.2
 import importlib
 from typing import Callable, Optional, Any
 

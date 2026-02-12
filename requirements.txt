@@ -1,5 +1,5 @@
 # ========================================
-# ORCHIX v1.1 - Container Management Platform
+# ORCHIX v1.2 - Container Management Platform
 # Python Dependencies
 # ========================================
 
@@ -33,6 +33,10 @@ requests>=2.31.0,<3.0.0
 # ----------------------------------------
 # Audit logging is built-in and requires no external dependencies
 # License validation uses built-in hashlib and json modules
+
+# Web UI
+flask>=3.0.0,<4.0.0
+waitress>=3.0.0,<4.0.0
 
 # ----------------------------------------
 # Optional Dependencies (Not Currently Used)
