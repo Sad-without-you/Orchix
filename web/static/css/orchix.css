@@ -1,17 +1,20 @@
-/* ORCHIX v1.2 - Professional UI */
+/* ORCHIX v1.2 - Lily Theme */
 :root {
-    --bg: #0f1117;
-    --surface: #181a20;
-    --surface2: #1f2128;
-    --surface3: #272a32;
-    --border: #2e3140;
-    --border-light: #3a3e4d;
-    --text: #eaedf2;
-    --text2: #9ca0ad;
-    --text3: #636879;
-    --accent: #3b82f6;
-    --accent-hover: #2563eb;
-    --accent-dim: rgba(59, 130, 246, 0.1);
+    --bg: #050810;
+    --surface: #0a0f1a;
+    --surface2: #0f1420;
+    --surface3: #1a1d28;
+    --border: rgba(20, 184, 166, 0.15);
+    --border-light: rgba(20, 184, 166, 0.25);
+    --text: #f0f4ff;
+    --text2: #8892b0;
+    --text3: #5a6480;
+    --pink: #ec4899;
+    --pink-light: #f9a8d4;
+    --pink-dim: rgba(236, 72, 153, 0.1);
+    --accent: #ec4899;
+    --accent-hover: #db2777;
+    --accent-dim: rgba(236, 72, 153, 0.1);
     --teal: #14b8a6;
     --teal-dim: rgba(20, 184, 166, 0.1);
     --green: #22c55e;
@@ -26,57 +29,7 @@
     --radius: 8px;
     --radius-sm: 4px;
     --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 1px 5px rgba(0,0,0,0.15);
-    --shadow-lg: 0 4px 16px rgba(0,0,0,0.3);
-}
-
-/* Dracula Theme - https://draculatheme.com */
-body.theme-dracula {
-    --bg: #282a36;
-    --surface: #2d303e;
-    --surface2: #343746;
-    --surface3: #44475a;
-    --border: #44475a;
-    --border-light: #6272a4;
-    --text: #f8f8f2;
-    --text2: #bfbfbf;
-    --text3: #6272a4;
-    --accent: #bd93f9;
-    --accent-hover: #a77bf0;
-    --accent-dim: rgba(189, 147, 249, 0.1);
-    --teal: #8be9fd;
-    --teal-dim: rgba(139, 233, 253, 0.1);
-    --green: #50fa7b;
-    --green-dim: rgba(80, 250, 123, 0.1);
-    --yellow: #f1fa8c;
-    --yellow-dim: rgba(241, 250, 140, 0.08);
-    --red: #ff5555;
-    --red-dim: rgba(255, 85, 85, 0.1);
-    --cyan: #8be9fd;
-}
-
-/* Catppuccin Mocha Theme - https://catppuccin.com */
-body.theme-catppuccin {
-    --bg: #1e1e2e;
-    --surface: #24243a;
-    --surface2: #313244;
-    --surface3: #45475a;
-    --border: #45475a;
-    --border-light: #585b70;
-    --text: #cdd6f4;
-    --text2: #a6adc8;
-    --text3: #6c7086;
-    --accent: #cba6f7;
-    --accent-hover: #b48bef;
-    --accent-dim: rgba(203, 166, 247, 0.1);
-    --teal: #94e2d5;
-    --teal-dim: rgba(148, 226, 213, 0.1);
-    --green: #a6e3a1;
-    --green-dim: rgba(166, 227, 161, 0.1);
-    --yellow: #f9e2af;
-    --yellow-dim: rgba(249, 226, 175, 0.08);
-    --red: #f38ba8;
-    --red-dim: rgba(243, 139, 168, 0.1);
-    --cyan: #89dceb;
+    --shadow-lg: 0 4px 16px rgba(236, 72, 153, 0.2);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -123,10 +76,13 @@ body {
 }
 
 .logo {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 800;
-    color: var(--teal);
-    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--pink) 0%, var(--teal) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 1px;
     white-space: nowrap;
 }
 
@@ -317,24 +273,6 @@ body {
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
-}
-
-.theme-toggle-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px;
-    color: var(--text3);
-    background: none;
-    border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.theme-toggle-btn svg { width: 16px; height: 16px; }
-.theme-toggle-btn:hover {
-    color: var(--accent);
-    background: var(--accent-dim);
 }
 
 .logout-btn {

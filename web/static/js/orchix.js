@@ -186,34 +186,6 @@ function showUpdateBadge(version) {
     }
 }
 
-// Theme cycling: default → dracula → catppuccin → default
-const THEMES = ['default', 'dracula', 'catppuccin'];
-const THEME_LABELS = { default: 'Default', dracula: 'Dracula', catppuccin: 'Catppuccin' };
-
-function cycleTheme() {
-    const current = localStorage.getItem('orchix-theme') || 'default';
-    const idx = THEMES.indexOf(current);
-    const next = THEMES[(idx + 1) % THEMES.length];
-    applyTheme(next);
-    localStorage.setItem('orchix-theme', next);
-    showToast('info', `Theme: ${THEME_LABELS[next] || next}`);
-}
-
-function applyTheme(theme) {
-    document.body.classList.remove(...THEMES.map(t => 'theme-' + t));
-    if (theme !== 'default') {
-        document.body.classList.add('theme-' + theme);
-    }
-}
-
-// Apply saved theme on load (migrate old theme names)
-let _savedTheme = localStorage.getItem('orchix-theme') || 'default';
-if (!THEMES.includes(_savedTheme)) {
-    _savedTheme = 'default';
-    localStorage.setItem('orchix-theme', 'default');
-}
-applyTheme(_savedTheme);
-
 // Load license on startup
 loadLicenseInfo();
 checkForUpdates();
