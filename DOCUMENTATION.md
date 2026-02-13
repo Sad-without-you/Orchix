@@ -1,7 +1,7 @@
 # ORCHIX - Complete Documentation
 
 <p align="center">
-  <img src="web/static/favicon.svg" width="100" height="100" alt="ORCHIX Logo">
+  <img src="web/static/favicon.svg?v=1.2" width="100" height="100" alt="ORCHIX Logo">
 </p>
 
 **Version:** 1.2
