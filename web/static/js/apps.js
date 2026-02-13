@@ -335,7 +335,11 @@ Router.register('#/migration', async function(el) {
             <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:1.5rem;margin-top:1rem;align-items:center">
                 <div style="padding:20px;background:linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%);border-radius:var(--radius-sm);border:1px solid rgba(236, 72, 153, 0.2)">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-                        <span style="font-size:2rem">📤</span>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
                         <div>
                             <div style="font-weight:700;color:var(--pink);font-size:1rem;margin-bottom:2px">Export (Source Server)</div>
                             <div style="font-size:0.8rem;color:var(--text3)">Create migration package</div>
@@ -355,7 +359,11 @@ Router.register('#/migration', async function(el) {
 
                 <div style="padding:20px;background:linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(20, 184, 166, 0.05) 100%);border-radius:var(--radius-sm);border:1px solid rgba(20, 184, 166, 0.2)">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-                        <span style="font-size:2rem">📥</span>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
                         <div>
                             <div style="font-weight:700;color:var(--teal);font-size:1rem;margin-bottom:2px">Import (Target Server)</div>
                             <div style="font-size:0.8rem;color:var(--text3)">Restore containers</div>
@@ -367,6 +375,66 @@ Router.register('#/migration', async function(el) {
                         <li style="color:var(--text)"><strong>Select</strong> package from list</li>
                         <li style="color:var(--text)"><strong>Confirm</strong> - containers restored automatically</li>
                     </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-grid">
+            <div class="section-card">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 16v-4"/>
+                        <path d="M12 8h.01"/>
+                    </svg>
+                    <h3 style="margin:0">What Gets Migrated?</h3>
+                </div>
+                <ul style="margin:0;padding-left:1.2rem;color:var(--text2);line-height:2;font-size:0.88rem">
+                    <li><strong>Container Images:</strong> All Docker images and layers</li>
+                    <li><strong>Volumes & Data:</strong> Application data, databases, user files</li>
+                    <li><strong>Configuration:</strong> Environment variables, port mappings</li>
+                    <li><strong>Networks:</strong> Docker networks and connectivity settings</li>
+                </ul>
+            </div>
+
+            <div class="section-card">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <h3 style="margin:0">Best Practices</h3>
+                </div>
+                <ul style="margin:0;padding-left:1.2rem;color:var(--text2);line-height:2;font-size:0.88rem">
+                    <li><strong>Backup First:</strong> Always create backups before migration</li>
+                    <li><strong>Test Import:</strong> Verify package on test server if possible</li>
+                    <li><strong>Check Compatibility:</strong> Match source/target platforms</li>
+                    <li><strong>Network Security:</strong> Transfer packages over secure channels</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <h3 style="margin:0">Important Notes</h3>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:10px">
+                <div style="padding:12px;background:rgba(236, 72, 153, 0.05);border-radius:var(--radius-sm);border-left:3px solid var(--pink)">
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;font-size:0.9rem">Cross-Platform Support</div>
+                    <div style="color:var(--text2);font-size:0.85rem">Migration packages can be created for Linux or Windows targets. Choose the correct platform during export.</div>
+                </div>
+                <div style="padding:12px;background:rgba(20, 184, 166, 0.05);border-radius:var(--radius-sm);border-left:3px solid var(--teal)">
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;font-size:0.9rem">Package Storage</div>
+                    <div style="color:var(--text2);font-size:0.85rem">Migration packages are stored in the <code>migrations/</code> folder. Keep packages secure as they contain full container data.</div>
+                </div>
+                <div style="padding:12px;background:rgba(236, 72, 153, 0.05);border-radius:var(--radius-sm);border-left:3px solid var(--pink)">
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;font-size:0.9rem">Downtime Consideration</div>
+                    <div style="color:var(--text2);font-size:0.85rem">Stop containers before export to ensure data consistency. Plan migration during maintenance windows.</div>
                 </div>
             </div>
         </div>
@@ -668,7 +736,7 @@ Router.register('#/license', async function(el) {
                 ` : ''}
                 <div>
                     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:6px">Features Enabled</div>
-                    <div style="font-size:1.2rem;font-weight:700;color:var(--text)">${Object.values(info.features).filter(f => f).length} <span style="color:var(--text3);font-size:0.9rem">/ 4</span></div>
+                    <div style="font-size:1.2rem;font-weight:700;color:var(--text)">${Object.values(info.features).filter(f => f).length} <span style="color:var(--text3);font-size:0.9rem">/ ${Object.keys(info.features).length}</span></div>
                 </div>
             </div>
         </div>
@@ -678,20 +746,41 @@ Router.register('#/license', async function(el) {
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0.75rem;margin-top:0.75rem">
                 ${Object.entries(info.features).map(([k, v]) => {
                     const labels = {
-                        backup_restore: { icon: '💾', label: 'Backup & Restore', desc: 'Create and restore container backups' },
-                        multi_instance: { icon: '📦', label: 'Multi-Instance', desc: 'Run multiple instances of the same app' },
-                        migration: { icon: '🚀', label: 'Server Migration', desc: 'Migrate containers between servers' },
-                        audit_log: { icon: '📋', label: 'Audit Logging', desc: 'Track all system operations' }
+                        backup_restore: {
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+                            label: 'Backup & Restore',
+                            desc: 'Create and restore container backups with versioning'
+                        },
+                        multi_instance: {
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+                            label: 'Multi-Instance',
+                            desc: 'Run multiple instances of the same app simultaneously'
+                        },
+                        migration: {
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+                            label: 'Server Migration',
+                            desc: 'Migrate containers between servers seamlessly'
+                        },
+                        audit_log: {
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+                            label: 'Audit Logging',
+                            desc: 'Track all system operations and changes'
+                        },
+                        max_containers: {
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+                            label: 'Unlimited Containers',
+                            desc: 'No limit on number of containers you can run'
+                        }
                     };
-                    const feature = labels[k] || { icon: '✓', label: k, desc: '' };
+                    const feature = labels[k] || { icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>', label: k.replace(/_/g, ' '), desc: '' };
                     return `
-                        <div style="padding:12px;background:${v ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)' : 'var(--surface2)'};border-radius:var(--radius-sm);border:1px solid ${v ? 'rgba(34, 197, 94, 0.2)' : 'var(--border)'}">
-                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                                <span style="font-size:1.2rem">${feature.icon}</span>
-                                <span style="font-weight:700;font-size:0.9rem;color:${v ? 'var(--green)' : 'var(--text3)'}">${feature.label}</span>
-                                <span style="margin-left:auto;font-size:1.2rem">${v ? '✓' : '✗'}</span>
+                        <div style="padding:14px;background:${v ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)' : 'var(--surface2)'};border-radius:var(--radius-sm);border:1px solid ${v ? 'rgba(34, 197, 94, 0.2)' : 'var(--border)'}">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                                <div style="color:${v ? 'var(--green)' : 'var(--text3)'}">${feature.icon}</div>
+                                <span style="font-weight:700;font-size:0.92rem;color:${v ? 'var(--green)' : 'var(--text3)'}">${feature.label}</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${v ? 'var(--green)' : 'var(--text3)'}" stroke-width="2.5" style="margin-left:auto"><${v ? 'polyline points="20 6 9 17 4 12"' : 'line x1="18" y1="6" x2="6" y2="18"'}/>${ v ? '' : '<line x1="6" y1="6" x2="18" y2="18"/>'}</svg>
                             </div>
-                            <div style="font-size:0.8rem;color:var(--text2);line-height:1.4">${feature.desc}</div>
+                            <div style="font-size:0.82rem;color:var(--text2);line-height:1.5">${feature.desc}</div>
                         </div>
                     `;
                 }).join('')}
@@ -702,7 +791,12 @@ Router.register('#/license', async function(el) {
             <div class="section-card" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(234, 179, 8, 0.02) 100%); border:1px solid var(--yellow)">
                 <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
                     <div style="flex:1;min-width:240px">
-                        <h3 style="color:var(--yellow);margin-bottom:6px;display:flex;align-items:center;gap:8px"><span>⚡</span> Upgrade to PRO</h3>
+                        <h3 style="color:var(--yellow);margin-bottom:6px;display:flex;align-items:center;gap:8px">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--yellow)" stroke="none">
+                                <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
+                            </svg>
+                            Upgrade to PRO
+                        </h3>
                         <p style="font-size:0.88rem;color:var(--text2);margin:0;line-height:1.5">Unlock unlimited containers, backups, server migrations, audit logging, and priority support.</p>
                     </div>
                     <div style="display:flex;gap:10px;align-items:center">
@@ -721,20 +815,67 @@ Router.register('#/license', async function(el) {
             </div>
         `}
 
-        <div class="section-card">
-            <h3>Security Settings</h3>
-            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:0.75rem">
-                <div style="flex:1;min-width:240px">
-                    <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:4px">Web Interface Password</div>
-                    <p style="font-size:0.85rem;color:var(--text2);margin:0">Update your login password for the web interface</p>
-                </div>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                    <input type="password" class="form-input" id="pw-current" placeholder="Current password" style="width:180px;margin:0">
-                    <input type="password" class="form-input" id="pw-new" placeholder="New password" style="width:180px;margin:0">
-                    <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+        <div class="section-grid">
+            <div class="section-card">
+                <h3>Security Settings</h3>
+                <div style="margin-top:0.75rem">
+                    <div style="font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:8px">Web Interface Password</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+                        <input type="password" class="form-input" id="pw-current" placeholder="Current password" style="width:170px;margin:0">
+                        <input type="password" class="form-input" id="pw-new" placeholder="New password (min 6 chars)" style="width:200px;margin:0">
+                        <button class="btn btn-primary" onclick="changePassword()">Update</button>
+                    </div>
+                    <p style="font-size:0.78rem;color:var(--text3);margin:0">Minimum 6 characters required for security</p>
                 </div>
             </div>
+
+            ${info.is_pro ? `
+                <div class="section-card">
+                    <h3>PRO Benefits</h3>
+                    <div style="margin-top:0.75rem;display:flex;flex-direction:column;gap:8px">
+                        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span style="color:var(--text2)">Unlimited containers</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span style="color:var(--text2)">Priority email support</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span style="color:var(--text2)">Advanced features & updates</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span style="color:var(--text2)">Commercial use allowed</span>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
         </div>
+
+        ${info.is_pro ? `
+            <div class="section-card">
+                <h3>Support & Resources</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:0.75rem">
+                    <div style="padding:12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                        <div style="font-weight:700;font-size:0.88rem;color:var(--text);margin-bottom:4px">Email Support</div>
+                        <div style="font-size:0.8rem;color:var(--text2);margin-bottom:6px">Priority support for PRO users</div>
+                        <a href="mailto:support@orchix.dev" style="font-size:0.82rem;color:var(--teal);text-decoration:none">support@orchix.dev</a>
+                    </div>
+                    <div style="padding:12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                        <div style="font-weight:700;font-size:0.88rem;color:var(--text);margin-bottom:4px">Documentation</div>
+                        <div style="font-size:0.8rem;color:var(--text2);margin-bottom:6px">Complete guides & tutorials</div>
+                        <a href="https://orchix.dev/docs" target="_blank" style="font-size:0.82rem;color:var(--teal);text-decoration:none">orchix.dev/docs →</a>
+                    </div>
+                    <div style="padding:12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                        <div style="font-weight:700;font-size:0.88rem;color:var(--text);margin-bottom:4px">Community</div>
+                        <div style="font-size:0.8rem;color:var(--text2);margin-bottom:6px">Join our GitHub community</div>
+                        <a href="https://github.com/orchix-dev/orchix" target="_blank" style="font-size:0.82rem;color:var(--teal);text-decoration:none">GitHub →</a>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
     `;
 });
 
@@ -809,54 +950,60 @@ Router.register('#/system', async function(el) {
 
     info.innerHTML = `
         <div class="section-card" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.05) 0%, rgba(20, 184, 166, 0.05) 100%)">
-            <h3>System Information</h3>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;margin-top:1rem">
+            <h3>System Overview</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1rem">
                 <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-                        <span style="font-size:1.8rem">💻</span>
-                        <div>
-                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3)">Operating System</div>
-                            <div style="font-size:1.1rem;font-weight:700;color:var(--text)">${esc(data.platform)}</div>
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                        <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(236,72,153,0.15),rgba(20,184,166,0.15));border-radius:var(--radius-sm)">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        </div>
+                        <div style="flex:1">
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:2px">Operating System</div>
+                            <div style="font-size:1.05rem;font-weight:700;color:var(--text)">${esc(data.platform)}</div>
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:0.88rem">
+                    <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:0.86rem">
                         <span style="color:var(--text3)">OS:</span>
                         <span style="font-weight:600;color:var(--text)">${esc(data.os)}</span>
-                        <span style="color:var(--text3)">Package Mgr:</span>
+                        <span style="color:var(--text3)">Package:</span>
                         <span style="font-weight:600;color:var(--text)">${esc(data.package_manager || 'None')}</span>
                     </div>
                 </div>
 
                 <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-                        <span style="font-size:1.8rem">🐳</span>
-                        <div>
-                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3)">Docker Engine</div>
-                            <div style="font-size:1.1rem;font-weight:700;color:${data.docker.running ? 'var(--green)' : 'var(--red)'}">${data.docker.running ? 'Running' : 'Stopped'}</div>
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                        <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(${data.docker.running ? '34,197,94' : '239,68,68'},0.15),rgba(${data.docker.running ? '34,197,94' : '239,68,68'},0.15));border-radius:var(--radius-sm)">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${data.docker.running ? 'var(--green)' : 'var(--red)'}" stroke-width="2"><path d="M3 3h2v2H3z"/><path d="M6 3h2v2H6z"/><path d="M9 3h2v2H9z"/><path d="M12 3h2v2h-2z"/><path d="M15 3h2v2h-2z"/><path d="M6 6h2v2H6z"/><path d="M9 6h2v2H9z"/><path d="M12 6h2v2h-2z"/><path d="M15 6h2v2h-2z"/><path d="M9 9h2v2H9z"/><path d="M12 9h2v2h-2z"/><path d="M15 9h2v2h-2z"/><path d="M17 5h4v5h-4z"/><path d="M3 11c0 3 1 5 4 6h10c3-1 4-3 4-6"/></svg>
+                        </div>
+                        <div style="flex:1">
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:2px">Docker Engine</div>
+                            <div style="font-size:1.05rem;font-weight:700;color:${data.docker.running ? 'var(--green)' : 'var(--red)'}">${data.docker.running ? 'Running' : 'Stopped'}</div>
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:0.88rem">
+                    <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:0.86rem">
                         <span style="color:var(--text3)">Installed:</span>
                         <span class="status-badge ${data.docker.installed ? 'running' : 'stopped'}">${data.docker.installed ? 'Yes' : 'No'}</span>
                         ${data.docker.desktop !== undefined ? `
                             <span style="color:var(--text3)">Desktop:</span>
-                            <span style="font-weight:600;color:${data.docker.desktop ? 'var(--green)' : 'var(--text2)'}"> ${data.docker.desktop ? 'Running' : 'Not running'}</span>
+                            <span style="font-weight:600;color:${data.docker.desktop ? 'var(--green)' : 'var(--text2)'}">${data.docker.desktop ? 'Running' : 'Not running'}</span>
                         ` : ''}
                     </div>
                 </div>
 
                 <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-                        <span style="font-size:1.8rem">📦</span>
-                        <div>
-                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3)">Dependencies</div>
-                            <div style="font-size:1.1rem;font-weight:700;color:var(--text)">${Object.values(data.dependencies).filter(v => v).length} / ${Object.keys(data.dependencies).length} Available</div>
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                        <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(236,72,153,0.15),rgba(20,184,166,0.15));border-radius:var(--radius-sm)">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        </div>
+                        <div style="flex:1">
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:2px">Dependencies</div>
+                            <div style="font-size:1.05rem;font-weight:700;color:var(--text)">${Object.values(data.dependencies).filter(v => v).length} / ${Object.keys(data.dependencies).length} Available</div>
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.88rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:0.86rem">
                         ${Object.entries(data.dependencies).map(([k, v]) => `
                             <div style="display:flex;align-items:center;gap:6px">
-                                <span style="font-size:1rem;color:${v ? 'var(--green)' : 'var(--text3)'}">${v ? '✓' : '✗'}</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${v ? 'var(--green)' : 'var(--text3)'}" stroke-width="2.5"><${v ? 'polyline points="20 6 9 17 4 12"' : 'line x1="18" y1="6" x2="6" y2="18"'}/>${v ? '' : '<line x1="6" y1="6" x2="18" y2="18"/>'}</svg>
                                 <span style="font-weight:600;color:${v ? 'var(--text)' : 'var(--text3)'}">${k.replace(/_/g, ' ')}</span>
                             </div>
                         `).join('')}
@@ -864,31 +1011,68 @@ Router.register('#/system', async function(el) {
                 </div>
             </div>
         </div>
-        <div class="section-card" id="update-info-card" style="display:none"></div>
+
+        <div class="section-grid">
+            <div class="section-card">
+                <h3>ORCHIX Version</h3>
+                <div id="orchix-version-info" style="margin-top:0.75rem">
+                    <div class="loading"><span class="spinner"></span> Checking...</div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h3>Quick Links</h3>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:0.75rem">
+                    <a href="https://orchix.dev/docs" target="_blank" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);text-decoration:none;color:var(--text);transition:all 0.15s" onmouseover="this.style.borderColor='var(--border-light)'" onmouseout="this.style.borderColor='var(--border)'">
+                        <span style="font-size:0.88rem;font-weight:600">Documentation</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                    </a>
+                    <a href="https://github.com/orchix-dev/orchix" target="_blank" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);text-decoration:none;color:var(--text);transition:all 0.15s" onmouseover="this.style.borderColor='var(--border-light)'" onmouseout="this.style.borderColor='var(--border)'">
+                        <span style="font-size:0.88rem;font-weight:600">GitHub Repository</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                    </a>
+                    <a href="mailto:support@orchix.dev" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);text-decoration:none;color:var(--text);transition:all 0.15s" onmouseover="this.style.borderColor='var(--border-light)'" onmouseout="this.style.borderColor='var(--border)'">
+                        <span style="font-size:0.88rem;font-weight:600">Email Support</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
     `;
+
+    // Move update check logic
+    const versionInfo = document.getElementById('orchix-version-info');
 
     // Check for ORCHIX updates
     const updateRes = await API.get('/api/system/check-update');
-    const updateCard = document.getElementById('update-info-card');
-    if (updateRes && updateCard) {
+    if (updateRes && versionInfo) {
         if (updateRes.update_available) {
-            updateCard.innerHTML = `
-                <h3>ORCHIX Update Available</h3>
-                <p style="margin:0.5rem 0;color:var(--text2)">
-                    Current: <strong>v${esc(updateRes.current_version)}</strong> &rarr;
-                    Latest: <strong style="color:var(--teal)">v${esc(updateRes.latest_version)}</strong>
-                </p>
-                <p style="font-size:0.85rem;color:var(--text3)">Pull the latest version from GitHub to update.</p>
+            versionInfo.innerHTML = `
+                <div style="padding:12px;background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(20,184,166,0.05));border-radius:var(--radius-sm);border:1px solid rgba(20,184,166,0.3)">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <div>
+                            <div style="font-weight:700;font-size:0.9rem;color:var(--teal)">Update Available</div>
+                            <div style="font-size:0.82rem;color:var(--text2)">v${esc(updateRes.current_version)} → v${esc(updateRes.latest_version)}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--text2);margin-bottom:8px">Run <code style="padding:2px 6px;background:var(--surface);border-radius:3px;font-family:monospace">git pull</code> to update</div>
+                    <button class="btn btn-primary btn-sm" onclick="checkSystemUpdate()">Check Again</button>
+                </div>
             `;
-            updateCard.style.display = '';
         } else {
-            updateCard.innerHTML = `
-                <h3>ORCHIX Version</h3>
-                <p style="margin:0.5rem 0;color:var(--text2)">
-                    v${esc(updateRes.current_version)} <span class="status-badge running">Up to date</span>
-                </p>
+            versionInfo.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                        <div style="font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:4px">v${esc(updateRes.current_version)}</div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span class="status-badge running">Up to date</span>
+                            <span style="font-size:0.8rem;color:var(--text3)">Latest version</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm" onclick="checkSystemUpdate()">Check for Updates</button>
+                </div>
             `;
-            updateCard.style.display = '';
         }
     }
 });

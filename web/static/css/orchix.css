@@ -788,9 +788,11 @@ body.sidebar-collapsed #content {
     background: linear-gradient(135deg, var(--teal) 0%, var(--pink) 100%);
     opacity: 0;
     transition: opacity 0.3s;
+    z-index: 0;
 }
 .btn-primary:hover::before { opacity: 1; }
-.btn-primary * { position: relative; z-index: 1; }
+.btn-primary * { position: relative; z-index: 2; }
+.btn-primary > * { z-index: 2; }
 
 .btn-outline {
     background: transparent;
