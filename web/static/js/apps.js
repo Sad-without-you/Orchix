@@ -10,17 +10,6 @@ Router.register('#/apps', async function(el) {
         </div>
         <div class="table-toolbar" style="margin-bottom:16px">
             <input class="search-input" id="apps-search" placeholder="Search applications..." oninput="filterApps()">
-            <div class="view-toggle">
-                <button class="view-btn" data-view="grid" onclick="setAppView('grid')" title="Grid View">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
-                </button>
-                <button class="view-btn" data-view="list" onclick="setAppView('list')" title="List View">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="14" height="3" rx="1"/><rect x="1" y="6.5" width="14" height="3" rx="1"/><rect x="1" y="12" width="14" height="3" rx="1"/></svg>
-                </button>
-                <button class="view-btn" data-view="compact" onclick="setAppView('compact')" title="Compact View">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="4" height="4" rx="1"/><rect x="7" y="1" width="4" height="4" rx="1"/><rect x="1" y="7" width="4" height="4" rx="1"/><rect x="7" y="7" width="4" height="4" rx="1"/><rect x="13" y="1" width="2" height="4" rx="0.5"/><rect x="13" y="7" width="2" height="4" rx="0.5"/></svg>
-                </button>
-            </div>
         </div>
         <div id="apps-grid"><div class="loading"><span class="spinner"></span> Loading applications...</div></div>
     `;
@@ -29,13 +18,9 @@ Router.register('#/apps', async function(el) {
     const grid = document.getElementById('apps-grid');
     if (!apps || !grid) return;
 
-    const savedView = localStorage.getItem('orchix-app-view') || 'grid';
-    grid.className = 'app-grid view-' + savedView;
-    document.querySelectorAll('.view-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.view === savedView);
-    });
+    grid.className = 'app-grid';
     grid.innerHTML = apps.map(app => `
-        <div class="app-card ${app.can_install ? 'installable' : 'locked'}" data-app-name="${esc(app.display_name).toLowerCase()}" data-app-desc="${esc(app.description).toLowerCase()}">
+        <div class="app-card ${app.can_install ? 'installable' : 'locked'}" data-app-name="${esc(app.display_name).toLowerCase()}" data-app-desc="${esc(app.description).toLowerCase()}" data-tooltip="${esc(app.description)}">
             <div class="app-card-header">
                 <span class="app-icon">${(typeof APP_ICONS !== 'undefined' && APP_ICONS[app.name]) ? APP_ICONS[app.name] : (app.icon || '')}</span>
                 <div>
@@ -53,17 +38,6 @@ Router.register('#/apps', async function(el) {
         </div>
     `).join('');
 });
-
-function setAppView(view) {
-    const grid = document.getElementById('apps-grid');
-    if (grid) {
-        grid.className = 'app-grid view-' + view;
-    }
-    document.querySelectorAll('.view-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.view === view);
-    });
-    localStorage.setItem('orchix-app-view', view);
-}
 
 function filterApps() {
     const q = (document.getElementById('apps-search')?.value || '').toLowerCase();
@@ -356,24 +330,44 @@ Router.register('#/migration', async function(el) {
             </div>
         </div>
 
-        <div class="migration-guide">
-            <div class="section-card">
-                <h3>Export (Source Server)</h3>
-                <ol class="migration-steps">
-                    <li>Select containers to export</li>
-                    <li>Choose target platform</li>
-                    <li>Download migration package</li>
-                    <li>Transfer to new server</li>
-                </ol>
-            </div>
-            <div class="section-card">
-                <h3>Import (Target Server)</h3>
-                <ol class="migration-steps">
-                    <li>Place package in migrations/</li>
-                    <li>Click Import Package</li>
-                    <li>Select package and confirm</li>
-                    <li>Containers imported automatically</li>
-                </ol>
+        <div class="section-card" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.05) 0%, rgba(20, 184, 166, 0.05) 100%)">
+            <h3>How Server Migration Works</h3>
+            <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:1.5rem;margin-top:1rem;align-items:center">
+                <div style="padding:20px;background:linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%);border-radius:var(--radius-sm);border:1px solid rgba(236, 72, 153, 0.2)">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                        <span style="font-size:2rem">📤</span>
+                        <div>
+                            <div style="font-weight:700;color:var(--pink);font-size:1rem;margin-bottom:2px">Export (Source Server)</div>
+                            <div style="font-size:0.8rem;color:var(--text3)">Create migration package</div>
+                        </div>
+                    </div>
+                    <ol style="margin:0;padding-left:1.3rem;color:var(--text2);line-height:2;font-size:0.88rem">
+                        <li style="color:var(--text)"><strong>Select</strong> containers to export</li>
+                        <li style="color:var(--text)"><strong>Choose</strong> target platform (Linux/Windows)</li>
+                        <li style="color:var(--text)"><strong>Download</strong> migration package (.tar.gz)</li>
+                        <li style="color:var(--text)"><strong>Transfer</strong> package to new server</li>
+                    </ol>
+                </div>
+
+                <div style="text-align:center">
+                    <div style="font-size:2rem;color:var(--text3)">→</div>
+                </div>
+
+                <div style="padding:20px;background:linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(20, 184, 166, 0.05) 100%);border-radius:var(--radius-sm);border:1px solid rgba(20, 184, 166, 0.2)">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                        <span style="font-size:2rem">📥</span>
+                        <div>
+                            <div style="font-weight:700;color:var(--teal);font-size:1rem;margin-bottom:2px">Import (Target Server)</div>
+                            <div style="font-size:0.8rem;color:var(--text3)">Restore containers</div>
+                        </div>
+                    </div>
+                    <ol style="margin:0;padding-left:1.3rem;color:var(--text2);line-height:2;font-size:0.88rem">
+                        <li style="color:var(--text)"><strong>Place</strong> package in migrations/ folder</li>
+                        <li style="color:var(--text)"><strong>Click</strong> Import Package button</li>
+                        <li style="color:var(--text)"><strong>Select</strong> package from list</li>
+                        <li style="color:var(--text)"><strong>Confirm</strong> - containers restored automatically</li>
+                    </ol>
+                </div>
             </div>
         </div>
 
@@ -652,67 +646,94 @@ Router.register('#/license', async function(el) {
             </div>
         </div>
 
-        <div class="section-card">
-            <h3>Current License</h3>
-            <div style="display:grid;grid-template-columns:150px 1fr;gap:0.6rem;font-size:0.9rem">
-                <span style="color:var(--text2)">Tier</span>
-                <span style="color:${info.is_pro ? 'var(--yellow)' : 'var(--teal)'};font-weight:700">${esc(info.tier_display)}</span>
-                <span style="color:var(--text2)">Containers</span>
-                <span>${info.container_status.current} / ${info.container_status.limit === 999 ? 'Unlimited' : info.container_status.limit}</span>
+        <div class="section-card" style="background: linear-gradient(135deg, ${info.is_pro ? 'rgba(234, 179, 8, 0.05)' : 'rgba(236, 72, 153, 0.05)'} 0%, rgba(20, 184, 166, 0.05) 100%)">
+            <h3>License Overview</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin-top:1rem">
+                <div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:6px">Current Tier</div>
+                    <div style="font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,var(--pink) 0%,var(--teal) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${esc(info.tier_display)}</div>
+                </div>
+                <div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:6px">Container Usage</div>
+                    <div style="font-size:1.2rem;font-weight:700;color:var(--text)">${info.container_status.current} <span style="color:var(--text3);font-size:0.9rem">/ ${info.container_status.limit === 999 ? '∞' : info.container_status.limit}</span></div>
+                    <div style="height:4px;background:var(--surface2);border-radius:2px;margin-top:6px;overflow:hidden">
+                        <div style="height:100%;background:linear-gradient(90deg,var(--pink) 0%,var(--teal) 100%);width:${info.container_status.limit === 999 ? 20 : Math.min(100, (info.container_status.current / info.container_status.limit) * 100)}%;transition:width 0.3s"></div>
+                    </div>
+                </div>
                 ${info.days_remaining !== null ? `
-                    <span style="color:var(--text2)">Expires in</span>
-                    <span>${info.days_remaining} days</span>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:6px">Expires In</div>
+                        <div style="font-size:1.2rem;font-weight:700;color:${info.days_remaining < 30 ? 'var(--yellow)' : 'var(--text)'}">${info.days_remaining} <span style="color:var(--text3);font-size:0.9rem">days</span></div>
+                    </div>
                 ` : ''}
+                <div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:6px">Features Enabled</div>
+                    <div style="font-size:1.2rem;font-weight:700;color:var(--text)">${Object.values(info.features).filter(f => f).length} <span style="color:var(--text3);font-size:0.9rem">/ 4</span></div>
+                </div>
             </div>
         </div>
 
         <div class="section-card">
-            <h3>Features</h3>
-            <div class="feature-grid">
-                <div class="feature-item ${info.features.backup_restore ? 'enabled' : 'disabled'}">
-                    ${info.features.backup_restore ? '&#10003;' : '&#10007;'} Backup & Restore
-                </div>
-                <div class="feature-item ${info.features.multi_instance ? 'enabled' : 'disabled'}">
-                    ${info.features.multi_instance ? '&#10003;' : '&#10007;'} Multi-Instance
-                </div>
-                <div class="feature-item ${info.features.migration ? 'enabled' : 'disabled'}">
-                    ${info.features.migration ? '&#10003;' : '&#10007;'} Server Migration
-                </div>
-                <div class="feature-item ${info.features.audit_log ? 'enabled' : 'disabled'}">
-                    ${info.features.audit_log ? '&#10003;' : '&#10007;'} Audit Logging
-                </div>
+            <h3>Feature Access</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0.75rem;margin-top:0.75rem">
+                ${Object.entries(info.features).map(([k, v]) => {
+                    const labels = {
+                        backup_restore: { icon: '💾', label: 'Backup & Restore', desc: 'Create and restore container backups' },
+                        multi_instance: { icon: '📦', label: 'Multi-Instance', desc: 'Run multiple instances of the same app' },
+                        migration: { icon: '🚀', label: 'Server Migration', desc: 'Migrate containers between servers' },
+                        audit_log: { icon: '📋', label: 'Audit Logging', desc: 'Track all system operations' }
+                    };
+                    const feature = labels[k] || { icon: '✓', label: k, desc: '' };
+                    return `
+                        <div style="padding:12px;background:${v ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)' : 'var(--surface2)'};border-radius:var(--radius-sm);border:1px solid ${v ? 'rgba(34, 197, 94, 0.2)' : 'var(--border)'}">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                                <span style="font-size:1.2rem">${feature.icon}</span>
+                                <span style="font-weight:700;font-size:0.9rem;color:${v ? 'var(--green)' : 'var(--text3)'}">${feature.label}</span>
+                                <span style="margin-left:auto;font-size:1.2rem">${v ? '✓' : '✗'}</span>
+                            </div>
+                            <div style="font-size:0.8rem;color:var(--text2);line-height:1.4">${feature.desc}</div>
+                        </div>
+                    `;
+                }).join('')}
             </div>
         </div>
 
         ${!info.is_pro ? `
-            <div class="section-card" style="border-color:var(--yellow)">
-                <h3 style="color:var(--yellow)">Upgrade to PRO</h3>
-                <p style="font-size:0.9rem;color:var(--text2);margin-bottom:1rem">
-                    Unlock unlimited containers, backups, migrations, and more.
-                </p>
-                <div class="form-group">
-                    <label>License Key</label>
-                    <input type="text" class="form-input" id="license-key" placeholder="Enter your PRO license key">
+            <div class="section-card" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(234, 179, 8, 0.02) 100%); border:1px solid var(--yellow)">
+                <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+                    <div style="flex:1;min-width:240px">
+                        <h3 style="color:var(--yellow);margin-bottom:6px;display:flex;align-items:center;gap:8px"><span>⚡</span> Upgrade to PRO</h3>
+                        <p style="font-size:0.88rem;color:var(--text2);margin:0;line-height:1.5">Unlock unlimited containers, backups, server migrations, audit logging, and priority support.</p>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center">
+                        <input type="text" class="form-input" id="license-key" placeholder="Enter PRO license key" style="width:280px;margin:0">
+                        <button class="btn btn-primary" onclick="activateLicense()">Activate PRO</button>
+                    </div>
                 </div>
-                <button class="btn btn-primary" onclick="activateLicense()">Activate PRO</button>
             </div>
         ` : `
             <div class="section-card">
-                <button class="btn btn-danger" onclick="deactivateLicense()">Deactivate License</button>
+                <h3>License Actions</h3>
+                <div style="display:flex;gap:12px;align-items:center;margin-top:0.75rem">
+                    <button class="btn btn-danger" onclick="deactivateLicense()">Deactivate PRO License</button>
+                    <span style="font-size:0.85rem;color:var(--text3)">This will revert your account to FREE tier</span>
+                </div>
             </div>
         `}
 
-        <div class="section-card" style="margin-top:1rem">
-            <h3>Change Web Password</h3>
-            <div class="form-group">
-                <label>Current Password</label>
-                <input type="password" class="form-input" id="pw-current" placeholder="Current password">
+        <div class="section-card">
+            <h3>Security Settings</h3>
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:0.75rem">
+                <div style="flex:1;min-width:240px">
+                    <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:4px">Web Interface Password</div>
+                    <p style="font-size:0.85rem;color:var(--text2);margin:0">Update your login password for the web interface</p>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <input type="password" class="form-input" id="pw-current" placeholder="Current password" style="width:180px;margin:0">
+                    <input type="password" class="form-input" id="pw-new" placeholder="New password" style="width:180px;margin:0">
+                    <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+                </div>
             </div>
-            <div class="form-group">
-                <label>New Password</label>
-                <input type="password" class="form-input" id="pw-new" placeholder="New password (min 6 chars)">
-            </div>
-            <button class="btn btn-primary" onclick="changePassword()">Change Password</button>
         </div>
     `;
 });
@@ -787,40 +808,60 @@ Router.register('#/system', async function(el) {
     if (!data || !info) return;
 
     info.innerHTML = `
-        <div class="section-card">
-            <h3>Operating System</h3>
-            <div style="display:grid;grid-template-columns:180px 1fr;gap:0.5rem;font-size:0.9rem">
-                <span style="color:var(--text2)">Platform</span>
-                <span>${esc(data.platform)}</span>
-                <span style="color:var(--text2)">OS</span>
-                <span>${esc(data.os)}</span>
-                <span style="color:var(--text2)">Package Manager</span>
-                <span>${esc(data.package_manager || 'None detected')}</span>
-            </div>
-        </div>
-
-        <div class="section-card">
-            <h3>Docker</h3>
-            <div style="display:grid;grid-template-columns:180px 1fr;gap:0.5rem;font-size:0.9rem">
-                <span style="color:var(--text2)">Installed</span>
-                <span><span class="status-badge ${data.docker.installed ? 'running' : 'stopped'}">${data.docker.installed ? 'Yes' : 'No'}</span></span>
-                <span style="color:var(--text2)">Running</span>
-                <span><span class="status-badge ${data.docker.running ? 'running' : 'stopped'}">${data.docker.running ? 'Yes' : 'No'}</span></span>
-                ${data.docker.desktop !== undefined ? `
-                    <span style="color:var(--text2)">Docker Desktop</span>
-                    <span>${data.docker.desktop ? 'Running' : 'Not running'}</span>
-                ` : ''}
-            </div>
-        </div>
-
-        <div class="section-card">
-            <h3>Dependencies</h3>
-            <div class="feature-grid">
-                ${Object.entries(data.dependencies).map(([k, v]) => `
-                    <div class="feature-item ${v ? 'enabled' : 'disabled'}">
-                        ${v ? '&#10003;' : '&#10007;'} ${k.replace(/_/g, ' ')}
+        <div class="section-card" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.05) 0%, rgba(20, 184, 166, 0.05) 100%)">
+            <h3>System Information</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;margin-top:1rem">
+                <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                        <span style="font-size:1.8rem">💻</span>
+                        <div>
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3)">Operating System</div>
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--text)">${esc(data.platform)}</div>
+                        </div>
                     </div>
-                `).join('')}
+                    <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:0.88rem">
+                        <span style="color:var(--text3)">OS:</span>
+                        <span style="font-weight:600;color:var(--text)">${esc(data.os)}</span>
+                        <span style="color:var(--text3)">Package Mgr:</span>
+                        <span style="font-weight:600;color:var(--text)">${esc(data.package_manager || 'None')}</span>
+                    </div>
+                </div>
+
+                <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                        <span style="font-size:1.8rem">🐳</span>
+                        <div>
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3)">Docker Engine</div>
+                            <div style="font-size:1.1rem;font-weight:700;color:${data.docker.running ? 'var(--green)' : 'var(--red)'}">${data.docker.running ? 'Running' : 'Stopped'}</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:0.88rem">
+                        <span style="color:var(--text3)">Installed:</span>
+                        <span class="status-badge ${data.docker.installed ? 'running' : 'stopped'}">${data.docker.installed ? 'Yes' : 'No'}</span>
+                        ${data.docker.desktop !== undefined ? `
+                            <span style="color:var(--text3)">Desktop:</span>
+                            <span style="font-weight:600;color:${data.docker.desktop ? 'var(--green)' : 'var(--text2)'}"> ${data.docker.desktop ? 'Running' : 'Not running'}</span>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                        <span style="font-size:1.8rem">📦</span>
+                        <div>
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3)">Dependencies</div>
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--text)">${Object.values(data.dependencies).filter(v => v).length} / ${Object.keys(data.dependencies).length} Available</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.88rem">
+                        ${Object.entries(data.dependencies).map(([k, v]) => `
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <span style="font-size:1rem;color:${v ? 'var(--green)' : 'var(--text3)'}">${v ? '✓' : '✗'}</span>
+                                <span style="font-weight:600;color:${v ? 'var(--text)' : 'var(--text3)'}">${k.replace(/_/g, ' ')}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
             </div>
         </div>
         <div class="section-card" id="update-info-card" style="display:none"></div>

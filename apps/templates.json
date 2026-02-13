@@ -8,7 +8,7 @@
       "category": "Web",
       "version": "6.x",
       "image": "wordpress:latest",
-      "image_size_mb": 260,
+      "image_size_mb": 600,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "HTTP"}
@@ -32,7 +32,7 @@
       "category": "Development",
       "version": "1.x",
       "image": "gitea/gitea:latest",
-      "image_size_mb": 105,
+      "image_size_mb": 65,
       "license_required": null,
       "ports": [
         {"container": 3000, "default_host": 3000, "label": "Web UI"},
@@ -56,7 +56,7 @@
       "category": "Monitoring",
       "version": "1.x",
       "image": "louislam/uptime-kuma:1",
-      "image_size_mb": 175,
+      "image_size_mb": 220,
       "license_required": null,
       "ports": [
         {"container": 3001, "default_host": 3001, "label": "Web UI"}
@@ -75,7 +75,7 @@
       "category": "Network",
       "version": "5.x",
       "image": "pihole/pihole:latest",
-      "image_size_mb": 200,
+      "image_size_mb": 340,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "Web UI"},
@@ -99,7 +99,7 @@
       "category": "Dashboard",
       "version": "2.x",
       "image": "linuxserver/heimdall:latest",
-      "image_size_mb": 75,
+      "image_size_mb": 125,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "HTTP"}
@@ -122,7 +122,7 @@
       "category": "Database",
       "version": "4.x",
       "image": "adminer:latest",
-      "image_size_mb": 85,
+      "image_size_mb": 90,
       "license_required": null,
       "ports": [
         {"container": 8080, "default_host": 8080, "label": "Web UI"}
@@ -141,7 +141,7 @@
       "category": "Database",
       "version": "5.x",
       "image": "phpmyadmin:latest",
-      "image_size_mb": 195,
+      "image_size_mb": 165,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "Web UI"}
@@ -161,7 +161,7 @@
       "category": "Management",
       "version": "1.x",
       "image": "containrrr/watchtower:latest",
-      "image_size_mb": 15,
+      "image_size_mb": 18,
       "license_required": null,
       "ports": [],
       "volumes": [
@@ -182,7 +182,7 @@
       "category": "Network",
       "version": "3.x",
       "image": "traefik:v3.0",
-      "image_size_mb": 55,
+      "image_size_mb": 90,
       "license_required": null,
       "command": "--api.insecure=true --providers.docker=true --entrypoints.web.address=:80 --entrypoints.websecure.address=:443",
       "ports": [
@@ -205,7 +205,7 @@
       "category": "IoT",
       "version": "2.x",
       "image": "eclipse-mosquitto:2",
-      "image_size_mb": 8,
+      "image_size_mb": 6,
       "license_required": null,
       "ports": [
         {"container": 1883, "default_host": 1883, "label": "MQTT"},
@@ -252,7 +252,7 @@
       "category": "Storage",
       "version": "latest",
       "image": "minio/minio:latest",
-      "image_size_mb": 100,
+      "image_size_mb": 235,
       "license_required": null,
       "command": "server /data --console-address \":9001\"",
       "ports": [
@@ -276,7 +276,7 @@
       "category": "Storage",
       "version": "2.x",
       "image": "filebrowser/filebrowser:latest",
-      "image_size_mb": 28,
+      "image_size_mb": 17,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "Web UI"}
@@ -296,7 +296,7 @@
       "category": "Dashboard",
       "version": "latest",
       "image": "b4bz/homer:latest",
-      "image_size_mb": 23,
+      "image_size_mb": 15,
       "license_required": null,
       "ports": [
         {"container": 8080, "default_host": 8080, "label": "Web UI"}
@@ -315,7 +315,7 @@
       "category": "Monitoring",
       "version": "latest",
       "image": "amir20/dozzle:latest",
-      "image_size_mb": 27,
+      "image_size_mb": 21,
       "license_required": null,
       "ports": [
         {"container": 8080, "default_host": 8080, "label": "Web UI"}
@@ -334,7 +334,7 @@
       "category": "Backup",
       "version": "2.x",
       "image": "linuxserver/duplicati:latest",
-      "image_size_mb": 240,
+      "image_size_mb": 220,
       "license_required": null,
       "ports": [
         {"container": 8200, "default_host": 8200, "label": "Web UI"}
@@ -358,7 +358,7 @@
       "category": "Dashboard",
       "version": "0.x",
       "image": "ghcr.io/ajnart/homarr:latest",
-      "image_size_mb": 200,
+      "image_size_mb": 115,
       "license_required": null,
       "ports": [
         {"container": 7575, "default_host": 7575, "label": "Web UI"}
@@ -378,7 +378,7 @@
       "category": "Utilities",
       "version": "latest",
       "image": "corentinth/it-tools:latest",
-      "image_size_mb": 30,
+      "image_size_mb": 18,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "Web UI"}
@@ -395,7 +395,7 @@
       "category": "Monitoring",
       "version": "latest",
       "image": "dgtlmoon/changedetection.io:latest",
-      "image_size_mb": 200,
+      "image_size_mb": 210,
       "license_required": null,
       "ports": [
         {"container": 5000, "default_host": 5000, "label": "Web UI"}
@@ -414,7 +414,7 @@
       "category": "Database",
       "version": "11.x",
       "image": "mariadb:latest",
-      "image_size_mb": 150,
+      "image_size_mb": 134,
       "license_required": null,
       "ports": [
         {"container": 3306, "default_host": 3306, "label": "MySQL"}
@@ -438,7 +438,7 @@
       "category": "Automation",
       "version": "latest",
       "image": "n8nio/n8n:latest",
-      "image_size_mb": 390,
+      "image_size_mb": 440,
       "license_required": null,
       "ports": [
         {"container": 5678, "default_host": 5678, "label": "Web UI"}
@@ -464,7 +464,7 @@
       "category": "Network",
       "version": "latest",
       "image": "jc21/nginx-proxy-manager:latest",
-      "image_size_mb": 180,
+      "image_size_mb": 245,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "HTTP"},
@@ -488,7 +488,7 @@
       "category": "Database",
       "version": "16",
       "image": "postgres:16",
-      "image_size_mb": 110,
+      "image_size_mb": 145,
       "license_required": null,
       "ports": [
         {"container": 5432, "default_host": 5432, "label": "PostgreSQL"}
@@ -511,7 +511,7 @@
       "category": "Database",
       "version": "7.x",
       "image": "redis:7-alpine",
-      "image_size_mb": 12,
+      "image_size_mb": 32,
       "license_required": null,
       "command": "redis-server --appendonly yes --save 900 1 --save 300 10 --save 60 10000 --maxmemory 512mb --maxmemory-policy allkeys-lru",
       "ports": [
@@ -531,7 +531,7 @@
       "category": "Monitoring",
       "version": "latest",
       "image": "grafana/grafana:latest",
-      "image_size_mb": 115,
+      "image_size_mb": 305,
       "license_required": null,
       "ports": [
         {"container": 3000, "default_host": 3000, "label": "Web UI"}
@@ -555,7 +555,7 @@
       "category": "Database",
       "version": "latest",
       "image": "qdrant/qdrant:latest",
-      "image_size_mb": 95,
+      "image_size_mb": 175,
       "license_required": null,
       "ports": [
         {"container": 6333, "default_host": 6333, "label": "HTTP API"},
@@ -577,7 +577,7 @@
       "category": "Media",
       "version": "latest",
       "image": "jellyfin/jellyfin:latest",
-      "image_size_mb": 310,
+      "image_size_mb": 400,
       "license_required": null,
       "ports": [
         {"container": 8096, "default_host": 8096, "label": "Web UI"},
@@ -602,7 +602,7 @@
       "category": "Storage",
       "version": "latest",
       "image": "nextcloud:latest",
-      "image_size_mb": 350,
+      "image_size_mb": 670,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8085, "label": "Web UI"}
@@ -623,7 +623,7 @@
       "category": "Security",
       "version": "latest",
       "image": "vaultwarden/server:latest",
-      "image_size_mb": 28,
+      "image_size_mb": 15,
       "license_required": null,
       "ports": [
         {"container": 80, "default_host": 8080, "label": "Web UI"}
@@ -649,7 +649,7 @@
       "category": "Utilities",
       "version": "latest",
       "image": "stirlingtools/stirling-pdf:latest",
-      "image_size_mb": 450,
+      "image_size_mb": 355,
       "license_required": null,
       "ports": [
         {"container": 8080, "default_host": 8080, "label": "Web UI"}
