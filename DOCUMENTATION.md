@@ -1107,26 +1107,13 @@ docker system df
 
 - General inquiries: [contact@orchix.dev](mailto:contact@orchix.dev)
 - Security issues: [security@orchix.dev](mailto:security@orchix.dev)
-- Sales: [sales@orchix.dev](mailto:sales@orchix.dev)
-
----
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-Quick start:
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
+- Support: [support@orchix.dev](mailto:support@orchix.dev)
 
 ---
 
 ## License
 
-ORCHIX is commercial software. See [LICENSE](LICENSE) for details.
+ORCHIX is commercial software.
 
 - **FREE Tier**: Free for personal use (max 3 containers)
 - **PRO Tier**: €29/month commercial license
