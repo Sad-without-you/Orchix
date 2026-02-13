@@ -2,14 +2,36 @@
 # ORCHIX .gitignore
 # ========================================
 
-# Environment variables (IMPORTANT!)
+# CRITICAL - Private Website (runs on server, not open source)
+website-orchix/
+
+# CRITICAL - Private Installers & Planning
+installers/
+docs/
+
+# CRITICAL - Private Documentation (not for GitHub)
+MASTER.md
+SECURITY_REPORT.md
+SECURITY_AUDIT.md
+WEBSITE.md
+
+# CRITICAL - Environment variables & Secrets
 .env
 .env.local
+.env.production
 .env.*.local
+SECRET_KEY
+LICENSE_SIGNING_SECRET
 
-# License files (IMPORTANT!)
+# CRITICAL - License files with actual keys
 .orchix_license
 data/license.json
+license_keys/
+*.license
+
+# CRITICAL - User data & passwords
+.orchix_web_password
+user_data/
 
 # Python
 __pycache__/
@@ -33,12 +55,14 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+pip-log.txt
 
 # Virtual environments
 venv/
 ENV/
 env/
-.venv
+.venv/
+virtualenv/
 
 # IDEs
 .vscode/
@@ -47,22 +71,32 @@ env/
 *.swo
 *~
 .DS_Store
+*.sublime-project
+*.sublime-workspace
 
-# Logs
+# Logs & Audit trails (may contain sensitive data)
 *.log
 logs/
 audit/
+audit_logs/
 
-# ORCHIX Data
+# ORCHIX Data & Backups (contain actual container data)
 data/
 backups/
 migrations/
+migration_packages/
+exports/
+
+# Docker files (generated/user-modified)
 docker-compose-*.yml
 Dockerfile-*
 
 # Backups
 *.backup
 *.bak
+*.sql
+*.sql.gz
+*.dump
 
 # Testing
 .pytest_cache/
@@ -70,6 +104,7 @@ Dockerfile-*
 htmlcov/
 .tox/
 .nox/
+.hypothesis/
 
 # Temporary files
 *.tmp
@@ -81,11 +116,47 @@ tmp/
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+.Trash-*/
+.fuse_hidden*
 
-# Sensitive files
+# Sensitive files (SSL, SSH, etc.)
 *.key
 *.pem
 *.crt
 *.cert
 *.p12
 .secrets/
+secrets/
+ssl/
+certs/
+
+# Database files (with actual data)
+*.db
+*.sqlite
+*.sqlite3
+database/
+
+# Session data
+flask_session/
+sessions/
+.session
+
+# Generated documentation (keep DOCUMENTATION.md, SECURITY_AUDIT.md)
+docs/_build/
+docs/.doctrees/
+
+# Compiled binaries
+*.exe
+*.dll
+*.dylib
+
+# Archives (may contain sensitive backups)
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Cache
+.cache/
+.npm/
+node_modules/
