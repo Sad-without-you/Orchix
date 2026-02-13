@@ -326,62 +326,65 @@ Templates are defined in `apps/templates.json`:
 
 ```json
 {
-  "wordpress": {
-    "name": "WordPress",
-    "category": "Web & CMS",
-    "description": "World's most popular CMS",
-    "default_port": 8080,
-    "install_size_mb": 450,
-    "compose_template": "wordpress.yml",
-    "ports": [
-      {
-        "container": 80,
-        "host": 8080,
-        "description": "Web UI"
-      }
-    ],
-    "volumes": [
-      "wordpress_data:/var/www/html"
-    ],
-    "env": {
-      "WORDPRESS_DB_HOST": "db",
-      "WORDPRESS_DB_USER": "wordpress",
-      "WORDPRESS_DB_PASSWORD": "password123"
-    }
-  }
+  "name": "wordpress",
+  "display_name": "WordPress",
+  "description": "Open-source CMS and blogging platform",
+  "icon": "📝",
+  "category": "Web",
+  "version": "6.x",
+  "image": "wordpress:latest",
+  "image_size_mb": 260,
+  "license_required": null,
+  "ports": [
+    {"container": 80, "default_host": 8080, "label": "HTTP"}
+  ],
+  "volumes": [
+    {"name_suffix": "data", "mount": "/var/www/html"}
+  ],
+  "env": [
+    {"key": "WORDPRESS_DB_HOST", "label": "Database Host", "default": "localhost:3306", "required": true},
+    {"key": "WORDPRESS_DB_USER", "label": "Database User", "default": "wordpress", "required": true},
+    {"key": "WORDPRESS_DB_PASSWORD", "label": "Database Password", "type": "password", "generate": true},
+    {"key": "WORDPRESS_DB_NAME", "label": "Database Name", "default": "wordpress", "required": true}
+  ],
+  "restart": "unless-stopped"
 }
 ```
 
 ### Custom Templates
 
-Create your own template:
+To add your own application template, edit `apps/templates.json`:
 
-```bash
-# Add to apps/templates.json
+1. Open `apps/templates.json`
+2. Add your template to the "templates" array:
+
+```json
 {
-  "myapp": {
-    "name": "My Application",
-    "category": "Custom",
-    "description": "My custom app",
-    "default_port": 9000,
-    "compose_template": "myapp.yml"
-  }
+  "name": "myapp",
+  "display_name": "My Application",
+  "description": "My custom application",
+  "icon": "🚀",
+  "category": "Custom",
+  "version": "1.0",
+  "image": "myapp:latest",
+  "image_size_mb": 100,
+  "license_required": null,
+  "ports": [
+    {"container": 9000, "default_host": 9000, "label": "Web UI"}
+  ],
+  "volumes": [
+    {"name_suffix": "data", "mount": "/data"}
+  ],
+  "env": [
+    {"key": "MY_ENV_VAR", "label": "Environment Variable", "default": "value"}
+  ],
+  "restart": "unless-stopped"
 }
-
-# Create apps/compose_templates/myapp.yml
-version: '3.8'
-services:
-  myapp:
-    image: myapp:latest
-    ports:
-      - "${PORT}:9000"
-    volumes:
-      - myapp_data:/data
-volumes:
-  myapp_data:
 ```
 
-Reload ORCHIX to see your app.
+3. Restart ORCHIX to see your custom application in the list
+
+**Note:** Docker Compose files are generated automatically from the template definition. You don't need to create separate `.yml` files.
 
 ---
 
@@ -1046,27 +1049,40 @@ server {
 }
 ```
 
-### Custom Hooks
+### Multi-language Support
 
-Add hooks for backup/restore events:
+The ORCHIX Web UI is currently English-only. Multi-language support (DE/EN/EL) is available on the [payment website](https://orchix.dev) but not in the ORCHIX application itself.
 
-Create `apps/hooks/<app_name>.py`:
+### Performance Tuning
 
-```python
-def before_backup(container_name):
-    """Run before backup"""
-    print(f"Preparing {container_name} for backup...")
-    # Example: Flush database to disk
-    os.system(f"docker exec {container_name} pg_dump > /tmp/backup.sql")
+**Docker Resource Limits:**
 
-def after_restore(container_name):
-    """Run after restore"""
-    print(f"Finalizing {container_name} restore...")
-    # Example: Clear cache
-    os.system(f"docker exec {container_name} rm -rf /var/cache/*")
+Edit container's `docker-compose.yml` to limit resources:
+
+```yaml
+services:
+  app:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          memory: 2G
 ```
 
-ORCHIX will automatically load and execute hooks.
+**Storage Optimization:**
+
+```bash
+# Remove unused images
+docker image prune -a
+
+# Remove unused volumes
+docker volume prune
+
+# View disk usage
+docker system df
+```
 
 ---
 
@@ -1128,7 +1144,7 @@ Purchase at: [https://orchix.dev](https://orchix.dev)
 - Server Migration (PRO)
 - Audit logging (PRO)
 - Security hardening (PBKDF2, input validation)
-- Multi-language support (DE/EN/EL)
+- Real-time system monitoring dashboard
 
 ### v1.1 (2026-01-15)
 - Initial release
