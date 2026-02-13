@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/static/favicon.svg" width="80" height="80" alt="ORCHIX">
+  <img src="web/static/favicon.svg?v=1.2" width="80" height="80" alt="ORCHIX">
 </p>
 
 <h1 align="center">ORCHIX</h1>
