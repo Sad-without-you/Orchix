@@ -17,10 +17,11 @@ Router.register('#/containers', async function(el) {
         <div class="table-toolbar">
             <input type="text" class="search-input" id="container-search"
                    placeholder="Search containers..." oninput="filterContainers()">
+            ${hasPermission('containers.start') ? `
             <div class="toolbar-actions" id="batch-actions" style="display:none">
                 <button class="btn-sm btn-success" onclick="batchAction('start')">Start Selected</button>
                 <button class="btn-sm btn-danger" onclick="batchAction('stop')">Stop Selected</button>
-            </div>
+            </div>` : ''}
         </div>
         <div id="containers-list"><div class="loading"><span class="spinner"></span> Loading containers...</div></div>
     `;
@@ -55,28 +56,28 @@ async function refreshContainers() {
                         <td><span style="color:var(--teal);font-weight:600">${esc(c.name)}</span></td>
                         <td>
                             <span class="status-badge ${c.status === 'running' ? 'running' : 'stopped'}">
-                                ${c.status === 'running' ? 'Running' : c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                                ${c.status === 'running' ? 'Running' : esc(c.status.charAt(0).toUpperCase() + c.status.slice(1))}
                             </span>
                         </td>
                         <td style="font-size:0.8rem;color:var(--text2);font-family:'Consolas','SF Mono',monospace">${esc(c.size || '-')}</td>
                         <td>
                             <div class="btn-group">
-                                ${c.status === 'running'
+                                ${hasPermission('containers.start') ? (c.status === 'running'
                                     ? `<button class="btn-sm btn-danger" onclick="containerAction('${esc(c.name)}','stop')">Stop</button>`
                                     : `<button class="btn-sm btn-success" onclick="containerAction('${esc(c.name)}','start')">Start</button>`
-                                }
+                                ) : ''}
                                 <div class="action-dropdown">
                                     <button class="btn-icon" onclick="toggleActionMenu(this)" title="More actions">&#8943;</button>
                                     <div class="action-menu">
-                                        ${c.status === 'running'
+                                        ${hasPermission('containers.restart') && c.status === 'running'
                                             ? `<button onclick="containerAction('${esc(c.name)}','restart')">Restart</button>`
                                             : ''
                                         }
-                                        <button onclick="showUpdateDialog('${esc(c.name)}')">Update</button>
-                                        <button onclick="editComposeFile('${esc(c.name)}')">Edit YAML</button>
+                                        ${hasPermission('apps.update') ? `<button onclick="showUpdateDialog('${esc(c.name)}')">Update</button>` : ''}
+                                        ${hasPermission('containers.compose_write') ? `<button onclick="editComposeFile('${esc(c.name)}')">Edit YAML</button>` : ''}
                                         <button onclick="viewContainerLogs('${esc(c.name)}')">View Logs</button>
                                         <button onclick="viewContainerDetails('${esc(c.name)}')">Inspect</button>
-                                        <button class="danger" onclick="confirmUninstall('${esc(c.name)}')">Uninstall</button>
+                                        ${hasPermission('containers.uninstall') ? `<button class="danger" onclick="confirmUninstall('${esc(c.name)}')">Uninstall</button>` : ''}
                                     </div>
                                 </div>
                             </div>
@@ -146,14 +147,14 @@ async function viewContainerDetails(name) {
     const res = await API.get(`/api/containers/${name}/inspect`);
     if (res && !res.error) {
         const portsHtml = Object.entries(res.ports || {}).map(([port, bindings]) =>
-            bindings.map(b => `<span>${b.HostPort} -> ${port}</span>`).join('<br>')
+            bindings.map(b => `<span>${esc(b.HostPort)} -> ${esc(port)}</span>`).join('<br>')
         ).join('<br>') || 'None';
 
         showModal('Inspect: ' + name, `
             <div class="section-card" style="margin-bottom:0">
                 <div style="display:grid;grid-template-columns:120px 1fr;gap:0.5rem;font-size:0.9rem">
                     <span style="color:var(--text2)">Status</span>
-                    <span><span class="status-badge ${res.running ? 'running' : 'stopped'}">${res.status}</span></span>
+                    <span><span class="status-badge ${res.running ? 'running' : 'stopped'}">${esc(res.status)}</span></span>
                     <span style="color:var(--text2)">Image</span>
                     <span>${esc(res.image)}</span>
                     <span style="color:var(--text2)">Started</span>
@@ -161,7 +162,7 @@ async function viewContainerDetails(name) {
                     <span style="color:var(--text2)">Ports</span>
                     <span>${portsHtml}</span>
                     <span style="color:var(--text2)">Env Vars</span>
-                    <span style="font-size:0.8rem;color:var(--text3)">${(res.env || []).join(', ') || 'None'}</span>
+                    <span style="font-size:0.8rem;color:var(--text3)">${esc((res.env || []).join(', ')) || 'None'}</span>
                 </div>
             </div>
         `, [{ label: 'Close', cls: 'btn-primary' }]);

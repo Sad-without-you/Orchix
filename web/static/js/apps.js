@@ -30,10 +30,10 @@ Router.register('#/apps', async function(el) {
             </div>
             <div class="app-desc">${esc(app.description)}</div>
             <div class="app-card-footer">
-                ${app.can_install
+                ${hasPermission('apps.install') ? (app.can_install
                     ? `<button class="btn btn-primary" onclick="openInstallDialog('${esc(app.name)}', '${esc(app.display_name)}', ${JSON.stringify(app.default_ports)}, ${app.image_size_mb || 0})">Install</button>`
                     : `<span class="pro-badge">PRO</span><button class="btn" disabled style="opacity:0.5">Install</button>`
-                }
+                ) : `<button class="btn" disabled style="opacity:0.4">Install</button>`}
             </div>
         </div>
     `).join('');
@@ -847,18 +847,6 @@ Router.register('#/license', async function(el) {
             </div>
         `}
 
-        <div class="section-card" style="padding:8px 10px;max-width:620px">
-            <h3 style="font-size:12px">Security Settings</h3>
-            <div style="margin-top:6px">
-                <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:6px">Web Interface Password</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
-                    <input type="password" class="form-input" id="pw-current" placeholder="Current password" style="width:160px;margin:0;font-size:12px;padding:6px 10px">
-                    <input type="password" class="form-input" id="pw-new" placeholder="New password" style="width:160px;margin:0;font-size:12px;padding:6px 10px">
-                    <button class="btn btn-primary" onclick="changePassword()" style="font-size:12px;padding:6px 14px">Update</button>
-                </div>
-                <p style="font-size:0.75rem;color:var(--text3);margin:0">Minimum 6 characters required</p>
-            </div>
-        </div>
     `;
 });
 
@@ -889,24 +877,6 @@ async function deactivateLicense() {
             }
         }}
     ]);
-}
-
-async function changePassword() {
-    const current = document.getElementById('pw-current')?.value;
-    const newPw = document.getElementById('pw-new')?.value;
-    if (!current || !newPw) { showToast('error', 'Fill in both fields'); return; }
-
-    const res = await API.post('/api/auth/change-password', {
-        current_password: current,
-        new_password: newPw
-    });
-    if (res && res.success) {
-        showToast('success', 'Password changed');
-        document.getElementById('pw-current').value = '';
-        document.getElementById('pw-new').value = '';
-    } else {
-        showToast('error', (res && res.message) || 'Failed to change password');
-    }
 }
 
 async function checkSystemUpdate() {
@@ -944,6 +914,167 @@ async function checkSystemUpdate() {
         }
         showToast('success', 'ORCHIX is up to date');
     }
+}
+
+// ============ Users Page (Admin Only) ============
+Router.register('#/users', async function(el) {
+    if (!hasPermission('users.read')) {
+        el.innerHTML = `
+            <div class="page-header"><div>
+                <div class="breadcrumb">System / <span class="current">Users</span></div>
+                <h1>User Management</h1>
+            </div></div>
+            <div class="section-card" style="text-align:center;padding:3rem">
+                <h3 style="color:var(--red)">Access Denied</h3>
+                <p style="color:var(--text2);margin-top:0.5rem">Only administrators can manage users.</p>
+            </div>`;
+        return;
+    }
+
+    el.innerHTML = `
+        <div class="page-header">
+            <div>
+                <div class="breadcrumb">System / <span class="current">Users</span></div>
+                <h1>User Management</h1>
+            </div>
+            <button class="btn btn-primary" onclick="showAddUserModal()">Add User</button>
+        </div>
+        <div class="section-card">
+            <div id="users-table"><div class="loading"><span class="spinner"></span> Loading...</div></div>
+        </div>`;
+
+    await loadUsersTable();
+});
+
+async function loadUsersTable() {
+    const res = await API.get('/api/users');
+    const container = document.getElementById('users-table');
+    if (!res || !res.users || !container) return;
+
+    const roleBadge = (role) => {
+        const colors = { admin: 'var(--pink)', operator: 'var(--teal)', viewer: 'var(--text3)' };
+        return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:${colors[role] || 'var(--text3)'}20;color:${colors[role] || 'var(--text3)'};text-transform:uppercase">${esc(role)}</span>`;
+    };
+
+    const formatDate = (d) => d ? new Date(d).toLocaleString() : '-';
+
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Created</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${res.users.map(u => `
+                    <tr>
+                        <td><strong>${esc(u.username)}</strong>${u.username === currentUser.username ? ' <span style="color:var(--teal);font-size:0.75rem">(you)</span>' : ''}</td>
+                        <td>${roleBadge(u.role)}</td>
+                        <td style="font-size:0.85rem;color:var(--text3)">${formatDate(u.created_at)}</td>
+                        <td style="font-size:0.85rem;color:var(--text3)">${formatDate(u.last_login)}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn-sm" onclick="showEditUserModal('${esc(u.username)}','${esc(u.role)}')">Edit</button>
+                                ${u.username !== currentUser.username ? `<button class="btn-sm btn-danger" onclick="deleteUser('${esc(u.username)}')">Delete</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div style="margin-top:12px;font-size:0.82rem;color:var(--text3)">${res.users.length} user${res.users.length !== 1 ? 's' : ''}</div>`;
+}
+
+function showAddUserModal() {
+    showModal('Add User', `
+        <div class="form-group" style="margin-bottom:12px">
+            <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">Username</label>
+            <input type="text" id="new-username" placeholder="3-32 chars, lowercase" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+            <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">Password</label>
+            <input type="password" id="new-password" placeholder="Min 8 characters" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+            <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">Role</label>
+            <select id="new-role" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
+                <option value="viewer">Viewer - Read only</option>
+                <option value="operator">Operator - Manage containers & apps</option>
+                <option value="admin">Admin - Full access</option>
+            </select>
+        </div>
+    `, [
+        { label: 'Cancel', cls: 'btn-secondary' },
+        { label: 'Create User', cls: 'btn-primary', fn: createUser }
+    ]);
+}
+
+async function createUser() {
+    const username = document.getElementById('new-username').value.trim().toLowerCase();
+    const password = document.getElementById('new-password').value;
+    const role = document.getElementById('new-role').value;
+
+    const res = await API.post('/api/users', { username, password, role });
+    hideModal();
+    if (res && res.success) {
+        showToast('success', res.message);
+        await loadUsersTable();
+    } else {
+        showToast('error', (res && res.message) || 'Failed to create user');
+    }
+}
+
+function showEditUserModal(username, currentRole) {
+    showModal(`Edit User: ${username}`, `
+        <div class="form-group" style="margin-bottom:12px">
+            <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">Role</label>
+            <select id="edit-role" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
+                <option value="viewer" ${currentRole === 'viewer' ? 'selected' : ''}>Viewer - Read only</option>
+                <option value="operator" ${currentRole === 'operator' ? 'selected' : ''}>Operator - Manage containers & apps</option>
+                <option value="admin" ${currentRole === 'admin' ? 'selected' : ''}>Admin - Full access</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+            <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">New Password (leave empty to keep current)</label>
+            <input type="password" id="edit-password" placeholder="Min 8 characters" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
+        </div>
+    `, [
+        { label: 'Cancel', cls: 'btn-secondary' },
+        { label: 'Save Changes', cls: 'btn-primary', fn: async () => {
+            const role = document.getElementById('edit-role').value;
+            const password = document.getElementById('edit-password').value;
+            const data = { role };
+            if (password) data.password = password;
+            const res = await API.put('/api/users/' + username, data);
+            hideModal();
+            if (res && res.success) {
+                showToast('success', res.message);
+                await loadUsersTable();
+            } else {
+                showToast('error', (res && res.message) || 'Failed to update user');
+            }
+        }}
+    ]);
+}
+
+async function deleteUser(username) {
+    showModal('Delete User', `<p>Are you sure you want to delete user <strong>${esc(username)}</strong>?</p><p style="margin-top:8px;color:var(--text3);font-size:0.85rem">This action cannot be undone.</p>`, [
+        { label: 'Cancel', cls: 'btn-secondary' },
+        { label: 'Delete', cls: 'btn-danger', fn: async () => {
+            const res = await API.delete('/api/users/' + username);
+            hideModal();
+            if (res && res.success) {
+                showToast('success', res.message);
+                await loadUsersTable();
+            } else {
+                showToast('error', (res && res.message) || 'Failed to delete user');
+            }
+        }}
+    ]);
 }
 
 // Helper: PRO required page

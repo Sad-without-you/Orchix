@@ -3,7 +3,8 @@ import os
 import shutil
 from pathlib import Path
 from flask import Blueprint, jsonify, request
-from web.auth import login_required
+from flask import session as flask_session
+from web.auth import require_permission
 from utils.docker_utils import safe_docker_run
 from utils.validation import validate_container_name
 
@@ -16,13 +17,14 @@ def _log_audit(event_type, app_name, details=None):
         from license.audit_logger import get_audit_logger, AuditEventType
         lm = get_license_manager()
         logger = get_audit_logger(enabled=lm.is_pro())
+        logger.set_web_user(flask_session.get('username', 'unknown'))
         logger.log_event(AuditEventType[event_type], app_name, details or {'source': 'web_ui'})
     except Exception:
         pass
 
 
 @bp.route('/containers')
-@login_required
+@require_permission('containers.read')
 def list_containers():
     from cli.container_menu import get_all_containers, get_container_status
 
@@ -64,7 +66,7 @@ def list_containers():
 
 
 @bp.route('/containers/<name>/start', methods=['POST'])
-@login_required
+@require_permission('containers.start')
 def start_container(name):
     try:
         name = validate_container_name(name)
@@ -78,7 +80,7 @@ def start_container(name):
 
 
 @bp.route('/containers/<name>/stop', methods=['POST'])
-@login_required
+@require_permission('containers.stop')
 def stop_container(name):
     try:
         name = validate_container_name(name)
@@ -92,7 +94,7 @@ def stop_container(name):
 
 
 @bp.route('/containers/<name>/restart', methods=['POST'])
-@login_required
+@require_permission('containers.restart')
 def restart_container(name):
     try:
         name = validate_container_name(name)
@@ -105,13 +107,16 @@ def restart_container(name):
 
 
 @bp.route('/containers/<name>/logs')
-@login_required
+@require_permission('containers.logs')
 def get_logs(name):
     try:
         name = validate_container_name(name)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
-    tail = request.args.get('tail', '100')
+    try:
+        tail = min(max(int(request.args.get('tail', '100')), 1), 10000)
+    except (ValueError, TypeError):
+        tail = 100
     result = safe_docker_run(
         ['docker', 'logs', '--tail', str(tail), name],
         capture_output=True, text=True
@@ -122,7 +127,7 @@ def get_logs(name):
 
 
 @bp.route('/containers/<name>/inspect')
-@login_required
+@require_permission('containers.inspect')
 def inspect_container(name):
     try:
         name = validate_container_name(name)
@@ -153,7 +158,7 @@ def inspect_container(name):
 
 
 @bp.route('/containers/<name>/compose')
-@login_required
+@require_permission('containers.compose_read')
 def get_compose(name):
     """Read the docker-compose YAML file for a container."""
     try:
@@ -172,7 +177,7 @@ def get_compose(name):
 
 
 @bp.route('/containers/<name>/compose', methods=['POST'])
-@login_required
+@require_permission('containers.compose_write')
 def save_compose(name):
     """Save changes to the docker-compose YAML file for a container."""
     try:
@@ -204,7 +209,7 @@ def save_compose(name):
 
 
 @bp.route('/containers/<name>/uninstall', methods=['POST'])
-@login_required
+@require_permission('containers.uninstall')
 def uninstall_container(name):
     """Completely uninstall a container, volumes, images, and files."""
     try:

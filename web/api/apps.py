@@ -1,12 +1,12 @@
 from flask import Blueprint, jsonify, request
-from web.auth import login_required
+from web.auth import require_permission
 from utils.validation import validate_container_name, validate_port
 
 bp = Blueprint('api_apps', __name__, url_prefix='/api')
 
 
 @bp.route('/apps')
-@login_required
+@require_permission('apps.read')
 def list_apps():
     from apps.manifest_loader import load_all_manifests
     from utils.license_check import can_install_app, get_app_badge
@@ -31,7 +31,7 @@ def list_apps():
 
 
 @bp.route('/apps/<name>/config-schema')
-@login_required
+@require_permission('apps.read')
 def get_config_schema(name):
     """Return config fields for template apps (used by Web UI for dynamic forms)."""
     from apps.manifest_loader import load_manifest
@@ -60,7 +60,7 @@ def get_config_schema(name):
 
 
 @bp.route('/apps/install', methods=['POST'])
-@login_required
+@require_permission('apps.install')
 def install_app():
     data = request.json
     app_name = data.get('app_name')
@@ -161,7 +161,7 @@ def install_app():
 
 
 @bp.route('/apps/update', methods=['POST'])
-@login_required
+@require_permission('apps.update')
 def update_app():
     """Update a container application."""
     data = request.json
@@ -225,7 +225,7 @@ def update_app():
 
 
 @bp.route('/apps/check-conflicts')
-@login_required
+@require_permission('apps.read')
 def check_conflicts():
     """Check if container name or port is already in use."""
     from cli.install_menu import check_container_exists, is_port_in_use
@@ -245,7 +245,7 @@ def check_conflicts():
 
 
 @bp.route('/apps/update-actions/<container_name>')
-@login_required
+@require_permission('apps.read')
 def get_update_actions(container_name):
     """Get available update actions for a container."""
     from apps.manifest_loader import load_all_manifests

@@ -1,11 +1,11 @@
 from flask import Blueprint, jsonify, request
-from web.auth import login_required
+from web.auth import require_permission
 
 bp = Blueprint('api_audit', __name__, url_prefix='/api')
 
 
 @bp.route('/audit')
-@login_required
+@require_permission('audit.read')
 def get_audit_logs():
     from license import get_license_manager
     from license.audit_logger import get_audit_logger
@@ -18,7 +18,10 @@ def get_audit_logs():
 
     event_type = request.args.get('event_type')
     app_name = request.args.get('app_name')
-    limit = int(request.args.get('limit', '100'))
+    try:
+        limit = min(int(request.args.get('limit', '100')), 1000)
+    except (ValueError, TypeError):
+        limit = 100
 
     events = logger.get_recent_events(
         limit=limit,
@@ -30,7 +33,7 @@ def get_audit_logs():
 
 
 @bp.route('/audit/users')
-@login_required
+@require_permission('audit.read')
 def get_audit_users():
     """Get distinct users from audit logs."""
     from license import get_license_manager
@@ -47,7 +50,7 @@ def get_audit_users():
 
 
 @bp.route('/audit/user-activity')
-@login_required
+@require_permission('audit.read')
 def get_user_activity():
     """Get audit events filtered by user."""
     from license import get_license_manager
@@ -66,7 +69,7 @@ def get_user_activity():
 
 
 @bp.route('/audit/delete', methods=['POST'])
-@login_required
+@require_permission('audit.delete')
 def delete_audit_event():
     """Delete a single audit log entry."""
     from license import get_license_manager
@@ -89,7 +92,7 @@ def delete_audit_event():
 
 
 @bp.route('/audit/clear', methods=['POST'])
-@login_required
+@require_permission('audit.clear')
 def clear_audit_logs():
     """Clear old audit logs with retention period."""
     from license import get_license_manager

@@ -1,11 +1,16 @@
+import logging
+import threading
 from flask import Blueprint, jsonify
-from web.auth import login_required
+from flask import session as flask_session
+from web.auth import require_permission
+
+_log = logging.getLogger(__name__)
 
 bp = Blueprint('api_system', __name__, url_prefix='/api')
 
 
 @bp.route('/system')
-@login_required
+@require_permission('system.read')
 def get_system_info():
     from utils.system import get_platform, detect_os, detect_package_manager, check_docker, check_dependencies
 
@@ -19,14 +24,14 @@ def get_system_info():
 
 
 @bp.route('/system/docker-status')
-@login_required
+@require_permission('system.read')
 def docker_status():
     from utils.docker_utils import check_docker_status
     return jsonify(check_docker_status())
 
 
 @bp.route('/system/check-update')
-@login_required
+@require_permission('system.read')
 def check_update():
     from utils.version_check import check_for_updates, CURRENT_VERSION
     result = check_for_updates()
@@ -36,13 +41,11 @@ def check_update():
     return jsonify(result)
 
 
-import threading
-
 # Global lock for preventing concurrent updates
 _update_lock = threading.Lock()
 
 @bp.route('/system/update', methods=['POST'])
-@login_required
+@require_permission('system.update')
 def update_orchix():
     """
     Update ORCHIX to latest version via git pull + pip install.
@@ -77,9 +80,10 @@ def update_orchix():
         )
 
         if result.returncode != 0:
+            _log.error(f"Git pull failed: {result.stderr}")
             return jsonify({
                 'success': False,
-                'message': f'Git pull failed: {result.stderr[:200] if result.stderr else "Unknown error"}'
+                'message': 'Git pull failed. Check server logs for details.'
             }), 500
 
         # Check if already up to date
@@ -103,9 +107,10 @@ def update_orchix():
         )
 
         if pip_result.returncode != 0:
+            _log.error(f"pip install failed: {pip_result.stderr}")
             return jsonify({
                 'success': False,
-                'message': f'Update downloaded but dependency install failed: {pip_result.stderr[:200] if pip_result.stderr else "Unknown error"}'
+                'message': 'Update downloaded but dependency install failed. Check server logs.'
             }), 500
 
         # Get new version
@@ -118,6 +123,7 @@ def update_orchix():
             from license.audit_logger import get_audit_logger, AuditEventType
             lm = get_license_manager()
             logger = get_audit_logger(enabled=lm.is_pro())
+            logger.set_web_user(flask_session.get('username', 'unknown'))
             logger.log_event(AuditEventType.UPDATE, 'ORCHIX', {
                 'old_version': CURRENT_VERSION,
                 'new_version': new_version,
@@ -125,7 +131,7 @@ def update_orchix():
                 'status': 'success'
             })
         except Exception:
-            pass  # Don't fail update if audit logging fails
+            pass
 
         return jsonify({
             'success': True,
@@ -145,23 +151,24 @@ def update_orchix():
             'message': 'Git is not installed. Please install Git to use automatic updates.'
         }), 400
     except Exception as e:
+        _log.error(f"Update failed: {e}", exc_info=True)
         # Log failure to audit
         try:
             from license import get_license_manager
             from license.audit_logger import get_audit_logger, AuditEventType
             lm = get_license_manager()
             logger = get_audit_logger(enabled=lm.is_pro())
+            logger.set_web_user(flask_session.get('username', 'unknown'))
             logger.log_event(AuditEventType.UPDATE, 'ORCHIX', {
-                'error': str(e),
                 'status': 'failed',
                 'source': 'web_ui'
             })
-        except:
+        except Exception:
             pass
 
         return jsonify({
             'success': False,
-            'message': f'Update failed: {str(e)}'
+            'message': 'Update failed. Check server logs for details.'
         }), 500
     finally:
         _update_lock.release()

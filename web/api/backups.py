@@ -1,6 +1,6 @@
 from pathlib import Path
 from flask import Blueprint, jsonify, request
-from web.auth import login_required
+from web.auth import require_permission
 from utils.validation import validate_filename, validate_container_name
 
 bp = Blueprint('api_backups', __name__, url_prefix='/api')
@@ -16,7 +16,7 @@ def _require_pro():
 
 
 @bp.route('/backups')
-@login_required
+@require_permission('backups.read')
 def list_backups():
     blocked = _require_pro()
     if blocked:
@@ -60,7 +60,7 @@ def list_backups():
 
 
 @bp.route('/backups/create', methods=['POST'])
-@login_required
+@require_permission('backups.create')
 def create_backup():
     blocked = _require_pro()
     if blocked:
@@ -108,7 +108,7 @@ def create_backup():
 
 
 @bp.route('/backups/restore', methods=['POST'])
-@login_required
+@require_permission('backups.restore')
 def restore_backup():
     blocked = _require_pro()
     if blocked:
@@ -186,7 +186,7 @@ def restore_backup():
 
 
 @bp.route('/backups/delete', methods=['POST'])
-@login_required
+@require_permission('backups.delete')
 def delete_backup():
     blocked = _require_pro()
     if blocked:

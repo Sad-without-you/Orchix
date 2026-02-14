@@ -47,10 +47,12 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 
 ### Web UI
 - Modern single-page application with lily theme (pink #ec4899 + teal #14b8a6)
+- **Multi-User with Role-Based Access Control (RBAC)**: Admin, Operator, Viewer
 - Real-time container status via Server-Sent Events (SSE)
 - One-click install, update, uninstall
 - YAML editor with syntax highlighting
 - Live system monitoring dashboard (CPU, RAM, disk, network)
+- User management panel (Admin only)
 - Responsive layout with sidebar collapse
 - Inter font for better readability
 
@@ -82,12 +84,17 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 - Platform-aware packaging (tar.gz / zip)
 
 ### Security
-- Session-based authentication with Werkzeug PBKDF2 password hashing
+- **Multi-User Authentication** with RBAC (Admin / Operator / Viewer)
+- PBKDF2-SHA256 password hashing (Werkzeug)
+- CSRF protection (Flask-WTF double-submit cookie)
 - Rate limiting on login (5 attempts / 5 min)
 - Input validation on all endpoints (path traversal, YAML injection, port validation)
-- Security headers (X-Frame-Options, CSP, XSS protection, X-Content-Type-Options)
+- Security headers (Content-Security-Policy, X-Frame-Options, HSTS, X-Content-Type-Options)
 - Docker command sanitization to prevent command injection
-- Audit logging with full activity trail (PRO)
+- Thread-safe file operations with atomic writes
+- Tarball path traversal protection on migration import
+- XSS prevention with output escaping
+- Audit logging with per-user activity trail (PRO)
 
 ### System
 - Docker auto-installation (Linux + Windows/WSL2)
@@ -132,7 +139,7 @@ python main.py --web              # Default port 5000
 python main.py --web --port 8080  # Custom port
 ```
 
-Access at `http://localhost:5000`. A password is generated on first run and displayed in the terminal.
+Access at `http://localhost:5000`. An admin user with a random password is created on first run and displayed in the terminal. Log in with username `admin`.
 
 ### First Run
 
@@ -163,8 +170,9 @@ ORCHIX/
 │   └── ...
 ├── web/
 │   ├── server.py           # Flask + Waitress
-│   ├── auth.py             # Authentication
+│   ├── auth.py             # Multi-User Auth + RBAC
 │   ├── api/                # REST API endpoints
+│   │   └── users.py        # User management (Admin)
 │   ├── static/             # CSS, JS, favicon
 │   └── templates/          # HTML templates
 ├── license/
@@ -207,6 +215,7 @@ All ports are configurable during installation.
 ### FREE Tier
 - All 30 applications
 - Up to 3 containers
+- 1 user (single admin)
 - Live dashboard (CLI + Web UI)
 - Container management (install/update/uninstall/logs)
 - Real-time monitoring
@@ -215,16 +224,19 @@ All ports are configurable during installation.
 ### PRO Tier - €29/month
 - All 30 applications
 - Unlimited containers
+- **Multi-User** with RBAC (Admin, Operator, Viewer)
 - Automated backup & restore
 - Multi-instance support
 - Server migration tools
-- Audit logging with full activity trail
+- Audit logging with per-user activity trail
 - Priority email support
 
 | Feature | FREE | PRO |
 |---------|------|-----|
 | Applications | All 30 | All 30 |
 | Containers | Max 3 | Unlimited |
+| Users | 1 | Unlimited |
+| RBAC Roles | — | Admin, Operator, Viewer |
 | Web UI + CLI | ✓ | ✓ |
 | Real-time Monitoring | ✓ | ✓ |
 | Backups | — | ✓ |
@@ -237,15 +249,19 @@ All ports are configurable during installation.
 
 ## Security
 
-- PBKDF2 password hashing (upgraded from SHA256)
-- Session timeout (8 hours)
-- Rate limiting on login
+- **Multi-User RBAC** with backend permission enforcement (Admin / Operator / Viewer)
+- PBKDF2-SHA256 password hashing (Werkzeug, 100k+ iterations)
+- **CSRF protection** via Flask-WTF (double-submit cookie pattern)
+- Session timeout (8 hours) with secure cookie flags
+- Rate limiting on login (5 attempts / 5 min per IP)
 - Input validation on all API endpoints
-- Path traversal protection
-- YAML injection prevention
-- Docker command sanitization
-- Security headers on all responses
-- Audit logging (PRO)
+- Path traversal protection (filesystem + tarball extraction)
+- YAML injection prevention (`yaml.safe_load()`)
+- Docker command sanitization (subprocess with list args, no shell)
+- Security headers: Content-Security-Policy, X-Frame-Options, HSTS, X-Content-Type-Options
+- XSS prevention with HTML output escaping
+- Thread-safe file operations with atomic writes and file permission hardening
+- Audit logging with per-user tracking (PRO)
 
 For security issues: security@orchix.dev
 
@@ -265,13 +281,14 @@ For security issues: security@orchix.dev
 - `pip install -r requirements.txt --upgrade`
 
 **Web UI password reset:**
-- Delete `~/.orchix_web_password` and restart
+- Delete `~/.orchix_web_users.json` and restart (a new admin user with random password will be created)
 
 ---
 
 ## Built With
 
 - [Flask](https://flask.palletsprojects.com/) 3.0+ - Web framework
+- [Flask-WTF](https://flask-wtf.readthedocs.io/) 1.2+ - CSRF protection
 - [Waitress](https://docs.pylonsproject.org/projects/waitress/) 3.0+ - Production WSGI server
 - [Rich](https://github.com/Textualize/rich) 13.7+ - Terminal UI with colors and tables
 - [Inquirer](https://github.com/magmax/python-inquirer) 3.1+ - Interactive CLI menus

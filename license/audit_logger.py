@@ -20,6 +20,10 @@ class AuditEventType(Enum):
     LICENSE_CHANGE = "LICENSE_CHANGE"
     CONTAINER_START = "CONTAINER_START"
     CONTAINER_STOP = "CONTAINER_STOP"
+    USER_CREATED = "USER_CREATED"
+    USER_DELETED = "USER_DELETED"
+    USER_ROLE_CHANGED = "USER_ROLE_CHANGED"
+    PASSWORD_CHANGED = "PASSWORD_CHANGED"
 
 
 # Store logs in ORCHIX/audit directory
@@ -37,6 +41,11 @@ class AuditLogger:
         """Initialize audit logger"""
         self.enabled = enabled
         self.log_file = AUDIT_LOG_FILE
+        self._web_user = None
+
+    def set_web_user(self, username):
+        """Set Web UI username for audit logging."""
+        self._web_user = username
     
     def log_event(self, event_type: AuditEventType, app_name: str, details: dict = None):
         """Log an audit event"""
@@ -64,7 +73,9 @@ class AuditLogger:
             pass
     
     def _get_current_user(self):
-        """Get current system user"""
+        """Get current user - prefers Web UI session user, falls back to system user."""
+        if self._web_user:
+            return self._web_user
         try:
             return getpass.getuser()
         except:

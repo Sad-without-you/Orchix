@@ -115,7 +115,8 @@ Router.register('#/dashboard', function(el) {
     Router.currentSSE = source;
 
     source.onmessage = function(event) {
-        const d = JSON.parse(event.data);
+        let d;
+        try { d = JSON.parse(event.data); } catch (e) { return; }
         if (d.error) return;
 
         // Connection status
@@ -155,10 +156,10 @@ Router.register('#/dashboard', function(el) {
         const di = d.docker;
         const dockerEl = document.getElementById('docker-info');
         dockerEl.innerHTML = `
-            <div class="info-grid-item"><div class="label">Engine</div><div class="val">${di.version}</div></div>
-            <div class="info-grid-item"><div class="label">Images</div><div class="val">${di.images}</div></div>
-            <div class="info-grid-item"><div class="label">Volumes</div><div class="val">${di.volumes}</div></div>
-            <div class="info-grid-item"><div class="label">Networks</div><div class="val">${di.networks}</div></div>
+            <div class="info-grid-item"><div class="label">Engine</div><div class="val">${esc(di.version)}</div></div>
+            <div class="info-grid-item"><div class="label">Images</div><div class="val">${esc(di.images)}</div></div>
+            <div class="info-grid-item"><div class="label">Volumes</div><div class="val">${esc(di.volumes)}</div></div>
+            <div class="info-grid-item"><div class="label">Networks</div><div class="val">${esc(di.networks)}</div></div>
         `;
 
         // Volumes
@@ -167,7 +168,7 @@ Router.register('#/dashboard', function(el) {
             volEl.style.display = 'flex';
             const shown = di.volume_names.slice(0, 8).join(', ');
             const more = di.volume_names.length > 8 ? ` (+${di.volume_names.length - 8} more)` : '';
-            volEl.innerHTML = `Volumes: <span>${shown}${more}</span>`;
+            volEl.innerHTML = `Volumes: <span>${esc(shown)}${more}</span>`;
         }
 
         // Alerts
@@ -228,11 +229,11 @@ Router.register('#/dashboard', function(el) {
                 <td style="font-size:11px;color:var(--text3)">${esc(c.image)}</td>
                 <td>
                     <div class="btn-group">
-                        ${c.running
+                        ${hasPermission('containers.start') ? (c.running
                             ? `<button class="btn-sm btn-danger" onclick="dashAction('${esc(c.name)}','stop')">Stop</button>
                                <button class="btn-sm btn-warn" onclick="dashAction('${esc(c.name)}','restart')">Restart</button>`
                             : `<button class="btn-sm btn-success" onclick="dashAction('${esc(c.name)}','start')">Start</button>`
-                        }
+                        ) : ''}
                         <button class="btn-sm" onclick="dashLogs('${esc(c.name)}')">Logs</button>
                     </div>
                 </td>
@@ -252,13 +253,6 @@ function updateMetric(id, value) {
     if (!bar) return;
     bar.style.width = value + '%';
     bar.className = 'fill ' + (value >= 90 ? 'critical' : value >= 70 ? 'warning' : 'normal');
-}
-
-function esc(str) {
-    if (!str) return '-';
-    const d = document.createElement('div');
-    d.textContent = str;
-    return d.innerHTML;
 }
 
 function formatSpeed(bps) {
@@ -352,7 +346,7 @@ async function loadSystemOverview() {
                 ${Object.entries(data.dependencies).map(([k, v]) => `
                     <div style="display:flex;align-items:center;gap:6px">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${v ? 'var(--green)' : 'var(--text3)'}" stroke-width="2.5"><${v ? 'polyline points="20 6 9 17 4 12"' : 'line x1="18" y1="6" x2="6" y2="18"'}/>${v ? '' : '<line x1="6" y1="6" x2="18" y2="18"/>'}</svg>
-                        <span style="font-weight:600;color:${v ? 'var(--text)' : 'var(--text3)'}">${k.replace(/_/g, ' ')}</span>
+                        <span style="font-weight:600;color:${v ? 'var(--text)' : 'var(--text3)'}">${esc(k.replace(/_/g, ' '))}</span>
                     </div>
                 `).join('')}
             </div>
@@ -377,10 +371,10 @@ async function loadSystemOverview() {
                             '<span style="color:var(--text3)">Checking...</span>'
                     }
                 </div>
-                ${updateRes && updateRes.update_available ?
+                ${hasPermission('system.update') ? (updateRes && updateRes.update_available ?
                     '<button class="btn btn-sm btn-primary" onclick="updateOrchixNow()" style="font-size:0.8rem;padding:4px 10px;width:100%">Update Now</button>' :
                     '<button class="btn btn-sm" onclick="checkSystemUpdate()" style="font-size:0.8rem;padding:4px 10px;width:100%">Check Update</button>'
-                }
+                ) : ''}
             </div>
         </div>
     `;

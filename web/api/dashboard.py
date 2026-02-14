@@ -5,7 +5,7 @@ import psutil
 import shutil
 import platform
 from flask import Blueprint, Response, jsonify, session
-from web.auth import login_required
+from web.auth import require_permission
 
 bp = Blueprint('api_dashboard', __name__, url_prefix='/api')
 
@@ -276,7 +276,7 @@ def _format_speed(bps):
 
 
 @bp.route('/dashboard')
-@login_required
+@require_permission('dashboard.read')
 def get_dashboard():
     containers = _get_containers()
     sys_data = _get_system()
@@ -295,7 +295,7 @@ def get_dashboard():
 
 
 @bp.route('/dashboard/stream')
-@login_required
+@require_permission('dashboard.read')
 def dashboard_stream():
     def generate():
         # Prime psutil CPU (first call always returns 0)

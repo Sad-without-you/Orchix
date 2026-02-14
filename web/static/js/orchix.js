@@ -1,22 +1,111 @@
 // ORCHIX v1.2 - Shared Utilities
 
+let currentUser = null;
+
+// HTML escape - used globally by all pages
+function esc(str) {
+    if (str === null || str === undefined || str === '') return '-';
+    const d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+}
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 const API = {
     async get(url) {
         const res = await fetch(url);
         if (res.status === 401) { window.location.href = '/login'; return null; }
+        if (res.status === 403) { showToast('error', 'Permission denied'); return null; }
         return res.json();
     },
 
     async post(url, data = {}) {
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
             body: JSON.stringify(data)
         });
         if (res.status === 401) { window.location.href = '/login'; return null; }
+        if (res.status === 403) { showToast('error', 'Permission denied'); return null; }
+        return res.json();
+    },
+
+    async put(url, data = {}) {
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify(data)
+        });
+        if (res.status === 401) { window.location.href = '/login'; return null; }
+        if (res.status === 403) { showToast('error', 'Permission denied'); return null; }
+        return res.json();
+    },
+
+    async delete(url) {
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        });
+        if (res.status === 401) { window.location.href = '/login'; return null; }
+        if (res.status === 403) { showToast('error', 'Permission denied'); return null; }
         return res.json();
     }
 };
+
+function hasPermission(perm) {
+    if (!currentUser) return false;
+    return currentUser.permissions.includes(perm);
+}
+
+async function loadUserInfo() {
+    currentUser = await API.get('/api/auth/me');
+    if (!currentUser) return;
+
+    const nameEl = document.getElementById('sidebar-username');
+    if (nameEl) nameEl.textContent = currentUser.username;
+
+    const roleEl = document.getElementById('sidebar-role');
+    if (roleEl) roleEl.textContent = currentUser.role;
+
+    // Show Users nav only for admin
+    const usersNav = document.getElementById('nav-users');
+    if (usersNav) usersNav.style.display = currentUser.role === 'admin' ? '' : 'none';
+}
+
+function showChangePasswordModal() {
+    showModal('Change Password', `
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <div>
+                <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">Current Password</label>
+                <input type="password" id="cp-current" placeholder="Current password" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">New Password</label>
+                <input type="password" id="cp-new" placeholder="Min 8 characters" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
+            </div>
+        </div>
+    `, [
+        { label: 'Cancel', cls: '' },
+        { label: 'Update', cls: 'btn-primary', fn: async () => {
+            const current = document.getElementById('cp-current')?.value;
+            const newPw = document.getElementById('cp-new')?.value;
+            if (!current || !newPw) { showToast('error', 'Fill in both fields'); return; }
+            const res = await API.post('/api/auth/change-password', {
+                current_password: current,
+                new_password: newPw
+            });
+            if (res && res.success) {
+                showToast('success', 'Password changed');
+            } else {
+                showToast('error', (res && res.message) || 'Failed to change password');
+            }
+        }}
+    ]);
+}
 
 function showToast(type, message) {
     const container = document.getElementById('toast-container');
@@ -36,7 +125,7 @@ function showModal(title, bodyHtml, actions) {
     const modal = document.getElementById('modal-content');
     modal.innerHTML = `
         <div class="modal-header">
-            <h2>${title}</h2>
+            <h2>${esc(title)}</h2>
             <button class="modal-close" onclick="hideModal()">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <line x1="4" y1="4" x2="12" y2="12"/>
@@ -75,8 +164,8 @@ function showProgressModal(title, statusText) {
     modal.innerHTML = `
         <div class="modal-body" style="text-align:center;padding:40px 24px">
             <div class="spinner" style="margin:0 auto 16px"></div>
-            <h3 style="margin-bottom:8px">${title}</h3>
-            <p id="progress-status" style="color:var(--text2);font-size:0.9rem">${statusText || 'Please wait...'}</p>
+            <h3 style="margin-bottom:8px">${esc(title)}</h3>
+            <p id="progress-status" style="color:var(--text2);font-size:0.9rem">${esc(statusText) || 'Please wait...'}</p>
             <div class="progress-bar-container">
                 <div class="progress-bar-indeterminate"></div>
             </div>
@@ -197,7 +286,8 @@ function showUpdateBadge(version) {
     }
 }
 
-// Load license on startup
+// Load user info and license on startup
+loadUserInfo();
 loadLicenseInfo();
 checkForUpdates();
 

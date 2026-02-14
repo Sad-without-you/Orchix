@@ -45,6 +45,9 @@ requests>=2.31.0,<3.0.0
 # Web framework
 flask>=3.0.0,<4.0.0
 
+# CSRF protection for Flask forms and API endpoints
+flask-wtf>=1.2.0,<2.0.0
+
 # Production WSGI server
 waitress>=3.0.0,<4.0.0
 

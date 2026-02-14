@@ -1,11 +1,11 @@
 from flask import Blueprint, jsonify, request
-from web.auth import login_required
+from web.auth import require_permission
 
 bp = Blueprint('api_license', __name__, url_prefix='/api')
 
 
 @bp.route('/license')
-@login_required
+@require_permission('license.read')
 def get_license():
     from license import get_license_manager
     lm = get_license_manager()
@@ -38,7 +38,7 @@ def get_license():
 
 
 @bp.route('/license/activate', methods=['POST'])
-@login_required
+@require_permission('license.activate')
 def activate_license():
     data = request.json
     key = data.get('license_key')
@@ -55,7 +55,7 @@ def activate_license():
 
 
 @bp.route('/license/deactivate', methods=['POST'])
-@login_required
+@require_permission('license.deactivate')
 def deactivate_license():
     from license import get_license_manager
     lm = get_license_manager()

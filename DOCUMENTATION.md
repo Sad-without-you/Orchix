@@ -16,14 +16,15 @@
 2. [Installation](#installation)
 3. [CLI Usage](#cli-usage)
 4. [Web UI Usage](#web-ui-usage)
-5. [Application Templates](#application-templates)
-6. [Backup & Restore](#backup--restore)
-7. [Server Migration](#server-migration)
-8. [License Management](#license-management)
-9. [Security](#security)
-10. [API Reference](#api-reference)
-11. [Troubleshooting](#troubleshooting)
-12. [Advanced Configuration](#advanced-configuration)
+5. [User Management](#user-management)
+6. [Application Templates](#application-templates)
+7. [Backup & Restore](#backup--restore)
+8. [Server Migration](#server-migration)
+9. [License Management](#license-management)
+10. [Security](#security)
+11. [API Reference](#api-reference)
+12. [Troubleshooting](#troubleshooting)
+13. [Advanced Configuration](#advanced-configuration)
 
 ---
 
@@ -200,21 +201,23 @@ python main.py --web --port 8080
 ### First Login
 
 1. Open browser: `http://localhost:5000`
-2. Password is shown in terminal on first run:
+2. An admin user is created on first run with a random password shown in the terminal:
    ```
-   Generated password: randompassword123
+   Admin user created. Username: admin, Password: randompassword123
    ```
-3. Login with password
-4. Change password in System settings
+3. Login with username `admin` and the generated password
+4. Change password in Settings or create additional users (PRO: unlimited, FREE: 1 user)
 
 ### Dashboard
 
 - **Lily Theme**: Modern dark theme with pink (#ec4899) and teal (#14b8a6) accents
+- **Multi-User RBAC**: Admin, Operator, Viewer roles with permission-based UI
 - **Real-time Updates**: Server-Sent Events (SSE) for live container status
 - **System Overview**: CPU, RAM, disk, network monitoring
 - **Grid View**: Visual cards per application
 - **Filters**: Search by name, category, status
 - **Sidebar Collapse**: Responsive layout for better space management
+- **User Management** (Admin only): Create, edit, and delete users with role assignment
 
 ### Install Application
 
@@ -273,6 +276,66 @@ Package contains:
    - Creates containers
    - Restores volumes
    - Starts services
+
+---
+
+## User Management
+
+### Roles
+
+ORCHIX uses Role-Based Access Control (RBAC) with three roles:
+
+| Role | Description |
+|------|-------------|
+| **Admin** | Full access. Can manage users, licenses, system updates, and all operations. |
+| **Operator** | Can manage containers, apps, backups, and migrations. Cannot manage users or system settings. |
+| **Viewer** | Read-only access. Can view dashboards, logs, and container status. Cannot perform any actions. |
+
+### Managing Users (Admin only)
+
+**Web UI:**
+1. Navigate to **Users** in the sidebar (Admin only)
+2. View all users with their roles and last login
+3. Click **Add User** to create a new user
+4. Click on a user to edit role or reset password
+5. Click **Delete** to remove a user
+
+**Rules:**
+- Usernames must be 3-32 characters, lowercase alphanumeric with `-` and `_`
+- Passwords must be 8-1024 characters
+- Cannot delete yourself or the last admin
+- Cannot demote the last admin
+
+### User Limits
+
+- **FREE**: 1 user (the initial admin)
+- **PRO**: Unlimited users
+
+### License Downgrade Behavior
+
+When a PRO license expires or is deactivated:
+- **Existing containers keep running** and can be started/stopped/restarted
+- **New container creation** is blocked when over the FREE limit (3)
+- **Only admin users can log in** on FREE tier - other users are blocked with a clear message
+- **New user creation** is blocked
+- **PRO features** (backups, migration, audit) become inaccessible
+- No data is deleted - existing containers, users, and backups remain intact
+
+### First Setup
+
+On first run, ORCHIX creates an `admin` user with a randomly generated password displayed in the terminal. If you're migrating from an older single-password version, the existing password is automatically migrated to an admin user.
+
+### Password Reset
+
+Any user can change their own password via the Web UI sidebar menu. Admins can reset any user's password via the Users panel.
+
+To reset all users (emergency):
+```bash
+# Delete user database - a new admin will be created on restart
+rm ~/.orchix_web_users.json        # Linux
+del %USERPROFILE%\.orchix_web_users.json  # Windows
+python main.py --web
+```
 
 ---
 
@@ -430,17 +493,17 @@ python main.py
 ### Backup via API
 
 ```bash
-# Create backup
+# Create backup (requires operator or admin role)
 curl -X POST http://localhost:5000/api/backup/<container_name> \
-  -H "Authorization: Bearer YOUR_TOKEN"
+  -b cookies.txt -H "X-CSRFToken: TOKEN"
 
 # List backups
 curl http://localhost:5000/api/backups/<container_name> \
-  -H "Authorization: Bearer YOUR_TOKEN"
+  -b cookies.txt
 
-# Restore backup
+# Restore backup (requires operator or admin role)
 curl -X POST http://localhost:5000/api/restore/<container_name>/<timestamp> \
-  -H "Authorization: Bearer YOUR_TOKEN"
+  -b cookies.txt -H "X-CSRFToken: TOKEN"
 ```
 
 ### Backup Format
@@ -545,6 +608,8 @@ migration_20260213.tar.gz
 |---------|------|--------------|
 | **Applications** | All 30 | All 30 |
 | **Containers** | Max 3 | Unlimited |
+| **Users** | 1 | Unlimited |
+| **RBAC Roles** | — | Admin, Operator, Viewer |
 | **Web UI** | ✓ | ✓ |
 | **CLI** | ✓ | ✓ |
 | **Real-time Monitoring** | ✓ | ✓ |
@@ -612,44 +677,76 @@ ORCHIX-PRO-A3F9K2X7-D4E8C1B5
 
 ## Security
 
-### Authentication
+### Authentication & Authorization
 
-**Web UI:**
-- PBKDF2 password hashing (100,000 iterations)
-- Session-based authentication
-- 8-hour session timeout
-- Rate limiting: 5 login attempts per 5 minutes
+**Multi-User RBAC:**
+- 3 roles: **Admin**, **Operator**, **Viewer**
+- Backend permission enforcement on all API endpoints (`@require_permission`)
+- Frontend hides unauthorized actions based on user role
+- User data stored in `~/.orchix_web_users.json` with atomic writes
 
-**API:**
-- Same session authentication as Web UI
-- Bearer token support (coming soon)
+| Capability | Admin | Operator | Viewer |
+|-----------|-------|----------|--------|
+| View dashboard, containers, logs | ✓ | ✓ | ✓ |
+| Start/stop/restart containers | ✓ | ✓ | ✗ |
+| Install/update/uninstall apps | ✓ | ✓ | ✗ |
+| Edit compose files | ✓ | ✓ | ✗ |
+| Backup & restore (PRO) | ✓ | ✓ | ✗ |
+| Delete backups (PRO) | ✓ | ✗ | ✗ |
+| Migration (PRO) | ✓ | ✓ | ✗ |
+| Manage users | ✓ | ✗ | ✗ |
+| License & system update | ✓ | ✗ | ✗ |
+| Change own password | ✓ | ✓ | ✓ |
+
+**Password Security:**
+- PBKDF2-SHA256 hashing (Werkzeug, 100k+ iterations)
+- Minimum 8 characters, maximum 1024 characters
+- Rate limiting: 5 login attempts per 5 minutes per IP
+- Session timeout: 8 hours
+
+**User Limits:**
+- FREE: 1 user (single admin)
+- PRO: Unlimited users
+
+**CSRF Protection:**
+- Flask-WTF with double-submit cookie pattern
+- All state-changing API requests require `X-CSRFToken` header
+- CSRF token injected via `<meta>` tag for SPA
 
 ### Input Validation
 
 All inputs are sanitized against:
-- **Path Traversal**: Blocks `../` sequences
+- **Path Traversal**: Blocks `../` sequences in filesystem and tarball extraction
 - **YAML Injection**: Uses `yaml.safe_load()`
 - **Command Injection**: Subprocess with list args (no shell)
 - **Port Validation**: Only allows 1-65535
-- **SQL Injection**: Parameterized queries (SQLite)
+- **Container Names**: Regex validation (`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
+- **Username Validation**: Regex (`^[a-z0-9][a-z0-9_-]{2,31}$`)
+- **XSS Prevention**: HTML output escaping on all dynamic content
 
 ### Security Headers
 
 ```http
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'
 X-Frame-Options: DENY
 X-Content-Type-Options: nosniff
-X-XSS-Protection: 1; mode=block
-Content-Security-Policy: default-src 'self'
-Strict-Transport-Security: max-age=31536000
+Referrer-Policy: strict-origin-when-cross-origin
+Strict-Transport-Security: max-age=31536000; includeSubDomains  (when ORCHIX_HTTPS=true)
 ```
+
+### File Security
+
+- Secret key file (`~/.orchix_web_secret`): 0600 permissions
+- User database (`~/.orchix_web_users.json`): 0600 permissions, atomic writes via temp file + rename
+- Thread-safe file operations with `threading.Lock()`
 
 ### Audit Logging (PRO)
 
-All actions are logged:
+All actions are logged with the authenticated username:
 
 ```json
 {
-  "timestamp": "2026-02-13T14:30:22Z",
+  "timestamp": "2026-02-14T14:30:22Z",
   "user": "admin",
   "action": "container_start",
   "target": "wordpress-prod",
@@ -658,15 +755,15 @@ All actions are logged:
 }
 ```
 
+Tracked events include: container operations, app installs/updates, backup/restore, user management (create/delete/role change), password changes, system updates, login attempts.
+
 View logs:
 ```bash
-# CLI
-python main.py
-# Select: Audit Logs
+# Web UI: Navigate to Audit tab (PRO)
 
 # API
 curl http://localhost:5000/api/audit/logs \
-  -H "Authorization: Bearer YOUR_TOKEN"
+  -b cookies.txt
 ```
 
 ### Reporting Security Issues
@@ -687,21 +784,64 @@ http://localhost:5000/api
 
 ### Authentication
 
-All API requests require authentication:
+All API requests require session authentication. State-changing requests (POST/PUT/DELETE) also require a CSRF token.
 
 ```bash
-# Login to get session cookie
+# Login with username + password to get session cookie
 curl -X POST http://localhost:5000/login \
-  -H "Content-Type: application/json" \
-  -d '{"password": "your_password"}' \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'username=admin&password=your_password&csrf_token=TOKEN' \
   -c cookies.txt
 
-# Use session cookie in subsequent requests
+# Use session cookie for GET requests
 curl http://localhost:5000/api/containers \
   -b cookies.txt
+
+# POST/PUT/DELETE requests need X-CSRFToken header
+curl -X POST http://localhost:5000/api/containers/myapp/start \
+  -b cookies.txt \
+  -H "X-CSRFToken: TOKEN"
 ```
 
+**Permission enforcement:** Each endpoint requires specific permissions. Requests without sufficient permissions return `403 Forbidden`.
+
 ### Endpoints
+
+#### Users (Admin only)
+
+**Get current user info:**
+```bash
+GET /api/auth/me
+# Returns: { username, role, permissions[] }
+```
+
+**List all users:**
+```bash
+GET /api/users
+```
+
+**Create user:**
+```bash
+POST /api/users
+{ "username": "operator1", "password": "securepass", "role": "operator" }
+```
+
+**Update user:**
+```bash
+PUT /api/users/<username>
+{ "role": "viewer" }  # or { "password": "newpass" }
+```
+
+**Delete user:**
+```bash
+DELETE /api/users/<username>
+```
+
+**Change own password (any role):**
+```bash
+POST /api/auth/change-password
+{ "current_password": "old", "new_password": "new" }
+```
 
 #### Containers
 
@@ -905,11 +1045,11 @@ pip install -r requirements.txt --upgrade
 
 **Solution:**
 ```bash
-# Delete password file
-rm ~/.orchix_web_password  # Linux
-del %USERPROFILE%\.orchix_web_password  # Windows
+# Delete user database file (a new admin user with random password will be created)
+rm ~/.orchix_web_users.json  # Linux
+del %USERPROFILE%\.orchix_web_users.json  # Windows
 
-# Restart ORCHIX - new password will be generated
+# Restart ORCHIX - new admin user will be generated
 python main.py --web
 ```
 
@@ -940,13 +1080,12 @@ docker logs <container_name>
 Create `.env` file in ORCHIX root:
 
 ```bash
-# Database
-DB_PATH=~/.orchix/data.db
-
 # Web UI
 WEB_PORT=5000
 WEB_HOST=0.0.0.0
-SECRET_KEY=your-secret-key-here
+
+# HTTPS mode (enables Secure cookie flag + HSTS header)
+ORCHIX_HTTPS=true
 
 # License
 LICENSE_SIGNING_SECRET=your-signing-secret
@@ -1118,8 +1257,8 @@ docker system df
 
 ORCHIX is commercial software.
 
-- **FREE Tier**: Free for personal use (max 3 containers)
-- **PRO Tier**: €29/month commercial license with unlimited containers
+- **FREE Tier**: Free for personal use (max 3 containers, 1 user)
+- **PRO Tier**: €29/month commercial license with unlimited containers and users
 
 Purchase at: [https://orchix.dev](https://orchix.dev)
 
@@ -1127,14 +1266,17 @@ Purchase at: [https://orchix.dev](https://orchix.dev)
 
 ## Changelog
 
-### v1.2 (2026-02-13)
-- Added Web UI with modern interface
+### v1.2 (2026-02-14)
+- Added Web UI with modern lily theme (Inter font, pink/teal design)
+- **Multi-User RBAC** with 3 roles: Admin, Operator, Viewer
+- **CSRF protection** via Flask-WTF
+- **Security hardening**: CSP headers, HSTS, tarball path traversal protection, XSS prevention, thread-safe file ops, file permission hardening
 - Template system for 30 applications
 - Backup & Restore functionality (PRO)
 - Server Migration (PRO)
-- Audit logging (PRO)
-- Security hardening (PBKDF2, input validation)
-- Real-time system monitoring dashboard
+- Audit logging with per-user tracking (PRO)
+- Real-time system monitoring dashboard with SSE
+- One-click update from Web UI
 
 ### v1.1 (2026-01-15)
 - Initial release

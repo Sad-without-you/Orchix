@@ -2,6 +2,7 @@
 # FREE TIER
 FREE_FEATURES = {
     'max_containers': 3,
+    'max_users': 1,
     'backup_restore': False,
     'multi_instance': False,
     'migration': False,
@@ -14,6 +15,7 @@ FREE_FEATURES = {
 # PRO TIER  
 PRO_FEATURES = {
     'max_containers': 999,
+    'max_users': 999,
     'backup_restore': True,
     'multi_instance': True,
     'migration': True,
@@ -26,6 +28,7 @@ PRO_FEATURES = {
 # Feature descriptions for UI
 FEATURE_DESCRIPTIONS = {
     'max_containers': 'Maximum number of containers',
+    'max_users': 'Maximum number of users',
     'backup_restore': 'Backup & Restore functionality',
     'multi_instance': 'Multiple instances per application',
     'migration': 'Server migration tools',
@@ -36,6 +39,7 @@ FEATURE_DESCRIPTIONS = {
 # Base PRO Benefits (static features)
 _BASE_PRO_BENEFITS = [
     "+ Unlimited Containers",
+    "+ Multi-User (Unlimited)",
     "+ Backup & Restore",
     "+ Multi-Instance Support",
     "+ Server Migration Tools",
