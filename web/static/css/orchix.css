@@ -358,11 +358,34 @@ body.sidebar-collapsed #sidebar .nav-link.active {
     border-bottom-color: var(--pink);
     border-left-color: transparent;
 }
-body.sidebar-collapsed #sidebar .sidebar-footer {
+body.sidebar-collapsed #sidebar .quick-links > div:first-child {
+    display: none;
+}
+body.sidebar-collapsed #sidebar #quick-links-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+}
+body.sidebar-collapsed #sidebar #quick-links-grid a {
+    flex-direction: row;
+    padding: 6px;
     justify-content: center;
-    padding: 12px 8px;
+}
+body.sidebar-collapsed #sidebar #quick-links-grid a span:last-child {
+    display: none;
+}
+body.sidebar-collapsed #sidebar .sidebar-footer {
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 8px;
+    gap: 6px;
+}
+body.sidebar-collapsed #sidebar .sidebar-user {
+    justify-content: center;
 }
 body.sidebar-collapsed #sidebar .sidebar-actions {
+    display: none;
+}
+body.sidebar-collapsed #sidebar #sidebar-role {
     display: none;
 }
 body.sidebar-collapsed #dashboard-footer {
