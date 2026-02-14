@@ -29,6 +29,7 @@ class AuditEventType(Enum):
 # Store logs in ORCHIX/audit directory
 AUDIT_LOG_DIR = Path(__file__).parent.parent / 'audit'
 AUDIT_LOG_FILE = AUDIT_LOG_DIR / 'audit.log'
+AUDIT_DAILY_DIR = AUDIT_LOG_DIR / 'daily'
 
 
 class AuditLogger:
@@ -63,13 +64,39 @@ class AuditLogger:
             
             # Ensure log directory exists and create if not
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Append to log file
+
+            # Append to log file (Web UI editable)
             with open(self.log_file, 'a', encoding='utf-8') as f:
                 f.write(json.dumps(event) + '\n')
-                
+
+            # Write to persistent daily .txt file (not affected by single-event deletes)
+            self._write_daily_log(event)
+
         except Exception as e:
             # Silently fail - don't break the app if logging fails
+            pass
+
+    def _write_daily_log(self, event):
+        """Write event to persistent daily .txt log file (append-only)."""
+        try:
+            AUDIT_DAILY_DIR.mkdir(parents=True, exist_ok=True)
+            today = datetime.now().strftime('%Y-%m-%d')
+            daily_file = AUDIT_DAILY_DIR / f'{today}.txt'
+
+            ts = event.get('timestamp', '')[:19]
+            user = event.get('user', 'unknown')
+            etype = event.get('event_type', '')
+            app = event.get('app_name', '')
+            details = event.get('details', {})
+            detail_str = ', '.join(f'{k}={v}' for k, v in details.items()) if details else ''
+
+            line = f'[{ts}] [{user}] {etype} {app}'
+            if detail_str:
+                line += f' ({detail_str})'
+
+            with open(daily_file, 'a', encoding='utf-8') as f:
+                f.write(line + '\n')
+        except Exception:
             pass
     
     def _get_current_user(self):
@@ -157,35 +184,42 @@ class AuditLogger:
         return events
     
     def clear_old_logs(self, days=90):
-        """Clear audit logs older than specified days"""
-        if not self.log_file.exists():
-            return
-        
-        try:
-            from datetime import timedelta
-            cutoff = datetime.now() - timedelta(days=days)
-            
-            events = []
-            with open(self.log_file, 'r') as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    
-                    try:
-                        event = json.loads(line.strip())
-                        event_time = datetime.fromisoformat(event['timestamp'])
-                        
-                        if event_time > cutoff:
-                            events.append(event)
-                    except:
-                        pass
-            
-            # Rewrite file with only recent events
-            with open(self.log_file, 'w') as f:
-                for event in events:
-                    f.write(json.dumps(event) + '\n')
-        except Exception:
-            pass
+        """Clear audit logs older than specified days (both main log and daily files)"""
+        from datetime import timedelta
+        cutoff = datetime.now() - timedelta(days=days)
+
+        # Clean main log file
+        if self.log_file.exists():
+            try:
+                events = []
+                with open(self.log_file, 'r') as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+                        try:
+                            event = json.loads(line.strip())
+                            event_time = datetime.fromisoformat(event['timestamp'])
+                            if event_time > cutoff:
+                                events.append(event)
+                        except:
+                            pass
+
+                with open(self.log_file, 'w') as f:
+                    for event in events:
+                        f.write(json.dumps(event) + '\n')
+            except Exception:
+                pass
+
+        # Clean old daily .txt files
+        if AUDIT_DAILY_DIR.exists():
+            try:
+                cutoff_str = cutoff.strftime('%Y-%m-%d')
+                for f in AUDIT_DAILY_DIR.glob('*.txt'):
+                    # Filename is YYYY-MM-DD.txt
+                    if f.stem < cutoff_str:
+                        f.unlink()
+            except Exception:
+                pass
 
 
 # Global audit logger instance

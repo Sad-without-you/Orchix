@@ -15,7 +15,7 @@ FREE_FEATURES = {
 # PRO TIER  
 PRO_FEATURES = {
     'max_containers': 999,
-    'max_users': 999,
+    'max_users': 3,
     'backup_restore': True,
     'multi_instance': True,
     'migration': True,
@@ -39,7 +39,7 @@ FEATURE_DESCRIPTIONS = {
 # Base PRO Benefits (static features)
 _BASE_PRO_BENEFITS = [
     "+ Unlimited Containers",
-    "+ Multi-User (Unlimited)",
+    "+ Multi-User (Max 3, RBAC)",
     "+ Backup & Restore",
     "+ Multi-Instance Support",
     "+ Server Migration Tools",

@@ -41,12 +41,15 @@ def create_user():
 
     users_data = _load_users()
 
-    # Check user limit for FREE tier
+    # Check user limit based on license tier
     try:
         from license import get_license_manager
         lm = get_license_manager()
-        if not lm.is_pro() and len(users_data.get('users', {})) >= FREE_MAX_USERS:
-            return jsonify({'success': False, 'message': f'FREE tier: max {FREE_MAX_USERS} users. Upgrade to PRO for unlimited.'}), 403
+        max_users = lm.get_feature('max_users') or FREE_MAX_USERS
+        current_users = len(users_data.get('users', {}))
+        if current_users >= max_users:
+            tier = lm.get_tier_display()
+            return jsonify({'success': False, 'message': f'{tier} tier: max {max_users} users reached.'}), 403
     except Exception:
         pass
 

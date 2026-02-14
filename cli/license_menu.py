@@ -53,7 +53,7 @@ def show_license_menu():
 
         table.add_row("Containers", f"{info['container_status']['current']}/{info['container_status']['limit']}")
         max_users = info['features'].get('max_users', 1)
-        table.add_row("Multi-User (RBAC)", "✅ Unlimited" if max_users >= 999 else f"❌ {max_users} User")
+        table.add_row("Multi-User (RBAC)", f"✅ Max {max_users} Users" if max_users > 1 else f"❌ {max_users} User")
         table.add_row("Backup & Restore", "✅ Enabled" if info['features']['backup_restore'] else "❌ Disabled")
         table.add_row("Multi-Instance", "✅ Enabled" if info['features']['multi_instance'] else "❌ Disabled")
         table.add_row("Server Migration", "✅ Enabled" if info['features'].get('migration', False) else "❌ Disabled")
@@ -214,7 +214,8 @@ def _show_license_details():
     
     table.add_row("Tier", info['tier_display'])
     table.add_row("Max Containers", f"{info['features']['max_containers']} (unlimited)")
-    table.add_row("Multi-User (RBAC)", "✅ Unlimited" if info['features'].get('max_users', 1) >= 999 else "❌ 1 User")
+    max_u = info['features'].get('max_users', 1)
+    table.add_row("Multi-User (RBAC)", f"✅ Max {max_u} Users" if max_u > 1 else "❌ 1 User")
     table.add_row("Backup & Restore", "✅ Enabled" if info['features']['backup_restore'] else "❌ Disabled")
     table.add_row("Multi-Instance", "✅ Enabled" if info['features']['multi_instance'] else "❌ Disabled")
     table.add_row("Audit Logging", "✅ Enabled" if info['features'].get('audit_log', False) else "❌ Disabled")
