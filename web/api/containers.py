@@ -23,12 +23,19 @@ def _log_audit(event_type, app_name, details=None):
         pass
 
 
+def _get_visible_container_names():
+    """Get list of container names visible to current tier."""
+    from cli.container_menu import get_visible_containers
+    containers, _ = get_visible_containers()
+    return containers
+
+
 @bp.route('/containers')
 @require_permission('containers.read')
 def list_containers():
-    from cli.container_menu import get_all_containers, get_container_status
+    from cli.container_menu import get_container_status
 
-    containers = get_all_containers()
+    containers = _get_visible_container_names()
     result = []
 
     # Try to get sizes (optional, may be slow)
@@ -44,13 +51,10 @@ def list_containers():
                 if '|' in line:
                     parts = line.split('|', 1)
                     raw_size = parts[1].strip()
-                    # Docker returns "4.1kB (virtual 43.4MB)"
-                    # Extract just the virtual size (actual image size on disk)
                     virtual_match = re.search(r'virtual\s+([\d.]+\s*[kKMGT]?B)', raw_size)
                     if virtual_match:
                         sizes[parts[0].strip()] = virtual_match.group(1)
                     else:
-                        # Fallback: use the first size value
                         sizes[parts[0].strip()] = raw_size.split('(')[0].strip()
     except Exception:
         pass
@@ -65,6 +69,78 @@ def list_containers():
     return jsonify(result)
 
 
+@bp.route('/containers/selection-needed')
+@require_permission('containers.read')
+def selection_needed():
+    """Check if container selection is needed (FREE tier with >limit containers)."""
+    from license import get_license_manager
+    lm = get_license_manager()
+    needed = lm.needs_container_selection()
+    return jsonify({
+        'needed': needed,
+        'limit': lm.get_container_limit()
+    })
+
+
+@bp.route('/containers/all-for-selection')
+@require_permission('containers.read')
+def all_for_selection():
+    """Get ALL containers for selection UI (only when selection is needed)."""
+    from license import get_license_manager
+    from cli.container_menu import get_all_containers, get_container_status
+    lm = get_license_manager()
+
+    if not lm.needs_container_selection():
+        return jsonify({'containers': [], 'message': 'Selection not needed'}), 400
+
+    containers = get_all_containers()
+    result = []
+    for name in containers:
+        status = get_container_status(name)
+        result.append({'name': name, 'status': status})
+    return jsonify({
+        'containers': result,
+        'limit': lm.get_container_limit()
+    })
+
+
+@bp.route('/containers/select', methods=['POST'])
+@require_permission('containers.read')
+def select_containers():
+    """Save container selection for FREE tier."""
+    from license import get_license_manager
+    from cli.container_menu import get_all_containers
+    lm = get_license_manager()
+
+    if lm.is_pro():
+        return jsonify({'success': False, 'message': 'PRO users manage all containers'}), 400
+
+    data = request.get_json()
+    selected = data.get('selected', [])
+
+    if not selected:
+        return jsonify({'success': False, 'message': 'Select at least one container'}), 400
+
+    limit = lm.get_container_limit()
+    if len(selected) > limit:
+        return jsonify({'success': False, 'message': f'Maximum {limit} containers allowed'}), 400
+
+    # Validate container names exist
+    all_containers = get_all_containers()
+    invalid = [n for n in selected if n not in all_containers]
+    if invalid:
+        return jsonify({'success': False, 'message': f'Unknown containers: {", ".join(invalid)}'}), 400
+
+    lm.set_managed_containers(selected)
+    return jsonify({'success': True, 'message': f'{len(selected)} containers selected'})
+
+
+def _is_visible_container(name):
+    """Check if container is in the visible set for current tier."""
+    visible = _get_visible_container_names()
+    return name in visible
+
+
 @bp.route('/containers/<name>/start', methods=['POST'])
 @require_permission('containers.start')
 def start_container(name):
@@ -72,6 +148,8 @@ def start_container(name):
         name = validate_container_name(name)
     except ValueError as e:
         return jsonify({'success': False, 'message': str(e)}), 400
+    if not _is_visible_container(name):
+        return jsonify({'success': False, 'message': 'Container not in managed set'}), 403
     result = safe_docker_run(['docker', 'start', name], capture_output=True, text=True)
     if result and result.returncode == 0:
         _log_audit('CONTAINER_START', name)
@@ -86,6 +164,8 @@ def stop_container(name):
         name = validate_container_name(name)
     except ValueError as e:
         return jsonify({'success': False, 'message': str(e)}), 400
+    if not _is_visible_container(name):
+        return jsonify({'success': False, 'message': 'Container not in managed set'}), 403
     result = safe_docker_run(['docker', 'stop', name], capture_output=True, text=True)
     if result and result.returncode == 0:
         _log_audit('CONTAINER_STOP', name)
@@ -100,6 +180,8 @@ def restart_container(name):
         name = validate_container_name(name)
     except ValueError as e:
         return jsonify({'success': False, 'message': str(e)}), 400
+    if not _is_visible_container(name):
+        return jsonify({'success': False, 'message': 'Container not in managed set'}), 403
     result = safe_docker_run(['docker', 'restart', name], capture_output=True, text=True)
     if result and result.returncode == 0:
         return jsonify({'success': True, 'message': f'{name} restarted'})
@@ -113,6 +195,8 @@ def get_logs(name):
         name = validate_container_name(name)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
+    if not _is_visible_container(name):
+        return jsonify({'error': 'Container not in managed set'}), 403
     try:
         tail = min(max(int(request.args.get('tail', '100')), 1), 10000)
     except (ValueError, TypeError):
@@ -133,6 +217,8 @@ def inspect_container(name):
         name = validate_container_name(name)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
+    if not _is_visible_container(name):
+        return jsonify({'error': 'Container not in managed set'}), 403
     result = safe_docker_run(['docker', 'inspect', name], capture_output=True, text=True)
     if result and result.returncode == 0:
         data = json_mod.loads(result.stdout)[0]

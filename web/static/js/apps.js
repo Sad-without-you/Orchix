@@ -873,7 +873,12 @@ async function deactivateLicense() {
             if (res && res.success) {
                 showToast('success', 'License deactivated');
                 await loadLicenseInfo();
-                Router.navigate();
+                // Check if container selection is needed after downgrade
+                if (res.selection_needed) {
+                    await checkContainerSelection();
+                } else {
+                    Router.navigate();
+                }
             }
         }}
     ]);

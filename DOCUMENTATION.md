@@ -657,6 +657,27 @@ Visit: [https://orchix.dev/#pricing](https://orchix.dev/#pricing)
 4. Receive license key via email
 5. Activate in ORCHIX
 
+### Container Selection (FREE Tier Downgrade)
+
+When a PRO license expires or is deactivated and you have more than 3 containers:
+
+1. **Selection Required**: ORCHIX prompts you to choose which 3 containers to manage
+2. **Unselected containers stay running** on your server but are hidden from ORCHIX (Web UI + CLI)
+3. **Re-activating PRO** makes all containers visible again
+4. **Losing PRO again** requires a new selection (previous selection is discarded)
+
+**Web UI:** An unclosable modal appears with checkboxes to select containers.
+
+**CLI:** An interactive prompt lets you choose which containers to keep managing.
+
+**Selection file:** Stored at `~/.orchix_managed_containers.json`
+
+**Important:**
+- Only triggered when you have more than 3 containers
+- Container actions (start/stop/restart/logs) are only available for managed containers
+- Dashboard only shows managed containers
+- Installing new apps counts against the managed container limit
+
 ### License Validation
 
 ORCHIX validates licenses:
@@ -845,7 +866,7 @@ POST /api/auth/change-password
 
 #### Containers
 
-**List all containers:**
+**List containers (filtered by tier):**
 ```bash
 GET /api/containers
 ```
@@ -861,6 +882,24 @@ Response:
     "created": "2026-02-13T10:00:00Z"
   }
 ]
+```
+
+**Check if container selection needed (FREE tier):**
+```bash
+GET /api/containers/selection-needed
+# Returns: { "needed": true, "limit": 3 }
+```
+
+**Get all containers for selection:**
+```bash
+GET /api/containers/all-for-selection
+# Returns: { "containers": [...], "limit": 3 }
+```
+
+**Save container selection:**
+```bash
+POST /api/containers/select
+{ "selected": ["wordpress", "postgresql", "n8n"] }
 ```
 
 **Start container:**

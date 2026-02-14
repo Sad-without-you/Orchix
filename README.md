@@ -234,7 +234,7 @@ All ports are configurable during installation.
 | Feature | FREE | PRO |
 |---------|------|-----|
 | Applications | All 30 | All 30 |
-| Containers | Max 3 | Unlimited |
+| Containers | Max 3 (selectable) | Unlimited |
 | Users | 1 | Unlimited |
 | RBAC Roles | — | Admin, Operator, Viewer |
 | Web UI + CLI | ✓ | ✓ |

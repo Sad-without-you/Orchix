@@ -35,9 +35,20 @@ def _safe_run(cmd, timeout=10):
     return ''
 
 
+def _get_visible_names():
+    """Get set of container names visible to current tier."""
+    try:
+        from cli.container_menu import get_visible_containers
+        visible, _ = get_visible_containers()
+        return set(visible)
+    except Exception:
+        return None  # Show all on error
+
+
 def _get_containers():
     """Get container list with stats. Timeout-safe."""
     containers = []
+    visible_names = _get_visible_names()
 
     # Get container list (fast, <1s)
     out = _safe_run(
@@ -55,6 +66,10 @@ def _get_containers():
             continue
 
         name = parts[0].strip()
+
+        # Filter by visible containers
+        if visible_names is not None and name not in visible_names:
+            continue
         status_raw = parts[1].strip()
         ports_raw = parts[2].strip() if len(parts) > 2 else ''
         image = parts[3].strip() if len(parts) > 3 else '-'

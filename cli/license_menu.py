@@ -259,8 +259,15 @@ def _deactivate_license():
     if license_manager.deactivate():
         show_success("License deactivated")
         show_info("You are now on the FREE tier")
+
+        # Check if container selection is needed after downgrade
+        if license_manager.needs_container_selection():
+            print()
+            from cli.container_menu import get_all_containers, _prompt_container_selection
+            all_containers = get_all_containers()
+            _prompt_container_selection(all_containers, license_manager.get_container_limit())
     else:
         show_error("Failed to deactivate license")
-    
+
     print()
     input("Press Enter...")

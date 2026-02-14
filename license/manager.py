@@ -6,6 +6,7 @@ from datetime import datetime
 from license.features import FREE_FEATURES, PRO_FEATURES, FEATURE_DESCRIPTIONS
 
 LICENSE_FILE = Path.home() / '.orchix_license'
+MANAGED_CONTAINERS_FILE = Path.home() / '.orchix_managed_containers.json'
 
 
 class LicenseManager:
@@ -100,6 +101,7 @@ class LicenseManager:
                 self.tier = 'PRO'
                 self.license_key = license_key
                 self.expiry_date = key_info['expires']
+                self.clear_managed_containers()
                 return True
             except Exception as e:
                 print(f"Failed to save license: {e}")
@@ -188,6 +190,56 @@ class LicenseManager:
         except Exception:
             return {'current': 0, 'limit': self.get_container_limit(), 'reached': False, 'remaining': self.get_container_limit()}
     
+    # ============ Managed Container Selection (FREE tier) ============
+
+    def get_managed_containers(self):
+        """Get list of selected containers for FREE tier, or None if all visible."""
+        if self.is_pro():
+            return None  # PRO sees everything
+        if not MANAGED_CONTAINERS_FILE.exists():
+            return None  # No selection made yet
+        try:
+            data = json.loads(MANAGED_CONTAINERS_FILE.read_text(encoding='utf-8'))
+            return data.get('selected', [])
+        except Exception:
+            return None
+
+    def set_managed_containers(self, names):
+        """Save the selected container names for FREE tier."""
+        data = {
+            'selected': list(names),
+            'selected_at': datetime.now().isoformat()
+        }
+        MANAGED_CONTAINERS_FILE.write_text(json.dumps(data, indent=2), encoding='utf-8')
+
+    def clear_managed_containers(self):
+        """Remove selection file (e.g. when PRO is activated)."""
+        try:
+            if MANAGED_CONTAINERS_FILE.exists():
+                MANAGED_CONTAINERS_FILE.unlink()
+        except Exception:
+            pass
+
+    def needs_container_selection(self):
+        """Check if user needs to select managed containers.
+        Returns True when FREE tier, >limit containers, no selection file.
+        """
+        if self.is_pro():
+            return False
+        if MANAGED_CONTAINERS_FILE.exists():
+            return False
+        try:
+            result = subprocess.run(
+                ['docker', 'ps', '-a', '--format', '{{.Names}}'],
+                capture_output=True, text=True, encoding='utf-8', errors='ignore'
+            )
+            if result.returncode == 0:
+                containers = [c for c in result.stdout.split('\n') if c.strip()]
+                return len(containers) > self.get_container_limit()
+        except Exception:
+            pass
+        return False
+
     def get_license_info(self):
         '''Get complete license information'''
         container_status = self.check_container_limit()

@@ -61,6 +61,13 @@ def run_main_loop():
     except Exception:
         pass
 
+    # Check if container selection is needed (FREE tier with >limit containers)
+    if license_manager.needs_container_selection():
+        from cli.container_menu import get_all_containers, _prompt_container_selection
+        all_containers = get_all_containers()
+        if all_containers:
+            _prompt_container_selection(all_containers, license_manager.get_container_limit())
+
     while True:
         # Get license info
         license_info = license_manager.get_license_info()

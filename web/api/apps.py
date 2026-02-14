@@ -99,11 +99,14 @@ def install_app():
     if not check['allowed']:
         return jsonify({'success': False, 'message': 'PRO license required'}), 403
 
-    # Container limit check
+    # Container limit check - count only managed/visible containers
     lm = get_license_manager()
-    container_status = lm.check_container_limit()
-    if container_status['reached'] and lm.is_free():
-        return jsonify({'success': False, 'message': f"Container limit reached ({container_status['limit']})"}), 403
+    if lm.is_free():
+        from cli.container_menu import get_visible_containers
+        visible, _ = get_visible_containers()
+        limit = lm.get_container_limit()
+        if len(visible) >= limit:
+            return jsonify({'success': False, 'message': f"Container limit reached ({limit})"}), 403
 
     # Multi-instance protection: FREE tier ALWAYS uses app_name as instance_name
     from cli.install_menu import check_container_exists

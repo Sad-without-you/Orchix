@@ -50,7 +50,7 @@ def activate_license():
 
     success = lm.activate_pro(key)
     if success:
-        return jsonify({'success': True, 'message': 'PRO license activated'})
+        return jsonify({'success': True, 'message': 'PRO license activated. All containers are now visible.'})
     return jsonify({'success': False, 'message': 'Invalid or expired license key'}), 400
 
 
@@ -62,5 +62,10 @@ def deactivate_license():
 
     success = lm.deactivate()
     if success:
-        return jsonify({'success': True, 'message': 'License deactivated'})
+        selection_needed = lm.needs_container_selection()
+        return jsonify({
+            'success': True,
+            'message': 'License deactivated',
+            'selection_needed': selection_needed
+        })
     return jsonify({'success': False, 'message': 'Failed to deactivate'}), 500

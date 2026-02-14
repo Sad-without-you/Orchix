@@ -25,6 +25,34 @@ def get_all_containers():
     return []
 
 
+def get_visible_containers():
+    '''Get containers visible to current tier.
+    Returns (containers, selection_needed) tuple.
+    - PRO: all containers, False
+    - FREE with selection: only selected, False
+    - FREE without selection and <=limit: all, False
+    - FREE without selection and >limit: all, True (needs selection)
+    '''
+    from license import get_license_manager
+    lm = get_license_manager()
+    all_containers = get_all_containers()
+
+    if lm.is_pro():
+        return all_containers, False
+
+    managed = lm.get_managed_containers()
+    if managed is not None:
+        # Filter to only selected containers (that still exist)
+        visible = [c for c in all_containers if c in managed]
+        return visible, False
+
+    # No selection file - check if selection is needed
+    if len(all_containers) > lm.get_container_limit():
+        return all_containers, True
+
+    return all_containers, False
+
+
 def get_container_status(container_name):
     '''Get container status'''
     result = safe_docker_run(
@@ -39,14 +67,60 @@ def get_container_status(container_name):
     return 'unknown'
 
 
+def _prompt_container_selection(all_containers, limit):
+    '''Prompt user to select which containers to manage (FREE tier).'''
+    from license import get_license_manager
+    import inquirer
+
+    show_panel("Container Selection Required",
+               f"FREE tier allows managing {limit} containers. Please select which ones to manage.")
+    print()
+    show_info(f"You have {len(all_containers)} containers but can manage {limit} on the FREE tier.")
+    show_info("Unselected containers remain on your server but won't be shown in ORCHIX.")
+    print()
+
+    questions = [
+        inquirer.Checkbox(
+            'selected',
+            message=f"Select up to {limit} containers to manage",
+            choices=all_containers,
+        )
+    ]
+
+    answers = inquirer.prompt(questions)
+    if not answers or not answers['selected']:
+        show_error("You must select at least one container.")
+        input("\nPress Enter...")
+        return _prompt_container_selection(all_containers, limit)
+
+    selected = answers['selected']
+    if len(selected) > limit:
+        show_error(f"You can only select up to {limit} containers. You selected {len(selected)}.")
+        input("\nPress Enter...")
+        return _prompt_container_selection(all_containers, limit)
+
+    # Save selection
+    lm = get_license_manager()
+    lm.set_managed_containers(selected)
+    show_success(f"Selection saved: {', '.join(selected)}")
+    print()
+    return selected
+
+
 def show_container_menu():
     '''Container management menu'''
-    
+
     while True:
         show_panel("Container Management", "Manage running containers")
-        
-        # Get all containers
-        containers = get_all_containers()
+
+        # Get visible containers (filtered by tier)
+        containers, selection_needed = get_visible_containers()
+
+        if selection_needed:
+            from license import get_license_manager
+            lm = get_license_manager()
+            selected = _prompt_container_selection(containers, lm.get_container_limit())
+            containers = selected
         
         if not containers:
             show_info("No containers found!")

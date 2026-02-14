@@ -76,37 +76,6 @@ async function loadUserInfo() {
     if (usersNav) usersNav.style.display = currentUser.role === 'admin' ? '' : 'none';
 }
 
-function showChangePasswordModal() {
-    showModal('Change Password', `
-        <div style="display:flex;flex-direction:column;gap:10px">
-            <div>
-                <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">Current Password</label>
-                <input type="password" id="cp-current" placeholder="Current password" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
-            </div>
-            <div>
-                <label style="display:block;font-size:0.82rem;color:var(--text3);margin-bottom:4px">New Password</label>
-                <input type="password" id="cp-new" placeholder="Min 8 characters" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem">
-            </div>
-        </div>
-    `, [
-        { label: 'Cancel', cls: '' },
-        { label: 'Update', cls: 'btn-primary', fn: async () => {
-            const current = document.getElementById('cp-current')?.value;
-            const newPw = document.getElementById('cp-new')?.value;
-            if (!current || !newPw) { showToast('error', 'Fill in both fields'); return; }
-            const res = await API.post('/api/auth/change-password', {
-                current_password: current,
-                new_password: newPw
-            });
-            if (res && res.success) {
-                showToast('success', 'Password changed');
-            } else {
-                showToast('error', (res && res.message) || 'Failed to change password');
-            }
-        }}
-    ]);
-}
-
 function showToast(type, message) {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -286,9 +255,113 @@ function showUpdateBadge(version) {
     }
 }
 
+// Container selection for FREE tier downgrade
+async function checkContainerSelection() {
+    const res = await API.get('/api/containers/selection-needed');
+    if (res && res.needed) {
+        showContainerSelectionModal(res.limit);
+    }
+}
+
+async function showContainerSelectionModal(limit) {
+    const res = await API.get('/api/containers/all-for-selection');
+    if (!res || !res.containers || !res.containers.length) return;
+
+    const containers = res.containers;
+    let bodyHtml = `
+        <p style="margin-bottom:12px">Your FREE tier allows managing <strong>${limit}</strong> containers.
+        You have <strong>${containers.length}</strong> containers.</p>
+        <p style="margin-bottom:16px;color:var(--text3);font-size:0.85rem">
+            Select which containers to manage in ORCHIX. Unselected containers stay running on your server but won't be shown.</p>
+        <div id="container-selection-list" style="max-height:300px;overflow-y:auto">
+    `;
+
+    for (const c of containers) {
+        const statusCls = c.status === 'running' ? 'running' : 'stopped';
+        bodyHtml += `
+            <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);margin-bottom:6px;transition:background 0.15s"
+                   onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+                <input type="checkbox" class="container-select-cb" value="${esc(c.name)}" style="width:16px;height:16px;accent-color:var(--pink)">
+                <span style="flex:1;font-weight:500">${esc(c.name)}</span>
+                <span class="status-badge ${statusCls}" style="font-size:0.75rem">${esc(c.status)}</span>
+            </label>
+        `;
+    }
+
+    bodyHtml += `</div>
+        <p id="selection-count" style="margin-top:10px;font-size:0.85rem;color:var(--text3)">Selected: 0 / ${limit}</p>
+        <p id="selection-error" style="color:var(--red);font-size:0.85rem;display:none;margin-top:4px"></p>
+    `;
+
+    const overlay = document.getElementById('modal-overlay');
+    const modal = document.getElementById('modal-content');
+    modal.innerHTML = `
+        <div class="modal-header">
+            <h2>Select Containers to Manage</h2>
+        </div>
+        <div class="modal-body">${bodyHtml}</div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" id="confirm-selection-btn" onclick="confirmContainerSelection(${limit})">Confirm Selection</button>
+        </div>
+    `;
+    overlay.classList.remove('hidden');
+
+    // Prevent closing by clicking overlay
+    const preventClose = (e) => {
+        if (e.target === overlay) e.stopImmediatePropagation();
+    };
+    overlay.addEventListener('click', preventClose, true);
+
+    // Update counter on checkbox change
+    modal.addEventListener('change', () => {
+        const checked = modal.querySelectorAll('.container-select-cb:checked').length;
+        const countEl = document.getElementById('selection-count');
+        if (countEl) countEl.textContent = `Selected: ${checked} / ${limit}`;
+
+        // Disable unchecked if at limit
+        const cbs = modal.querySelectorAll('.container-select-cb');
+        cbs.forEach(cb => {
+            if (!cb.checked) cb.disabled = checked >= limit;
+        });
+    });
+
+    // Store cleanup function
+    modal._selectionCleanup = () => {
+        overlay.removeEventListener('click', preventClose, true);
+    };
+}
+
+async function confirmContainerSelection(limit) {
+    const cbs = document.querySelectorAll('.container-select-cb:checked');
+    const selected = Array.from(cbs).map(cb => cb.value);
+
+    const errorEl = document.getElementById('selection-error');
+    if (selected.length === 0) {
+        if (errorEl) { errorEl.textContent = 'Please select at least one container.'; errorEl.style.display = ''; }
+        return;
+    }
+    if (selected.length > limit) {
+        if (errorEl) { errorEl.textContent = `Maximum ${limit} containers allowed.`; errorEl.style.display = ''; }
+        return;
+    }
+
+    const res = await API.post('/api/containers/select', { selected });
+    if (res && res.success) {
+        // Cleanup prevent-close handler
+        const modal = document.getElementById('modal-content');
+        if (modal._selectionCleanup) modal._selectionCleanup();
+        hideModal();
+        showToast('success', res.message);
+        // Reload current page
+        if (typeof Router !== 'undefined') Router.navigate();
+    } else {
+        if (errorEl) { errorEl.textContent = (res && res.message) || 'Failed to save selection'; errorEl.style.display = ''; }
+    }
+}
+
 // Load user info and license on startup
 loadUserInfo();
-loadLicenseInfo();
+loadLicenseInfo().then(() => checkContainerSelection());
 checkForUpdates();
 
 // ORCHIX Update Functions
