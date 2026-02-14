@@ -82,13 +82,13 @@ body {
 }
 
 .logo {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--pink) 0%, var(--teal) 100%);
+    background: linear-gradient(135deg, var(--pink-light) 0%, var(--pink) 40%, var(--teal) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     white-space: nowrap;
 }
 
@@ -416,14 +416,11 @@ body.sidebar-collapsed #content {
     flex-wrap: wrap;
 }
 .page-header h1 {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
-    color: var(--text);
+    color: #ffffff;
     min-width: 0;
-    background: linear-gradient(135deg, var(--text) 0%, var(--text2) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    letter-spacing: -0.3px;
 }
 .page-header .header-actions {
     display: flex;

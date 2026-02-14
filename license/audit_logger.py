@@ -182,7 +182,7 @@ class AuditLogger:
             pass
         
         return events
-    
+
     def clear_old_logs(self, days=90):
         """Clear audit logs older than specified days (both main log and daily files)"""
         from datetime import timedelta

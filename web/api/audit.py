@@ -68,29 +68,6 @@ def get_user_activity():
     return jsonify(events)
 
 
-@bp.route('/audit/delete', methods=['POST'])
-@require_permission('audit.delete')
-def delete_audit_event():
-    """Delete a single audit log entry."""
-    from license import get_license_manager
-    from license.audit_logger import get_audit_logger
-
-    lm = get_license_manager()
-    if not lm.is_pro():
-        return jsonify({'error': 'PRO license required'}), 403
-
-    timestamp = request.json.get('timestamp')
-    event_type = request.json.get('event_type')
-    if not timestamp or not event_type:
-        return jsonify({'success': False, 'message': 'Missing timestamp or event_type'}), 400
-
-    logger = get_audit_logger(enabled=True)
-    deleted = logger.delete_event(timestamp, event_type)
-    if deleted:
-        return jsonify({'success': True, 'message': 'Event deleted'})
-    return jsonify({'success': False, 'message': 'Event not found'}), 404
-
-
 @bp.route('/audit/clear', methods=['POST'])
 @require_permission('audit.clear')
 def clear_audit_logs():

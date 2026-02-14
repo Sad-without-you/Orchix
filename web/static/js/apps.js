@@ -683,7 +683,7 @@ async function loadAuditLogs() {
 
     list.innerHTML = `
         <table class="data-table">
-            <thead><tr><th>Timestamp</th><th>Event</th><th>Application</th><th>User</th><th>Details</th><th></th></tr></thead>
+            <thead><tr><th>Timestamp</th><th>Event</th><th>Application</th><th>User</th><th>Details</th></tr></thead>
             <tbody>
                 ${data.map(e => `
                     <tr>
@@ -692,7 +692,6 @@ async function loadAuditLogs() {
                         <td>${esc(e.app_name)}</td>
                         <td>${esc(e.user)}</td>
                         <td style="font-size:0.8rem;color:var(--text3)">${esc(JSON.stringify(e.details || {}))}</td>
-                        <td><button class="btn btn-sm btn-danger" data-action="deleteAuditEvent" data-p1="${esc(e.timestamp)}" data-p2="${esc(e.event_type)}" title="Delete">&times;</button></td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -726,16 +725,6 @@ async function doClearAudit() {
         await loadAuditLogs();
     } else {
         showToast('error', (res && res.message) || 'Clear failed');
-    }
-}
-
-async function deleteAuditEvent(timestamp, eventType) {
-    const res = await API.post('/api/audit/delete', { timestamp, event_type: eventType });
-    if (res && res.success) {
-        showToast('success', 'Event deleted');
-        await loadAuditLogs();
-    } else {
-        showToast('error', (res && res.message) || 'Delete failed');
     }
 }
 

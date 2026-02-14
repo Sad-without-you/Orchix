@@ -41,7 +41,7 @@ ROLE_PERMISSIONS = {
         'apps.read', 'apps.install', 'apps.update',
         'backups.read', 'backups.create', 'backups.restore', 'backups.delete',
         'migration.read', 'migration.export', 'migration.import',
-        'audit.read', 'audit.delete', 'audit.clear',
+        'audit.read', 'audit.clear',
         'license.read', 'license.activate', 'license.deactivate',
         'system.read', 'system.update',
         'users.read', 'users.create', 'users.edit', 'users.delete',
