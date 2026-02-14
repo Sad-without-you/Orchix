@@ -362,11 +362,11 @@ body.sidebar-collapsed #sidebar .quick-links > div:first-child {
     display: none;
 }
 body.sidebar-collapsed #sidebar #quick-links-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column-reverse;
     gap: 4px;
 }
 body.sidebar-collapsed #sidebar #quick-links-grid a {
-    flex-direction: row;
     padding: 6px;
     justify-content: center;
 }
