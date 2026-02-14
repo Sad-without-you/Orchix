@@ -2,6 +2,16 @@
 # ORCHIX v1.2 - Container Management Platform
 # Python Dependencies
 # ========================================
+#
+# Installation:
+#   pip install -r requirements.txt
+#   pip install -r requirements.txt --upgrade  # Update all
+#
+# Platform Support:
+#   - Linux (Ubuntu 20.04+, Debian 11+)
+#   - Windows 10/11 (with WSL2)
+#   - Python 3.8+ required
+# ========================================
 
 # ----------------------------------------
 # Core Dependencies (Required)
@@ -13,30 +23,33 @@ inquirer>=3.1.3,<4.0.0
 # Rich terminal output with colors, tables, and progress bars
 rich>=13.7.0,<14.0.0
 
-# YAML configuration file parsing
+# YAML configuration file parsing (for docker-compose.yml)
 pyyaml>=6.0.1,<7.0.0
 
 # Environment variable management (.env files)
 python-dotenv>=1.0.0,<2.0.0
 
-# System and process monitoring utilities
+# System and process monitoring (CPU, RAM, disk, network)
 psutil>=5.9.0,<6.0.0
 
-# Curses support for Windows (required for dashboard)
+# Curses support for Windows (required for live dashboard)
 windows-curses>=2.3.0; sys_platform == "win32"
 
-# HTTP requests for license validation and downloads
+# HTTP client for license validation and GitHub update checks
 requests>=2.31.0,<3.0.0
 
 # ----------------------------------------
-# Security & Audit
+# Web Server & Security
 # ----------------------------------------
-# Audit logging is built-in and requires no external dependencies
-# License validation uses built-in hashlib and json modules
 
-# Web UI
+# Web framework
 flask>=3.0.0,<4.0.0
+
+# Production WSGI server
 waitress>=3.0.0,<4.0.0
+
+# Password hashing and security utilities (used by Flask)
+werkzeug>=3.0.0,<4.0.0
 
 # ----------------------------------------
 # Optional Dependencies (Not Currently Used)

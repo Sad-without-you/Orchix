@@ -209,10 +209,12 @@ python main.py --web --port 8080
 
 ### Dashboard
 
+- **Lily Theme**: Modern dark theme with pink (#ec4899) and teal (#14b8a6) accents
+- **Real-time Updates**: Server-Sent Events (SSE) for live container status
+- **System Overview**: CPU, RAM, disk, network monitoring
 - **Grid View**: Visual cards per application
-- **List View**: Compact table layout
-- **Compact View**: Dense information display
 - **Filters**: Search by name, category, status
+- **Sidebar Collapse**: Responsive layout for better space management
 
 ### Install Application
 
@@ -545,6 +547,7 @@ migration_20260213.tar.gz
 | **Containers** | Max 3 | Unlimited |
 | **Web UI** | ✓ | ✓ |
 | **CLI** | ✓ | ✓ |
+| **Real-time Monitoring** | ✓ | ✓ |
 | **Backup & Restore** | ✗ | ✓ |
 | **Multi-Instance** | ✗ | ✓ |
 | **Server Migration** | ✗ | ✓ |
@@ -1116,7 +1119,7 @@ docker system df
 ORCHIX is commercial software.
 
 - **FREE Tier**: Free for personal use (max 3 containers)
-- **PRO Tier**: €29/month commercial license
+- **PRO Tier**: €29/month commercial license with unlimited containers
 
 Purchase at: [https://orchix.dev](https://orchix.dev)
 

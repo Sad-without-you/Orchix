@@ -361,6 +361,9 @@ body.sidebar-collapsed #sidebar .sidebar-footer {
 body.sidebar-collapsed #sidebar .sidebar-actions {
     display: none;
 }
+body.sidebar-collapsed #dashboard-footer {
+    left: calc(var(--sidebar-collapsed-w) + 16px);
+}
 body.sidebar-collapsed #content {
     margin-left: var(--sidebar-collapsed-w);
 }
@@ -536,7 +539,7 @@ body.sidebar-collapsed #content {
     font-size: 12px;
     font-weight: 700;
     padding: 6px 12px;
-    border-radius: 20px;
+    border-radius: var(--radius-sm);
     background: var(--surface);
     border: 1px solid var(--border);
     transition: all 0.15s;
@@ -778,21 +781,12 @@ body.sidebar-collapsed #content {
 .btn-primary {
     background: linear-gradient(135deg, var(--pink) 0%, var(--teal) 100%);
     color: #fff;
-    position: relative;
-    overflow: hidden;
+    border: 1px solid transparent;
+    transition: border-color 0.2s;
 }
-.btn-primary::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, var(--teal) 0%, var(--pink) 100%);
-    opacity: 0;
-    transition: opacity 0.3s;
-    z-index: 0;
+.btn-primary:hover {
+    border-color: rgba(255, 255, 255, 0.3);
 }
-.btn-primary:hover::before { opacity: 1; }
-.btn-primary * { position: relative; z-index: 2; }
-.btn-primary > * { z-index: 2; }
 
 .btn-outline {
     background: transparent;
@@ -1159,7 +1153,21 @@ body.sidebar-collapsed #content {
     opacity: 0.5;
     cursor: not-allowed;
 }
-select.form-input { cursor: pointer; }
+select.form-input {
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+}
+select.form-input option {
+    background: var(--surface2);
+    color: var(--text);
+    padding: 8px;
+}
+select.form-input option:hover,
+select.form-input option:checked {
+    background: var(--surface3);
+    color: var(--text);
+}
 
 .conflict-warning {
     font-size: 0.78rem;

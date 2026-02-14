@@ -12,13 +12,17 @@ def get_license():
     info = lm.get_license_info()
 
     # Serialize for JSON (handle datetime and float('inf'))
+    # max_containers is a boolean feature: true if unlimited (PRO >= 999), false if limited (FREE <= 10)
+    max_containers_value = info['features']['max_containers']
+    max_containers_unlimited = max_containers_value >= 999 or max_containers_value == float('inf')
+
     result = {
         'tier': info['tier'],
         'tier_display': info['tier_display'],
         'is_pro': info['is_pro'],
         'days_remaining': info['days_remaining'],
         'features': {
-            'max_containers': info['features']['max_containers'] if info['features']['max_containers'] != float('inf') else 999,
+            'max_containers': max_containers_unlimited,
             'backup_restore': info['features']['backup_restore'],
             'multi_instance': info['features']['multi_instance'],
             'migration': info['features']['migration'],

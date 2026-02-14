@@ -46,26 +46,29 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 | **Tools** | Adminer, phpMyAdmin, IT-Tools, Homer, Homarr, Heimdall, Duplicati, MinIO, Eclipse Mosquitto |
 
 ### Web UI
-- Modern single-page application with dark theme
-- Real-time container status and management
+- Modern single-page application with lily theme (pink #ec4899 + teal #14b8a6)
+- Real-time container status via Server-Sent Events (SSE)
 - One-click install, update, uninstall
 - YAML editor with syntax highlighting
-- Multiple themes (Default, Dracula, Catppuccin, Terminal)
-- Grid / List / Compact view modes
-- Responsive layout
+- Live system monitoring dashboard (CPU, RAM, disk, network)
+- Responsive layout with sidebar collapse
+- Inter font for better readability
 
 ### CLI
 - Interactive terminal interface with Rich formatting
-- Live dashboard with CPU, RAM, disk, network monitoring
-- Network traffic graph per interface
-- Application search and filtering
+- Live dashboard with real-time metrics (CPU, RAM, disk, network)
+- Network traffic graph per interface with upload/download rates
+- Docker container monitoring with status indicators
+- Application search and filtering with category browsing
 
 ### Container Management
 - One-click deployment with smart port assignment
 - Multi-instance support (PRO)
 - Automatic conflict detection (name + port)
-- Download size display before installation
-- Container start / stop / restart / logs / inspect
+- Docker image size display before installation (MB/GB)
+- Container operations: start, stop, restart, logs, inspect, delete
+- Real-time container status updates
+- Volume and network management
 
 ### Data Protection (PRO)
 - Automated backup per application
@@ -79,10 +82,11 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 - Platform-aware packaging (tar.gz / zip)
 
 ### Security
-- Session-based authentication with PBKDF2 password hashing
+- Session-based authentication with Werkzeug PBKDF2 password hashing
 - Rate limiting on login (5 attempts / 5 min)
-- Input validation (path traversal, YAML injection, port validation)
-- Security headers (X-Frame-Options, CSP, XSS protection)
+- Input validation on all endpoints (path traversal, YAML injection, port validation)
+- Security headers (X-Frame-Options, CSP, XSS protection, X-Content-Type-Options)
+- Docker command sanitization to prevent command injection
 - Audit logging with full activity trail (PRO)
 
 ### System
@@ -203,28 +207,30 @@ All ports are configurable during installation.
 ### FREE Tier
 - All 30 applications
 - Up to 3 containers
-- Live dashboard
-- Web UI
-- Install / Update / Uninstall
+- Live dashboard (CLI + Web UI)
+- Container management (install/update/uninstall/logs)
+- Real-time monitoring
+- Community support
 
-### PRO Tier - 29 EUR/month
+### PRO Tier - €29/month
 - All 30 applications
 - Unlimited containers
-- Backup & Restore
+- Automated backup & restore
 - Multi-instance support
-- Server migration
-- Audit logging
-- Priority support
+- Server migration tools
+- Audit logging with full activity trail
+- Priority email support
 
 | Feature | FREE | PRO |
 |---------|------|-----|
 | Applications | All 30 | All 30 |
 | Containers | Max 3 | Unlimited |
-| Web UI | Yes | Yes |
-| Backups | - | Yes |
-| Multi-Instance | - | Yes |
-| Migration | - | Yes |
-| Audit Log | - | Yes |
+| Web UI + CLI | ✓ | ✓ |
+| Real-time Monitoring | ✓ | ✓ |
+| Backups | — | ✓ |
+| Multi-Instance | — | ✓ |
+| Migration | — | ✓ |
+| Audit Log | — | ✓ |
 | Support | Community | Priority |
 
 ---
@@ -265,10 +271,14 @@ For security issues: security@orchix.dev
 
 ## Built With
 
-- [Flask](https://flask.palletsprojects.com/) + [Waitress](https://docs.pylonsproject.org/projects/waitress/) - Web server
-- [Rich](https://github.com/Textualize/rich) - Terminal UI
-- [Inquirer](https://github.com/magmax/python-inquirer) - Interactive CLI menus
-- [psutil](https://github.com/giampaolo/psutil) - System monitoring
+- [Flask](https://flask.palletsprojects.com/) 3.0+ - Web framework
+- [Waitress](https://docs.pylonsproject.org/projects/waitress/) 3.0+ - Production WSGI server
+- [Rich](https://github.com/Textualize/rich) 13.7+ - Terminal UI with colors and tables
+- [Inquirer](https://github.com/magmax/python-inquirer) 3.1+ - Interactive CLI menus
+- [psutil](https://github.com/giampaolo/psutil) 5.9+ - System and process monitoring
+- [PyYAML](https://pyyaml.org/) 6.0+ - YAML configuration parsing
+- [Requests](https://requests.readthedocs.io/) 2.31+ - HTTP client for license validation
+- [python-dotenv](https://github.com/theskumar/python-dotenv) 1.0+ - Environment variable management
 - [Docker](https://www.docker.com/) - Container runtime
 
 ---
