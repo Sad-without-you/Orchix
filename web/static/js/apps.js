@@ -784,6 +784,16 @@ Router.register('#/license', async function(el) {
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0.75rem;margin-top:0.75rem">
                 ${Object.entries(info.features).map(([k, v]) => {
                     const labels = {
+                        max_containers: {
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+                            label: 'Unlimited Containers',
+                            desc: 'No limit on number of containers you can run'
+                        },
+                        max_users: {
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+                            label: 'Multi-User (RBAC)',
+                            desc: 'Multiple users with role-based access: Admin, Operator, Viewer'
+                        },
                         backup_restore: {
                             icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
                             label: 'Backup & Restore',
@@ -803,20 +813,16 @@ Router.register('#/license', async function(el) {
                             icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
                             label: 'Audit Logging',
                             desc: 'Track all system operations and changes'
-                        },
-                        max_containers: {
-                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
-                            label: 'Unlimited Containers',
-                            desc: 'No limit on number of containers you can run'
                         }
                     };
                     const feature = labels[k] || { icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>', label: k.replace(/_/g, ' '), desc: '' };
+                    const enabled = (k === 'max_containers' || k === 'max_users') ? v >= 999 : !!v;
                     return `
-                        <div style="padding:14px;background:${v ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)' : 'var(--surface2)'};border-radius:var(--radius-sm);border:1px solid ${v ? 'rgba(34, 197, 94, 0.2)' : 'var(--border)'}">
+                        <div style="padding:14px;background:${enabled ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)' : 'var(--surface2)'};border-radius:var(--radius-sm);border:1px solid ${enabled ? 'rgba(34, 197, 94, 0.2)' : 'var(--border)'}">
                             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-                                <div style="color:${v ? 'var(--green)' : 'var(--text3)'}">${feature.icon}</div>
-                                <span style="font-weight:700;font-size:0.92rem;color:${v ? 'var(--green)' : 'var(--text3)'}">${feature.label}</span>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${v ? 'var(--green)' : 'var(--text3)'}" stroke-width="2.5" style="margin-left:auto"><${v ? 'polyline points="20 6 9 17 4 12"' : 'line x1="18" y1="6" x2="6" y2="18"'}/>${ v ? '' : '<line x1="6" y1="6" x2="18" y2="18"/>'}</svg>
+                                <div style="color:${enabled ? 'var(--green)' : 'var(--text3)'}">${feature.icon}</div>
+                                <span style="font-weight:700;font-size:0.92rem;color:${enabled ? 'var(--green)' : 'var(--text3)'}">${feature.label}</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${enabled ? 'var(--green)' : 'var(--text3)'}" stroke-width="2.5" style="margin-left:auto"><${enabled ? 'polyline points="20 6 9 17 4 12"' : 'line x1="18" y1="6" x2="6" y2="18"'}/>${ enabled ? '' : '<line x1="6" y1="6" x2="18" y2="18"/>'}</svg>
                             </div>
                             <div style="font-size:0.82rem;color:var(--text2);line-height:1.5">${feature.desc}</div>
                         </div>

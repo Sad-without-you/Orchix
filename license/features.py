@@ -7,7 +7,7 @@ FREE_FEATURES = {
     'multi_instance': False,
     'migration': False,
     'audit_log': False,
-    'apps': ['n8n', 'postgres', 'redis'],
+    'apps': ['*'],
     'tier_name': 'FREE',
     'tier_display': 'FREE'
 }

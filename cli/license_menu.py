@@ -52,6 +52,8 @@ def show_license_menu():
             table.add_row("License Expiry", expiry_text)
 
         table.add_row("Containers", f"{info['container_status']['current']}/{info['container_status']['limit']}")
+        max_users = info['features'].get('max_users', 1)
+        table.add_row("Multi-User (RBAC)", "✅ Unlimited" if max_users >= 999 else f"❌ {max_users} User")
         table.add_row("Backup & Restore", "✅ Enabled" if info['features']['backup_restore'] else "❌ Disabled")
         table.add_row("Multi-Instance", "✅ Enabled" if info['features']['multi_instance'] else "❌ Disabled")
         table.add_row("Server Migration", "✅ Enabled" if info['features'].get('migration', False) else "❌ Disabled")
@@ -92,9 +94,10 @@ def show_license_menu():
             unlock_table.add_column("Feature", style="yellow", width=60)
 
             # Core PRO features
+            unlock_table.add_row("+ Unlimited Containers - No 3 container limit")
+            unlock_table.add_row("+ Multi-User (RBAC) - Admin, Operator, Viewer roles")
             unlock_table.add_row("+ Backup & Restore - Protect your data")
             unlock_table.add_row("+ Multi-Instance - Run multiple instances per app")
-            unlock_table.add_row("+ Unlimited Containers - No 3 container limit")
             unlock_table.add_row("+ Server Migration - Migrate to other servers")
             unlock_table.add_row("+ Audit Logging - Track user actions and changes")
             unlock_table.add_row("+ Priority Support - Get help faster")
@@ -211,6 +214,7 @@ def _show_license_details():
     
     table.add_row("Tier", info['tier_display'])
     table.add_row("Max Containers", f"{info['features']['max_containers']} (unlimited)")
+    table.add_row("Multi-User (RBAC)", "✅ Unlimited" if info['features'].get('max_users', 1) >= 999 else "❌ 1 User")
     table.add_row("Backup & Restore", "✅ Enabled" if info['features']['backup_restore'] else "❌ Disabled")
     table.add_row("Multi-Instance", "✅ Enabled" if info['features']['multi_instance'] else "❌ Disabled")
     table.add_row("Audit Logging", "✅ Enabled" if info['features'].get('audit_log', False) else "❌ Disabled")
@@ -240,8 +244,10 @@ def _deactivate_license():
     print()
     show_info("This will:")
     print("  • Revert to FREE tier")
-    print("  • Disable Backup & Restore")
     print("  • Limit containers to 3")
+    print("  • Limit to 1 user (single admin)")
+    print("  • Disable Backup & Restore")
+    print("  • Disable Multi-Instance, Migration, Audit Logging")
     print()
     
     confirm = select_from_list(

@@ -280,6 +280,7 @@ class LicenseManager:
             'days_remaining': days_remaining,
             'features': {
                 'max_containers': self.get_container_limit(),
+                'max_users': self.get_feature('max_users'),
                 'backup_restore': self.has_feature('backup_restore'),
                 'multi_instance': self.has_feature('multi_instance'),
                 'migration': self.has_feature('migration'),
