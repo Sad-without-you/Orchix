@@ -774,7 +774,7 @@ Router.register('#/license', async function(el) {
                 ` : ''}
                 <div>
                     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:6px">Features Enabled</div>
-                    <div style="font-size:1.2rem;font-weight:700;color:var(--text)">${Object.values(info.features).filter(f => f).length} <span style="color:var(--text3);font-size:0.9rem">/ ${Object.keys(info.features).length}</span></div>
+                    <div style="font-size:1.2rem;font-weight:700;color:var(--text)">${Object.entries(info.features).filter(([k,v]) => (k === 'max_containers' || k === 'max_users') ? v >= 999 : !!v).length} <span style="color:var(--text3);font-size:0.9rem">/ ${Object.keys(info.features).length}</span></div>
                 </div>
             </div>
         </div>
@@ -786,13 +786,13 @@ Router.register('#/license', async function(el) {
                     const labels = {
                         max_containers: {
                             icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
-                            label: 'Unlimited Containers',
-                            desc: 'No limit on number of containers you can run'
+                            label: v >= 999 ? 'Unlimited Containers' : `Max ${v} Containers`,
+                            desc: v >= 999 ? 'No limit on number of containers you can run' : `Limited to ${v} containers (PRO: unlimited)`
                         },
                         max_users: {
                             icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-                            label: 'Multi-User (RBAC)',
-                            desc: 'Multiple users with role-based access: Admin, Operator, Viewer'
+                            label: v >= 999 ? 'Multi-User (RBAC)' : `${v} User`,
+                            desc: v >= 999 ? 'Multiple users with role-based access: Admin, Operator, Viewer' : 'Limited to single admin user (PRO: unlimited with RBAC)'
                         },
                         backup_restore: {
                             icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',

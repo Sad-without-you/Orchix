@@ -12,9 +12,10 @@ def get_license():
     info = lm.get_license_info()
 
     # Serialize for JSON (handle datetime and float('inf'))
-    # max_containers is a boolean feature: true if unlimited (PRO >= 999), false if limited (FREE <= 10)
-    max_containers_value = info['features']['max_containers']
-    max_containers_unlimited = max_containers_value >= 999 or max_containers_value == float('inf')
+    def _safe_int(val):
+        if val == float('inf'):
+            return 999
+        return int(val) if isinstance(val, (int, float)) else val
 
     result = {
         'tier': info['tier'],
@@ -22,7 +23,8 @@ def get_license():
         'is_pro': info['is_pro'],
         'days_remaining': info['days_remaining'],
         'features': {
-            'max_containers': max_containers_unlimited,
+            'max_containers': _safe_int(info['features']['max_containers']),
+            'max_users': _safe_int(info['features'].get('max_users', 1)),
             'backup_restore': info['features']['backup_restore'],
             'multi_instance': info['features']['multi_instance'],
             'migration': info['features']['migration'],
@@ -30,8 +32,8 @@ def get_license():
         },
         'container_status': {
             'current': info['container_status']['current'],
-            'limit': info['container_status']['limit'] if info['container_status']['limit'] != float('inf') else 999,
-            'remaining': info['container_status']['remaining'] if info['container_status']['remaining'] != float('inf') else 999,
+            'limit': _safe_int(info['container_status']['limit']),
+            'remaining': _safe_int(info['container_status']['remaining']),
         }
     }
     return jsonify(result)
