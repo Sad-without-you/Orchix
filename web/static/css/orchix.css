@@ -362,16 +362,16 @@ body.sidebar-collapsed #sidebar .quick-links > div:first-child {
     display: none;
 }
 body.sidebar-collapsed #sidebar #quick-links-grid {
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 4px;
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    gap: 4px !important;
 }
 body.sidebar-collapsed #sidebar #quick-links-grid a {
-    padding: 6px;
+    padding: 6px !important;
     justify-content: center;
 }
 body.sidebar-collapsed #sidebar #quick-links-grid a span:last-child {
-    display: none;
+    display: none !important;
 }
 body.sidebar-collapsed #sidebar .sidebar-footer {
     flex-direction: column;
