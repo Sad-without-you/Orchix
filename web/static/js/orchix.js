@@ -116,14 +116,25 @@ async function loadLicenseInfo() {
     licenseInfo = await API.get('/api/license');
     if (!licenseInfo) return;
     const badge = document.getElementById('license-badge');
+    const supportLink = document.getElementById('quick-link-support');
+    const quickLinksGrid = document.getElementById('quick-links-grid');
+
     if (licenseInfo.is_pro) {
         badge.textContent = 'PRO';
         badge.className = 'license-badge pro';
         document.querySelectorAll('.pro-feature').forEach(el => el.classList.add('unlocked'));
+        if (supportLink) {
+            supportLink.style.display = 'flex';
+            if (quickLinksGrid) quickLinksGrid.style.gridTemplateColumns = 'repeat(3,1fr)';
+        }
     } else {
         badge.textContent = 'FREE';
         badge.className = 'license-badge';
         document.querySelectorAll('.pro-feature').forEach(el => el.classList.remove('unlocked'));
+        if (supportLink) {
+            supportLink.style.display = 'none';
+            if (quickLinksGrid) quickLinksGrid.style.gridTemplateColumns = 'repeat(2,1fr)';
+        }
     }
 }
 
@@ -189,3 +200,64 @@ function showUpdateBadge(version) {
 // Load license on startup
 loadLicenseInfo();
 checkForUpdates();
+
+// ORCHIX Update Functions
+async function updateOrchixNow() {
+    showModal(
+        'Update ORCHIX?',
+        `
+            <p>This will update ORCHIX to the latest version.</p>
+            <p style="margin-top:12px;color:var(--text3);font-size:0.9rem">
+                <strong>Steps:</strong> <code>git pull</code> + <code>pip install --upgrade</code>
+            </p>
+            <p style="margin-top:8px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm);color:var(--yellow);font-size:0.85rem">
+                <strong>⚠ Note:</strong> ORCHIX must be restarted after update.
+            </p>
+        `,
+        [
+            { label: 'Cancel', cls: 'btn-secondary' },
+            { label: 'Update Now', cls: 'btn-primary', fn: doUpdateOrchix }
+        ]
+    );
+}
+
+async function doUpdateOrchix() {
+    showProgressModal('Updating ORCHIX', 'Running git pull and pip install...');
+
+    const res = await API.post('/api/system/update');
+    hideProgressModal();
+
+    if (res && res.success) {
+        if (res.requires_restart) {
+            showModal(
+                'Update Complete',
+                `
+                    <div style="text-align:center">
+                        <div style="width:48px;height:48px;margin:0 auto 16px;border-radius:50%;background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(34,197,94,0.1));display:flex;align-items:center;justify-content:center">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <h3 style="margin-bottom:8px">Update Successful</h3>
+                        <p style="color:var(--text2);margin-bottom:16px">${esc(res.message)}</p>
+                        <div style="background:var(--surface2);padding:12px;border-radius:var(--radius-sm);border-left:3px solid var(--yellow)">
+                            <p style="color:var(--yellow);font-weight:600;margin:0 0 4px">
+                                ⚠ Restart Required
+                            </p>
+                            <p style="font-size:0.85rem;color:var(--text3);margin:0">
+                                Please restart ORCHIX to apply the update.<br>
+                                The page will reload in 3 seconds.
+                            </p>
+                        </div>
+                    </div>
+                `,
+                [{ label: 'OK', cls: 'btn-primary' }]
+            );
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            showToast('info', res.message);
+        }
+    } else {
+        showToast('error', (res && res.message) || 'Update failed');
+    }
+}
