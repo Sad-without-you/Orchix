@@ -71,7 +71,7 @@ def list_containers():
 
 @bp.route('/containers/selection-needed')
 @require_permission('containers.read')
-def selection_needed():
+def selection_needed():  # Any authenticated user can check status
     """Check if container selection is needed (FREE tier with >limit containers)."""
     from license import get_license_manager
     lm = get_license_manager()
@@ -83,7 +83,7 @@ def selection_needed():
 
 
 @bp.route('/containers/all-for-selection')
-@require_permission('containers.read')
+@require_permission('users.edit')
 def all_for_selection():
     """Get ALL containers for selection UI (only when selection is needed)."""
     from license import get_license_manager
@@ -105,9 +105,9 @@ def all_for_selection():
 
 
 @bp.route('/containers/select', methods=['POST'])
-@require_permission('containers.read')
+@require_permission('users.edit')
 def select_containers():
-    """Save container selection for FREE tier."""
+    """Save container selection for FREE tier. Admin only."""
     from license import get_license_manager
     from cli.container_menu import get_all_containers
     lm = get_license_manager()
@@ -116,7 +116,16 @@ def select_containers():
         return jsonify({'success': False, 'message': 'PRO users manage all containers'}), 400
 
     data = request.get_json()
-    selected = data.get('selected', [])
+    if not data or not isinstance(data.get('selected'), list):
+        return jsonify({'success': False, 'message': 'Invalid request'}), 400
+
+    selected = data['selected']
+
+    # Validate all items are strings
+    if not all(isinstance(n, str) and n.strip() for n in selected):
+        return jsonify({'success': False, 'message': 'Invalid container names'}), 400
+
+    selected = [n.strip() for n in selected]
 
     if not selected:
         return jsonify({'success': False, 'message': 'Select at least one container'}), 400
@@ -130,6 +139,12 @@ def select_containers():
     invalid = [n for n in selected if n not in all_containers]
     if invalid:
         return jsonify({'success': False, 'message': f'Unknown containers: {", ".join(invalid)}'}), 400
+
+    # Validate names match Docker naming convention
+    import re
+    for n in selected:
+        if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$', n) or len(n) > 128:
+            return jsonify({'success': False, 'message': f'Invalid container name: {n}'}), 400
 
     lm.set_managed_containers(selected)
     return jsonify({'success': True, 'message': f'{len(selected)} containers selected'})

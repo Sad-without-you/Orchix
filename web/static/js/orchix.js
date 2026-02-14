@@ -2,6 +2,31 @@
 
 let currentUser = null;
 
+// Global event delegation for CSP compliance (no inline handlers)
+document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    const fn = window[action];
+    if (typeof fn !== 'function') return;
+    const p = [el.dataset.p1, el.dataset.p2, el.dataset.p3, el.dataset.p4].filter(v => v !== undefined);
+    if (action === 'toggleActionMenu') { fn(el); }
+    else if (p.length > 0) { fn(...p); }
+    else { fn(); }
+});
+document.addEventListener('input', (e) => {
+    const el = e.target.closest('[data-oninput]');
+    if (!el) return;
+    const fn = window[el.dataset.oninput];
+    if (typeof fn === 'function') fn();
+});
+document.addEventListener('change', (e) => {
+    const el = e.target.closest('[data-onchange]');
+    if (!el) return;
+    const fn = window[el.dataset.onchange];
+    if (typeof fn === 'function') fn();
+});
+
 // HTML escape - used globally by all pages
 function esc(str) {
     if (str === null || str === undefined || str === '') return '-';
@@ -95,7 +120,7 @@ function showModal(title, bodyHtml, actions) {
     modal.innerHTML = `
         <div class="modal-header">
             <h2>${esc(title)}</h2>
-            <button class="modal-close" onclick="hideModal()">
+            <button class="modal-close" data-action="hideModal">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <line x1="4" y1="4" x2="12" y2="12"/>
                     <line x1="12" y1="4" x2="4" y2="12"/>
@@ -279,8 +304,7 @@ async function showContainerSelectionModal(limit) {
     for (const c of containers) {
         const statusCls = c.status === 'running' ? 'running' : 'stopped';
         bodyHtml += `
-            <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);margin-bottom:6px;transition:background 0.15s"
-                   onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+            <label class="hover-surface" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);margin-bottom:6px;transition:background 0.15s">
                 <input type="checkbox" class="container-select-cb" value="${esc(c.name)}" style="width:16px;height:16px;accent-color:var(--pink)">
                 <span style="flex:1;font-weight:500">${esc(c.name)}</span>
                 <span class="status-badge ${statusCls}" style="font-size:0.75rem">${esc(c.status)}</span>
@@ -301,7 +325,7 @@ async function showContainerSelectionModal(limit) {
         </div>
         <div class="modal-body">${bodyHtml}</div>
         <div class="modal-actions">
-            <button class="btn btn-primary" id="confirm-selection-btn" onclick="confirmContainerSelection(${limit})">Confirm Selection</button>
+            <button class="btn btn-primary" id="confirm-selection-btn" data-action="confirmContainerSelection" data-p1="${limit}">Confirm Selection</button>
         </div>
     `;
     overlay.classList.remove('hidden');
@@ -332,6 +356,7 @@ async function showContainerSelectionModal(limit) {
 }
 
 async function confirmContainerSelection(limit) {
+    limit = parseInt(limit);
     const cbs = document.querySelectorAll('.container-select-cb:checked');
     const selected = Array.from(cbs).map(cb => cb.value);
 

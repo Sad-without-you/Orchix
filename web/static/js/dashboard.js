@@ -230,11 +230,11 @@ Router.register('#/dashboard', function(el) {
                 <td>
                     <div class="btn-group">
                         ${hasPermission('containers.start') ? (c.running
-                            ? `<button class="btn-sm btn-danger" onclick="dashAction('${esc(c.name)}','stop')">Stop</button>
-                               <button class="btn-sm btn-warn" onclick="dashAction('${esc(c.name)}','restart')">Restart</button>`
-                            : `<button class="btn-sm btn-success" onclick="dashAction('${esc(c.name)}','start')">Start</button>`
+                            ? `<button class="btn-sm btn-danger" data-action="dashAction" data-p1="${esc(c.name)}" data-p2="stop">Stop</button>
+                               <button class="btn-sm btn-warn" data-action="dashAction" data-p1="${esc(c.name)}" data-p2="restart">Restart</button>`
+                            : `<button class="btn-sm btn-success" data-action="dashAction" data-p1="${esc(c.name)}" data-p2="start">Start</button>`
                         ) : ''}
-                        <button class="btn-sm" onclick="dashLogs('${esc(c.name)}')">Logs</button>
+                        <button class="btn-sm" data-action="dashLogs" data-p1="${esc(c.name)}">Logs</button>
                     </div>
                 </td>
             </tr>
@@ -372,8 +372,8 @@ async function loadSystemOverview() {
                     }
                 </div>
                 ${hasPermission('system.update') ? (updateRes && updateRes.update_available ?
-                    '<button class="btn btn-sm btn-primary" onclick="updateOrchixNow()" style="font-size:0.8rem;padding:4px 10px;width:100%">Update Now</button>' :
-                    '<button class="btn btn-sm" onclick="checkSystemUpdate()" style="font-size:0.8rem;padding:4px 10px;width:100%">Check Update</button>'
+                    '<button class="btn btn-sm btn-primary" data-action="updateOrchixNow" style="font-size:0.8rem;padding:4px 10px;width:100%">Update Now</button>' :
+                    '<button class="btn btn-sm" data-action="checkSystemUpdate" style="font-size:0.8rem;padding:4px 10px;width:100%">Check Update</button>'
                 ) : ''}
             </div>
         </div>

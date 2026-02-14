@@ -1,4 +1,8 @@
 /* ORCHIX v1.2 - Lily Theme */
+
+/* Hover utility classes (CSP-safe replacements for inline onmouseover/onmouseout) */
+.hover-highlight:hover { border-color: var(--pink) !important; background: var(--surface3) !important; }
+.hover-surface:hover { background: var(--surface2) !important; }
 :root {
     --bg: #050810;
     --surface: #0a0f1a;

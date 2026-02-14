@@ -8,7 +8,7 @@ Router.register('#/containers', async function(el) {
                 <h1>Container Management</h1>
             </div>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="refreshContainers()">
+                <button class="btn btn-primary" data-action="refreshContainers">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
                     Refresh
                 </button>
@@ -16,11 +16,11 @@ Router.register('#/containers', async function(el) {
         </div>
         <div class="table-toolbar">
             <input type="text" class="search-input" id="container-search"
-                   placeholder="Search containers..." oninput="filterContainers()">
+                   placeholder="Search containers..." data-oninput="filterContainers">
             ${hasPermission('containers.start') ? `
             <div class="toolbar-actions" id="batch-actions" style="display:none">
-                <button class="btn-sm btn-success" onclick="batchAction('start')">Start Selected</button>
-                <button class="btn-sm btn-danger" onclick="batchAction('stop')">Stop Selected</button>
+                <button class="btn-sm btn-success" data-action="batchAction" data-p1="start">Start Selected</button>
+                <button class="btn-sm btn-danger" data-action="batchAction" data-p1="stop">Stop Selected</button>
             </div>` : ''}
         </div>
         <div id="containers-list"><div class="loading"><span class="spinner"></span> Loading containers...</div></div>
@@ -42,7 +42,7 @@ async function refreshContainers() {
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width:40px"><input type="checkbox" class="table-checkbox" id="select-all" onchange="toggleSelectAll()"></th>
+                    <th style="width:40px"><input type="checkbox" class="table-checkbox" id="select-all" data-onchange="toggleSelectAll"></th>
                     <th>Container</th>
                     <th>Status</th>
                     <th>Disk Size</th>
@@ -52,7 +52,7 @@ async function refreshContainers() {
             <tbody>
                 ${data.map(c => `
                     <tr>
-                        <td><input type="checkbox" class="table-checkbox container-cb" value="${esc(c.name)}" onchange="updateBatchActions()"></td>
+                        <td><input type="checkbox" class="table-checkbox container-cb" value="${esc(c.name)}" data-onchange="updateBatchActions"></td>
                         <td><span style="color:var(--teal);font-weight:600">${esc(c.name)}</span></td>
                         <td>
                             <span class="status-badge ${c.status === 'running' ? 'running' : 'stopped'}">
@@ -63,21 +63,21 @@ async function refreshContainers() {
                         <td>
                             <div class="btn-group">
                                 ${hasPermission('containers.start') ? (c.status === 'running'
-                                    ? `<button class="btn-sm btn-danger" onclick="containerAction('${esc(c.name)}','stop')">Stop</button>`
-                                    : `<button class="btn-sm btn-success" onclick="containerAction('${esc(c.name)}','start')">Start</button>`
+                                    ? `<button class="btn-sm btn-danger" data-action="containerAction" data-p1="${esc(c.name)}" data-p2="stop">Stop</button>`
+                                    : `<button class="btn-sm btn-success" data-action="containerAction" data-p1="${esc(c.name)}" data-p2="start">Start</button>`
                                 ) : ''}
                                 <div class="action-dropdown">
-                                    <button class="btn-icon" onclick="toggleActionMenu(this)" title="More actions">&#8943;</button>
+                                    <button class="btn-icon" data-action="toggleActionMenu" title="More actions">&#8943;</button>
                                     <div class="action-menu">
                                         ${hasPermission('containers.restart') && c.status === 'running'
-                                            ? `<button onclick="containerAction('${esc(c.name)}','restart')">Restart</button>`
+                                            ? `<button data-action="containerAction" data-p1="${esc(c.name)}" data-p2="restart">Restart</button>`
                                             : ''
                                         }
-                                        ${hasPermission('apps.update') ? `<button onclick="showUpdateDialog('${esc(c.name)}')">Update</button>` : ''}
-                                        ${hasPermission('containers.compose_write') ? `<button onclick="editComposeFile('${esc(c.name)}')">Edit YAML</button>` : ''}
-                                        <button onclick="viewContainerLogs('${esc(c.name)}')">View Logs</button>
-                                        <button onclick="viewContainerDetails('${esc(c.name)}')">Inspect</button>
-                                        ${hasPermission('containers.uninstall') ? `<button class="danger" onclick="confirmUninstall('${esc(c.name)}')">Uninstall</button>` : ''}
+                                        ${hasPermission('apps.update') ? `<button data-action="showUpdateDialog" data-p1="${esc(c.name)}">Update</button>` : ''}
+                                        ${hasPermission('containers.compose_write') ? `<button data-action="editComposeFile" data-p1="${esc(c.name)}">Edit YAML</button>` : ''}
+                                        <button data-action="viewContainerLogs" data-p1="${esc(c.name)}">View Logs</button>
+                                        <button data-action="viewContainerDetails" data-p1="${esc(c.name)}">Inspect</button>
+                                        ${hasPermission('containers.uninstall') ? `<button class="danger" data-action="confirmUninstall" data-p1="${esc(c.name)}">Uninstall</button>` : ''}
                                     </div>
                                 </div>
                             </div>
@@ -203,7 +203,7 @@ async function showUpdateDialog(name) {
     }
 
     const btns = res.actions.map(a =>
-        `<button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem" onclick="doUpdate('${esc(name)}','${a.key}')">${esc(a.label)}</button>`
+        `<button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem" data-action="doUpdate" data-p1="${esc(name)}" data-p2="${a.key}">${esc(a.label)}</button>`
     ).join('');
 
     showModal('Update ' + name, `
@@ -244,7 +244,7 @@ async function editComposeFile(name) {
     modal.innerHTML = `
         <div class="modal-header">
             <h2>Edit YAML: ${esc(name)}</h2>
-            <button class="modal-close" onclick="hideModal()">
+            <button class="modal-close" data-action="hideModal">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/>
                 </svg>
@@ -259,8 +259,8 @@ async function editComposeFile(name) {
             <div id="yaml-error" class="yaml-error" style="display:none"></div>
         </div>
         <div class="modal-actions">
-            <button class="btn" onclick="hideModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveComposeFile('${esc(name)}')">
+            <button class="btn" data-action="hideModal">Cancel</button>
+            <button class="btn btn-primary" data-action="saveComposeFile" data-p1="${esc(name)}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 Save
             </button>

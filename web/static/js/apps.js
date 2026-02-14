@@ -9,7 +9,7 @@ Router.register('#/apps', async function(el) {
             </div>
         </div>
         <div class="table-toolbar" style="margin-bottom:16px">
-            <input class="search-input" id="apps-search" placeholder="Search applications..." oninput="filterApps()">
+            <input class="search-input" id="apps-search" placeholder="Search applications..." data-oninput="filterApps">
         </div>
         <div id="apps-grid"><div class="loading"><span class="spinner"></span> Loading applications...</div></div>
     `;
@@ -31,7 +31,7 @@ Router.register('#/apps', async function(el) {
             <div class="app-desc">${esc(app.description)}</div>
             <div class="app-card-footer">
                 ${hasPermission('apps.install') ? (app.can_install
-                    ? `<button class="btn btn-primary" onclick="openInstallDialog('${esc(app.name)}', '${esc(app.display_name)}', ${JSON.stringify(app.default_ports)}, ${app.image_size_mb || 0})">Install</button>`
+                    ? `<button class="btn btn-primary" data-action="openInstallDialog" data-p1="${esc(app.name)}" data-p2="${esc(app.display_name)}" data-p3="${(app.default_ports||[]).join(',')}" data-p4="${app.image_size_mb || 0}">Install</button>`
                     : `<span class="pro-badge">PRO</span><button class="btn" disabled style="opacity:0.5">Install</button>`
                 ) : `<button class="btn" disabled style="opacity:0.4">Install</button>`}
             </div>
@@ -49,6 +49,12 @@ function filterApps() {
 }
 
 async function openInstallDialog(appName, displayName, defaultPorts, imageSizeMb) {
+    // Parse data-attribute strings
+    if (typeof defaultPorts === 'string') {
+        defaultPorts = defaultPorts ? defaultPorts.split(',').map(Number) : [];
+    }
+    imageSizeMb = parseInt(imageSizeMb) || 0;
+
     const defaultPort = (defaultPorts && defaultPorts.length > 0) ? defaultPorts[0] : 5678;
     const isFree = licenseInfo && !licenseInfo.is_pro;
     const sizeLabel = imageSizeMb ? (imageSizeMb >= 1000 ? (imageSizeMb / 1024).toFixed(1) + ' GB' : imageSizeMb + ' MB') : '';
@@ -91,14 +97,14 @@ async function openInstallDialog(appName, displayName, defaultPorts, imageSizeMb
             <label>Instance Name</label>
             <input type="text" class="form-input" id="install-instance" value="${appName}"
                 ${isFree ? 'disabled title="Multi-Instance requires PRO"' : `placeholder="e.g. ${appName}-prod"`}
-                oninput="checkInstallConflicts()">
+                data-oninput="checkInstallConflicts">
             ${isFree ? '<div style="font-size:0.75rem;color:var(--text3);margin-top:0.3rem">Multi-Instance requires PRO license</div>' : ''}
             <div id="name-conflict-warn" class="conflict-warning" style="display:none"></div>
         </div>
         <div class="form-group">
             <label>Port</label>
             <input type="number" class="form-input" id="install-port" value="${defaultPort}" placeholder="${defaultPort}"
-                oninput="checkInstallConflicts()">
+                data-oninput="checkInstallConflicts">
             <div id="port-conflict-warn" class="conflict-warning" style="display:none"></div>
         </div>
         ${fieldsHtml}
@@ -191,7 +197,7 @@ Router.register('#/backups', async function(el) {
                 <h1>Backups</h1>
             </div>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="showCreateBackup()">Create Backup</button>
+                <button class="btn btn-primary" data-action="showCreateBackup">Create Backup</button>
             </div>
         </div>
         <div id="backups-list"><div class="loading"><span class="spinner"></span> Loading backups...</div></div>
@@ -222,8 +228,8 @@ async function loadBackups() {
                         <td>${formatBytes(b.size)}</td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn-sm btn-success" onclick="confirmRestore('${esc(b.filename)}', '${esc(b.meta?.container || '')}')">Restore</button>
-                                <button class="btn-sm btn-danger" onclick="confirmDeleteBackup('${esc(b.filename)}')">Delete</button>
+                                <button class="btn-sm btn-success" data-action="confirmRestore" data-p1="${esc(b.filename)}" data-p2="${esc(b.meta?.container || '')}">Restore</button>
+                                <button class="btn-sm btn-danger" data-action="confirmDeleteBackup" data-p1="${esc(b.filename)}">Delete</button>
                             </div>
                         </td>
                     </tr>
@@ -325,8 +331,8 @@ Router.register('#/migration', async function(el) {
                 <h1>Server Migration</h1>
             </div>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="showExportDialog()">Export Package</button>
-                <button class="btn" onclick="showImportDialog()">Import Package</button>
+                <button class="btn btn-primary" data-action="showExportDialog">Export Package</button>
+                <button class="btn" data-action="showImportDialog">Import Package</button>
             </div>
         </div>
 
@@ -381,7 +387,7 @@ Router.register('#/migration', async function(el) {
 
         <div class="section-card" style="padding:8px 12px">
             <div style="display:flex;align-items:center;gap:10px">
-                <button onclick="toggleMigrationInfo('what-migrated')" style="display:flex;align-items:center;gap:8px;background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);transition:all 0.15s;flex:1;text-align:left" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+                <button data-action="toggleMigrationInfo" data-p1="what-migrated" class="hover-surface" style="display:flex;align-items:center;gap:8px;background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);transition:all 0.15s;flex:1;text-align:left">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="16" x2="12" y2="12"/>
@@ -405,7 +411,7 @@ Router.register('#/migration', async function(el) {
 
         <div class="section-card" style="padding:8px 12px">
             <div style="display:flex;align-items:center;gap:10px">
-                <button onclick="toggleMigrationInfo('best-practices')" style="display:flex;align-items:center;gap:8px;background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);transition:all 0.15s;flex:1;text-align:left" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+                <button data-action="toggleMigrationInfo" data-p1="best-practices" class="hover-surface" style="display:flex;align-items:center;gap:8px;background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);transition:all 0.15s;flex:1;text-align:left">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="16" x2="12" y2="12"/>
@@ -429,7 +435,7 @@ Router.register('#/migration', async function(el) {
 
         <div class="section-card" style="padding:8px 12px">
             <div style="display:flex;align-items:center;gap:10px">
-                <button onclick="toggleMigrationInfo('important-notes')" style="display:flex;align-items:center;gap:8px;background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);transition:all 0.15s;flex:1;text-align:left" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+                <button data-action="toggleMigrationInfo" data-p1="important-notes" class="hover-surface" style="display:flex;align-items:center;gap:8px;background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);transition:all 0.15s;flex:1;text-align:left">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="16" x2="12" y2="12"/>
@@ -618,13 +624,13 @@ Router.register('#/audit', async function(el) {
                 <h1>Audit Logs</h1>
             </div>
             <div class="header-actions">
-                <button class="btn btn-danger" onclick="showClearAuditDialog()">Clear Old Logs</button>
+                <button class="btn btn-danger" data-action="showClearAuditDialog">Clear Old Logs</button>
             </div>
         </div>
         <div class="section-card" style="margin-bottom:1rem;padding:12px 16px">
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                 <label style="font-size:12px;color:var(--text2);font-weight:500">Event:</label>
-                <select class="form-input" id="audit-filter" style="width:auto" onchange="loadAuditLogs()">
+                <select class="form-input" id="audit-filter" style="width:auto" data-onchange="loadAuditLogs">
                     <option value="">All Events</option>
                     <option value="INSTALL">Install</option>
                     <option value="UNINSTALL">Uninstall</option>
@@ -635,7 +641,7 @@ Router.register('#/audit', async function(el) {
                     <option value="CONTAINER_STOP">Container Stop</option>
                 </select>
                 <label style="font-size:12px;color:var(--text2);font-weight:500">User:</label>
-                <select class="form-input" id="audit-user-filter" style="width:auto" onchange="loadAuditLogs()">
+                <select class="form-input" id="audit-user-filter" style="width:auto" data-onchange="loadAuditLogs">
                     <option value="">All Users</option>
                 </select>
             </div>
@@ -686,7 +692,7 @@ async function loadAuditLogs() {
                         <td>${esc(e.app_name)}</td>
                         <td>${esc(e.user)}</td>
                         <td style="font-size:0.8rem;color:var(--text3)">${esc(JSON.stringify(e.details || {}))}</td>
-                        <td><button class="btn btn-sm btn-danger" onclick="deleteAuditEvent('${esc(e.timestamp)}','${esc(e.event_type)}')" title="Delete">&times;</button></td>
+                        <td><button class="btn btn-sm btn-danger" data-action="deleteAuditEvent" data-p1="${esc(e.timestamp)}" data-p2="${esc(e.event_type)}" title="Delete">&times;</button></td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -833,7 +839,7 @@ Router.register('#/license', async function(el) {
                     </div>
                     <div style="display:flex;gap:8px;align-items:center">
                         <input type="text" class="form-input" id="license-key" placeholder="License key" style="width:200px;margin:0;font-size:12px;padding:6px 10px">
-                        <button class="btn btn-primary" onclick="activateLicense()" style="font-size:12px;padding:6px 14px">Activate</button>
+                        <button class="btn btn-primary" data-action="activateLicense" style="font-size:12px;padding:6px 14px">Activate</button>
                     </div>
                 </div>
             </div>
@@ -841,7 +847,7 @@ Router.register('#/license', async function(el) {
             <div class="section-card" style="padding:8px 10px;max-width:620px">
                 <h3 style="font-size:12px">License Actions</h3>
                 <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
-                    <button class="btn btn-danger" onclick="deactivateLicense()" style="font-size:12px;padding:6px 12px">Deactivate PRO</button>
+                    <button class="btn btn-danger" data-action="deactivateLicense" style="font-size:12px;padding:6px 12px">Deactivate PRO</button>
                     <span style="font-size:0.8rem;color:var(--text3)">Reverts to FREE tier</span>
                 </div>
             </div>
@@ -942,7 +948,7 @@ Router.register('#/users', async function(el) {
                 <div class="breadcrumb">System / <span class="current">Users</span></div>
                 <h1>User Management</h1>
             </div>
-            <button class="btn btn-primary" onclick="showAddUserModal()">Add User</button>
+            <button class="btn btn-primary" data-action="showAddUserModal">Add User</button>
         </div>
         <div class="section-card">
             <div id="users-table"><div class="loading"><span class="spinner"></span> Loading...</div></div>
@@ -983,8 +989,8 @@ async function loadUsersTable() {
                         <td style="font-size:0.85rem;color:var(--text3)">${formatDate(u.last_login)}</td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn-sm" onclick="showEditUserModal('${esc(u.username)}','${esc(u.role)}')">Edit</button>
-                                ${u.username !== currentUser.username ? `<button class="btn-sm btn-danger" onclick="deleteUser('${esc(u.username)}')">Delete</button>` : ''}
+                                <button class="btn-sm" data-action="showEditUserModal" data-p1="${esc(u.username)}" data-p2="${esc(u.role)}">Edit</button>
+                                ${u.username !== currentUser.username ? `<button class="btn-sm btn-danger" data-action="deleteUser" data-p1="${esc(u.username)}">Delete</button>` : ''}
                             </div>
                         </td>
                     </tr>

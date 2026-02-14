@@ -200,7 +200,16 @@ class LicenseManager:
             return None  # No selection made yet
         try:
             data = json.loads(MANAGED_CONTAINERS_FILE.read_text(encoding='utf-8'))
-            return data.get('selected', [])
+            selected = data.get('selected', [])
+            # Validate data integrity: must be list of non-empty strings
+            if not isinstance(selected, list):
+                return None
+            import re
+            valid = [n for n in selected
+                     if isinstance(n, str) and n.strip()
+                     and re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$', n)
+                     and len(n) <= 128]
+            return valid if valid else None
         except Exception:
             return None
 
@@ -211,6 +220,12 @@ class LicenseManager:
             'selected_at': datetime.now().isoformat()
         }
         MANAGED_CONTAINERS_FILE.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        # Set restrictive permissions (owner read/write only)
+        try:
+            import stat
+            os.chmod(MANAGED_CONTAINERS_FILE, stat.S_IRUSR | stat.S_IWUSR)
+        except (OSError, AttributeError):
+            pass
 
     def clear_managed_containers(self):
         """Remove selection file (e.g. when PRO is activated)."""
