@@ -70,6 +70,12 @@ def install_app():
     if not app_name:
         return jsonify({'success': False, 'message': 'app_name required'}), 400
 
+    # Check Docker status first
+    from utils.docker_utils import check_docker_status
+    docker = check_docker_status()
+    if not docker.get('running'):
+        return jsonify({'success': False, 'message': docker.get('message', 'Docker is not running')}), 503
+
     # Validate names to prevent path traversal and injection
     try:
         app_name = validate_container_name(app_name)
@@ -158,9 +164,21 @@ def install_app():
             })
         except Exception:
             pass
-        return jsonify({'success': True, 'message': f'{instance_name} installed successfully'})
 
-    return jsonify({'success': False, 'message': 'Installation failed'}), 500
+        # Build access info
+        access_info = _get_access_info(manifest, config, instance_name)
+        return jsonify({
+            'success': True,
+            'message': f'{instance_name} installed successfully',
+            'access_info': access_info
+        })
+
+    # Check if Docker stopped during install
+    docker_after = check_docker_status()
+    if not docker_after.get('running'):
+        return jsonify({'success': False, 'message': docker_after.get('message', 'Docker stopped during installation')}), 503
+
+    return jsonify({'success': False, 'message': 'Installation failed. Check container logs for details.'}), 500
 
 
 @bp.route('/apps/update', methods=['POST'])
@@ -273,3 +291,66 @@ def get_update_actions(container_name):
         'next_update': 'Update to Next',
     }
     return jsonify({'actions': [{'key': a, 'label': labels.get(a, a)} for a in actions]})
+
+
+def _get_access_info(manifest, config, instance_name):
+    """Auto-detect access info from template data. No hardcoding needed."""
+    port = config.get('port', '')
+    template = manifest.get('_template', {})
+    ports = template.get('ports', [])
+    envs = template.get('env', [])
+    image = template.get('image', manifest.get('image', ''))
+
+    # Detect access type from port labels
+    web_keywords = {'web ui', 'http', 'https', 'dashboard', 'admin', 'console'}
+    has_web = any(
+        any(kw in p.get('label', '').lower() for kw in web_keywords)
+        for p in ports
+    )
+
+    info = {'credentials': []}
+
+    if not ports:
+        info['type'] = 'none'
+        info['note'] = 'Runs in background (no access needed)'
+    elif has_web:
+        info['type'] = 'web'
+        info['url'] = f'http://localhost:{port}'
+    else:
+        info['type'] = 'cli'
+        info['host'] = f'localhost:{port}'
+        cli_cmd = _detect_cli_command(image, config, instance_name)
+        if cli_cmd:
+            info['command'] = cli_cmd
+
+    # Auto-detect credentials from env vars with type=password or generate=true
+    for env in envs:
+        val = config.get(env['key'])
+        if val and (env.get('type') == 'password' or env.get('generate')):
+            info['credentials'].append({'label': env.get('label', env['key']), 'value': val})
+        elif val and env.get('key', '').upper().endswith(('_USER', '_USERNAME')):
+            info['credentials'].append({'label': env.get('label', env['key']), 'value': val})
+
+    return info
+
+
+# Image name → CLI tool mapping (extensible)
+_CLI_TOOLS = {
+    'redis': 'redis-cli',
+    'postgres': lambda c: f'psql -U {c.get("POSTGRES_USER", "postgres")}',
+    'mariadb': 'mysql -u root -p',
+    'mysql': 'mysql -u root -p',
+    'mongo': 'mongosh',
+    'mosquitto': 'mosquitto_sub -t "#"',
+    'memcached': 'sh -c "echo stats | nc localhost 11211"',
+}
+
+
+def _detect_cli_command(image, config, instance_name):
+    """Detect CLI command from Docker image name."""
+    image_lower = image.lower()
+    for key, cmd in _CLI_TOOLS.items():
+        if key in image_lower:
+            tool = cmd(config) if callable(cmd) else cmd
+            return f'docker exec -it {instance_name} {tool}'
+    return None

@@ -418,16 +418,17 @@ def install_app(app_name, manifest):
             }
         )
         
-        # Get success message from hook
+        # Get success message from hook or generate access info
         from apps.hook_loader import get_hook_loader
         hook_loader = get_hook_loader()
-        
+
         if hook_loader.has_hook(manifest, 'success_message'):
             message = hook_loader.execute_hook(manifest, 'success_message', config)
             if message:
                 show_result_panel(message.strip(), f"{manifest['display_name']} Ready")
         else:
-            show_result_panel(f"Access at: http://localhost:{config.get('port')}", f"{manifest['display_name']} Ready")
+            message = _build_access_message(manifest, config, instance_name)
+            show_result_panel(message, f"{manifest['display_name']} Ready")
     else:
         show_step_final("Installation failed!", False)
         
@@ -446,3 +447,68 @@ def install_app(app_name, manifest):
         )
     
     input("\nPress Enter...")
+
+
+def _build_access_message(manifest, config, instance_name):
+    """Auto-detect access info from template data. No hardcoding needed."""
+    port = config.get('port', '')
+    template = manifest.get('_template', {})
+    ports = template.get('ports', [])
+    envs = template.get('env', [])
+    image = template.get('image', manifest.get('image', ''))
+    lines = []
+
+    # Detect access type from port labels
+    web_keywords = {'web ui', 'http', 'https', 'dashboard', 'admin', 'console'}
+    has_web = any(
+        any(kw in p.get('label', '').lower() for kw in web_keywords)
+        for p in ports
+    )
+
+    if not ports:
+        lines.append('Runs in background (no access needed)')
+    elif has_web:
+        lines.append(f'Access at: http://localhost:{port}')
+    else:
+        # CLI service - detect tool from image name
+        cli_cmd = _detect_cli_command(image, config, instance_name)
+        if cli_cmd:
+            lines.append(f'CLI:  {cli_cmd}')
+        lines.append(f'Host: localhost:{port}')
+
+    # Auto-detect credentials from env vars with type=password or generate=true
+    creds = []
+    for env in envs:
+        val = config.get(env['key'])
+        if val and (env.get('type') == 'password' or env.get('generate')):
+            creds.append((env.get('label', env['key']), val))
+        elif val and env.get('key', '').upper().endswith(('_USER', '_USERNAME')):
+            creds.append((env.get('label', env['key']), val))
+    if creds:
+        lines.append('')
+        for label, val in creds:
+            lines.append(f'{label}: {val}')
+
+    return '\n'.join(lines)
+
+
+# Image name → CLI tool mapping (extensible)
+_CLI_TOOLS = {
+    'redis': 'redis-cli',
+    'postgres': lambda c: f'psql -U {c.get("POSTGRES_USER", "postgres")}',
+    'mariadb': 'mysql -u root -p',
+    'mysql': 'mysql -u root -p',
+    'mongo': 'mongosh',
+    'mosquitto': 'mosquitto_sub -t "#"',
+    'memcached': 'sh -c "echo stats | nc localhost 11211"',
+}
+
+
+def _detect_cli_command(image, config, instance_name):
+    """Detect CLI command from Docker image name."""
+    image_lower = image.lower()
+    for key, cmd in _CLI_TOOLS.items():
+        if key in image_lower:
+            tool = cmd(config) if callable(cmd) else cmd
+            return f'docker exec -it {instance_name} {tool}'
+    return None

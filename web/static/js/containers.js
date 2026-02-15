@@ -181,13 +181,18 @@ function confirmUninstall(name) {
 
 async function doUninstall(name) {
     showProgressModal(`Uninstalling ${name}`, 'Removing container, volumes, and images...');
-    const res = await API.post(`/api/containers/${name}/uninstall`);
-    hideProgressModal();
-    if (res && res.success) {
-        showToast('success', res.message);
-        setTimeout(refreshContainers, 500);
-    } else {
-        showToast('error', (res && res.message) || 'Uninstall failed');
+    try {
+        const res = await API.post(`/api/containers/${name}/uninstall`);
+        hideProgressModal();
+        if (res && res.success) {
+            showToast('success', res.message);
+            setTimeout(refreshContainers, 500);
+        } else {
+            showToast('error', (res && res.message) || 'Uninstall failed');
+        }
+    } catch (err) {
+        hideProgressModal();
+        showToast('error', 'Uninstall failed: ' + (err.message || 'Network error'));
     }
 }
 

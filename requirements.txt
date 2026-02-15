@@ -42,6 +42,9 @@ requests>=2.31.0,<3.0.0
 # Web Server & Security
 # ----------------------------------------
 
+# Flask signal dispatch (pin to avoid system package conflicts)
+blinker>=1.7.0,<2.0.0
+
 # Web framework
 flask>=3.0.0,<4.0.0
 

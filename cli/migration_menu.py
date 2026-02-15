@@ -416,13 +416,14 @@ def _create_container_backup(container_name, output_dir, force_windows=None):
                     break
     
     # Create backup using hooks with platform override
+    success = False
     if manifest and hook_loader.has_hook(manifest, 'backup'):
         # Temporarily override platform detection if needed
         if force_windows is not None:
             import utils.system
             original_is_windows = utils.system.is_windows
             utils.system.is_windows = lambda: force_windows
-        
+
         try:
             success = hook_loader.execute_hook(manifest, 'backup', container_name)
         finally:
@@ -430,12 +431,14 @@ def _create_container_backup(container_name, output_dir, force_windows=None):
             if force_windows is not None:
                 utils.system.is_windows = original_is_windows
     else:
-        show_warning(f"No backup hook available for {container_name}")
-        return None
-    
+        # Generic volume backup for template apps (no hooks)
+        success = _generic_volume_backup(container_name, output_dir)
+        if success:
+            return f"{container_name}_volumes.tar.gz"
+
     if not success:
         return None
-    
+
     # Find the created backup (most recent)
     # Determine pattern based on app type and target platform
     app_name = manifest.get('name', 'unknown') if manifest else 'unknown'
@@ -449,24 +452,67 @@ def _create_container_backup(container_name, output_dir, force_windows=None):
         pattern = f"{container_name}_*.zip"
     else:
         pattern = f"{container_name}_*.tar.gz"
-    
+
     backups = list(BACKUP_DIR.glob(pattern))
     if not backups:
         return None
-    
+
     latest_backup = max(backups, key=lambda p: p.stat().st_mtime)
-    
+
     # Move to migration package
     dest = output_dir / latest_backup.name
     shutil.move(str(latest_backup), str(dest))
-    
+
     # Move metadata too
     meta_src = _get_meta_file(latest_backup)
     if meta_src.exists():
         meta_dst = output_dir / meta_src.name
         shutil.move(str(meta_src), str(meta_dst))
-    
+
     return latest_backup.name
+
+
+def _generic_volume_backup(container_name, output_dir):
+    """Generic backup: export all Docker volumes of a container."""
+    from utils.docker_utils import safe_docker_run
+
+    # Get volumes mounted on the container
+    result = safe_docker_run(
+        ['docker', 'inspect', container_name, '--format', '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}} {{.Destination}}||{{end}}{{end}}'],
+        capture_output=True, text=True, encoding='utf-8', errors='ignore'
+    )
+    if not result or result.returncode != 0:
+        return False
+
+    volumes = []
+    for part in result.stdout.strip().split('||'):
+        part = part.strip()
+        if not part:
+            continue
+        pieces = part.split(' ', 1)
+        if len(pieces) == 2:
+            volumes.append({'name': pieces[0], 'mount': pieces[1]})
+
+    if not volumes:
+        return False
+
+    backup_file = output_dir / f"{container_name}_volumes.tar.gz"
+
+    # Create tar.gz of all volume data using a temporary alpine container
+    vol_args = []
+    tar_paths = []
+    for v in volumes:
+        safe_name = v['name'].replace('/', '_')
+        vol_args.extend(['-v', f"{v['name']}:/backup_src/{safe_name}:ro"])
+        tar_paths.append(f'/backup_src/{safe_name}')
+
+    cmd = ['docker', 'run', '--rm'] + vol_args + [
+        '-v', f'{output_dir.resolve()}:/backup_dst',
+        'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz'
+    ] + tar_paths
+
+    result = safe_docker_run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+    return result is not None and result.returncode == 0
 
 
 def _get_hostname():

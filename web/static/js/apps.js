@@ -177,10 +177,38 @@ async function doInstall(appName, fields) {
     hideProgressModal();
 
     if (res && res.success) {
-        showToast('success', res.message);
+        if (res.access_info) {
+            _showAccessInfo(instanceName, res.access_info);
+        } else {
+            showToast('success', res.message);
+        }
     } else {
         showToast('error', (res && res.message) || 'Installation failed');
     }
+}
+
+function _showAccessInfo(name, info) {
+    let html = `<p style="color:var(--green);font-weight:600;margin-bottom:12px">Installed successfully</p>`;
+
+    if (info.type === 'web' && info.url) {
+        html += `<div class="form-group"><label>Access URL</label><div style="font-family:monospace;background:var(--surface2);padding:8px 12px;border-radius:var(--radius-sm);user-select:all">${esc(info.url)}</div></div>`;
+    } else if (info.type === 'cli' && info.command) {
+        html += `<div class="form-group"><label>CLI Command</label><div style="font-family:monospace;background:var(--surface2);padding:8px 12px;border-radius:var(--radius-sm);user-select:all;word-break:break-all">${esc(info.command)}</div></div>`;
+        if (info.host) html += `<div class="form-group"><label>Host</label><div style="font-family:monospace;background:var(--surface2);padding:8px 12px;border-radius:var(--radius-sm)">${esc(info.host)}</div></div>`;
+    } else if (info.type === 'none' && info.note) {
+        html += `<p style="color:var(--text2)">${esc(info.note)}</p>`;
+    }
+
+    if (info.credentials && info.credentials.length > 0) {
+        html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">`;
+        html += `<label style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:8px;display:block">Credentials</label>`;
+        for (const c of info.credentials) {
+            html += `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.9rem"><span style="color:var(--text2)">${esc(c.label)}</span><span style="font-family:monospace;user-select:all;color:var(--pink)">${esc(c.value)}</span></div>`;
+        }
+        html += `</div>`;
+    }
+
+    showModal(name + ' Ready', html, [{ label: 'OK', cls: 'btn-primary' }]);
 }
 
 // ============ Backups Page ============

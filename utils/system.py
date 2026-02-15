@@ -141,7 +141,10 @@ def check_docker():
     
     # Check if installed
     if not check_command_exists('docker'):
-        return {'installed': False, 'running': False, 'desktop': False}
+        result = {'installed': False, 'running': False}
+        if is_windows():
+            result['desktop'] = False
+        return result
     
     # Check if running
     try:
@@ -173,11 +176,10 @@ def check_docker():
         except Exception:
             desktop = False
     
-    return {
-        'installed': True,
-        'running': running,
-        'desktop': desktop
-    }
+    result = {'installed': True, 'running': running}
+    if is_windows():
+        result['desktop'] = desktop
+    return result
 
 
 def check_wsl2():
