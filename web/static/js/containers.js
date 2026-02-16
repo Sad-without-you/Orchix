@@ -186,7 +186,8 @@ async function doUninstall(name) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`
+                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`,
+                'X-CSRFToken': getCsrfToken()
             }
         });
 
@@ -268,7 +269,8 @@ async function doUpdate(name, updateType) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`
+                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`,
+                'X-CSRFToken': getCsrfToken()
             },
             body: JSON.stringify({
                 container_name: name,

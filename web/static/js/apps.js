@@ -200,7 +200,8 @@ async function doInstall(appName, fields) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`
+                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`,
+                'X-CSRFToken': getCsrfToken()
             },
             body: JSON.stringify({
                 app_name: appName,
@@ -241,6 +242,14 @@ async function doInstall(appName, fields) {
                         finalResult = data;
                     }
                 }
+            }
+        }
+
+        // Process remaining buffer at end of stream
+        if (buffer.trim() && buffer.startsWith('data: ')) {
+            const data = JSON.parse(buffer.substring(6));
+            if (data.success) {
+                finalResult = data;
             }
         }
 
