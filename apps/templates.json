@@ -89,6 +89,9 @@
         {"key": "WEBPASSWORD", "label": "Admin Password", "type": "password", "generate": true},
         {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
       ],
+      "post_install": [
+        "docker exec {name} pihole -a -p {WEBPASSWORD}"
+      ],
       "restart": "unless-stopped"
     },
     {

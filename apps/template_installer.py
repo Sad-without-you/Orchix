@@ -83,7 +83,30 @@ class TemplateInstaller(BaseInstaller):
             except OSError:
                 pass
             return False
+
+        # Run post-install commands (e.g. pihole password setup)
+        self._run_post_install(instance_name, config)
+
         return True
+
+    def _run_post_install(self, instance_name, config):
+        """Run post_install commands defined in the template."""
+        import subprocess
+        import time
+        cmds = self.template.get('post_install', [])
+        if not cmds:
+            return
+        # Wait for container to be ready
+        time.sleep(3)
+        for cmd_template in cmds:
+            # Substitute {name} and any {ENV_KEY} placeholders
+            cmd_str = cmd_template.replace('{name}', instance_name)
+            for key, val in config.items():
+                cmd_str = cmd_str.replace('{' + key + '}', str(val))
+            try:
+                subprocess.run(cmd_str, shell=True, capture_output=True, timeout=30)
+            except Exception:
+                pass
 
     def _generate_compose(self, instance_name, config):
         t = self.template
