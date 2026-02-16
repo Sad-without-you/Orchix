@@ -65,12 +65,15 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 
 ### Container Management
 - One-click deployment with smart port assignment
+- Real-time Docker pull progress with layer tracking (CLI + Web UI)
+- Interactive post-install actions (e.g., password setup for Pi-hole)
 - Multi-instance support (PRO)
 - Automatic conflict detection (name + port)
 - Docker image size display before installation (MB/GB)
 - Container operations: start, stop, restart, logs, inspect, delete
-- Real-time container status updates
-- Volume and network management
+- Real-time container status updates via Server-Sent Events
+- Volume and network management with anonymous volume cleanup
+- Modal cancel protection during installation
 
 ### Data Protection (PRO)
 - Automated backup per application

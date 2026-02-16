@@ -223,11 +223,6 @@ function showProgressModal(title, statusText) {
     overlay.dataset.progressModal = 'true'; // Mark as non-dismissible progress modal
 }
 
-function updateProgressStatus(text) {
-    const el = document.getElementById('progress-status');
-    if (el) el.textContent = text;
-}
-
 function hideProgressModal() {
     const overlay = document.getElementById('modal-overlay');
     overlay.classList.add('hidden');

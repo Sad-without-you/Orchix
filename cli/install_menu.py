@@ -556,15 +556,6 @@ def _detect_cli_command(image, config, instance_name):
 
 
 # Post-install hints: OS-aware setup instructions
-_POST_INSTALL_HINTS = {
-    'pihole_password': {
-        'title': 'Set Admin Password:',
-        'windows': 'docker exec -it {name} pihole setpassword YOUR_PASSWORD',
-        'linux': 'sudo pihole setpassword YOUR_PASSWORD',
-    },
-}
-
-
 def _run_post_install_action(manifest, instance_name):
     """Run interactive post-install actions (e.g. set password)."""
     from cli.ui import show_step_detail, step_input
@@ -624,14 +615,3 @@ def _extract_credentials_from_logs(instance_name):
         creds.append(('Generated Password', m.group(1)))
 
     return creds
-
-
-def _get_post_install_hint(hint_key, instance_name):
-    """Get OS-aware post-install hint lines."""
-    from utils.system import is_windows
-    hint = _POST_INSTALL_HINTS.get(hint_key)
-    if not hint:
-        return []
-    platform = 'windows' if is_windows() else 'linux'
-    cmd = hint[platform].replace('{name}', instance_name)
-    return [hint['title'], cmd]

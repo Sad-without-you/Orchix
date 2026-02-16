@@ -924,21 +924,52 @@ DELETE /api/container/<name>
 
 #### Applications
 
-**List templates:**
+**List available apps:**
 ```bash
-GET /api/templates
+GET /api/apps
+# Returns: [{ name, display_name, icon, version, can_install, ... }]
 ```
 
-**Install application:**
+**Get app config schema:**
 ```bash
-POST /api/install
+GET /api/apps/<name>/config-schema
+# Returns: { fields: [{ key, label, type, default, ... }] }
+```
+
+**Check for conflicts:**
+```bash
+GET /api/apps/check-conflicts?name=<container>&port=<port>
+# Returns: { name_exists: bool, port_in_use: bool }
+```
+
+**Install application (with real-time progress):**
+```bash
+POST /api/apps/install-stream
 Content-Type: application/json
 
 {
-  "template": "wordpress",
-  "name": "my-wordpress",
-  "port": 8080
+  "app_name": "wordpress",
+  "instance_name": "my-wordpress",
+  "config": {
+    "port": 8080,
+    "MYSQL_PASSWORD": "secret123"
+  }
 }
+
+# Returns: Server-Sent Events stream with progress updates
+# Events: { progress: 0-100, status: "...", success: true/false, access_info: {...} }
+```
+
+**Set post-install password:**
+```bash
+POST /api/apps/set-password
+{ "container_name": "pihole", "password": "admin123" }
+```
+
+**Update application:**
+```bash
+POST /api/apps/update
+{ "container_name": "wordpress", "update_type": "version_update" }
 ```
 
 #### Backup (PRO)
