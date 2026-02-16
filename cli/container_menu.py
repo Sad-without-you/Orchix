@@ -3,7 +3,10 @@ from utils.docker_utils import safe_docker_run
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 import subprocess
+
+console = Console()
 
 def import_timestamp():
     '''Get current timestamp for filenames'''
@@ -206,19 +209,26 @@ def manage_container(container_name):
 
 def start_container(container_name):
     '''Start a container'''
-    show_info(f"Starting {container_name}...")
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task("Starting container...", total=100)
 
-    result = safe_docker_run(
-        ['docker', 'start', container_name],
-        capture_output=True,
-        text=True
-    )
+        result = safe_docker_run(
+            ['docker', 'start', container_name],
+            capture_output=True,
+            text=True
+        )
+
+        progress.update(task, completed=100, description="Start complete!")
 
     if result is None:
         show_error("Docker is not installed!")
-        return
-
-    if result.returncode == 0:
+    elif result.returncode == 0:
         show_success(f"{container_name} started!")
     else:
         show_error(f"Failed to start: {result.stderr}")
@@ -228,19 +238,26 @@ def start_container(container_name):
 
 def stop_container(container_name):
     '''Stop a container'''
-    show_info(f"Stopping {container_name}...")
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task("Stopping container...", total=100)
 
-    result = safe_docker_run(
-        ['docker', 'stop', container_name],
-        capture_output=True,
-        text=True
-    )
+        result = safe_docker_run(
+            ['docker', 'stop', container_name],
+            capture_output=True,
+            text=True
+        )
+
+        progress.update(task, completed=100, description="Stop complete!")
 
     if result is None:
         show_error("Docker is not installed!")
-        return
-
-    if result.returncode == 0:
+    elif result.returncode == 0:
         show_success(f"{container_name} stopped!")
     else:
         show_error(f"Failed to stop: {result.stderr}")
@@ -250,19 +267,26 @@ def stop_container(container_name):
 
 def restart_container(container_name):
     '''Restart a container'''
-    show_info(f"Restarting {container_name}...")
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task("Restarting container...", total=100)
 
-    result = safe_docker_run(
-        ['docker', 'restart', container_name],
-        capture_output=True,
-        text=True
-    )
+        result = safe_docker_run(
+            ['docker', 'restart', container_name],
+            capture_output=True,
+            text=True
+        )
+
+        progress.update(task, completed=100, description="Restart complete!")
 
     if result is None:
         show_error("Docker is not installed!")
-        return
-
-    if result.returncode == 0:
+    elif result.returncode == 0:
         show_success(f"{container_name} restarted!")
     else:
         show_error(f"Failed to restart: {result.stderr}")

@@ -118,15 +118,31 @@ async function batchAction(action) {
 
 async function containerAction(name, action) {
     const labels = { start: 'Starting', stop: 'Stopping', restart: 'Restarting' };
-    showProgressModal(`${labels[action] || action} ${name}`, 'Please wait...');
-    const res = await API.post(`/api/containers/${name}/${action}`);
-    hideProgressModal();
-    if (res && res.success) {
-        showToast('success', res.message);
-        setTimeout(refreshContainers, 1000);
-    } else {
-        showToast('error', (res && res.message) || 'Action failed');
-    }
+    showProgressModalWithBar(`${labels[action] || action} ${name}`, 'Initializing...', 0);
+
+    // Simulate progress while waiting for response
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress = Math.min(progress + 10, 90);
+        updateProgressBar(progress, labels[action] + '...');
+    }, 100);
+
+    const res = await API.post(`/api/containers/${name}/${action}`, {
+        headers: { 'X-CSRFToken': getCsrfToken() }
+    });
+
+    clearInterval(interval);
+    updateProgressBar(100, 'Complete!');
+
+    setTimeout(() => {
+        hideProgressModal();
+        if (res && res.success) {
+            showToast('success', res.message);
+            setTimeout(refreshContainers, 1000);
+        } else {
+            showToast('error', (res && res.message) || 'Action failed');
+        }
+    }, 300);
 }
 
 async function viewContainerLogs(name) {
