@@ -331,7 +331,26 @@ def _get_access_info(manifest, config, instance_name):
         elif val and env.get('key', '').upper().endswith(('_USER', '_USERNAME')):
             info['credentials'].append({'label': env.get('label', env['key']), 'value': val})
 
+    # Post-install hints (OS-aware setup commands)
+    hint_key = template.get('post_install_hint', '')
+    if hint_key:
+        from utils.system import is_windows
+        hint = _POST_INSTALL_HINTS.get(hint_key)
+        if hint:
+            platform = 'windows' if is_windows() else 'linux'
+            cmd = hint[platform].replace('{name}', instance_name)
+            info['setup_hint'] = {'title': hint['title'], 'command': cmd}
+
     return info
+
+
+_POST_INSTALL_HINTS = {
+    'pihole_password': {
+        'title': 'Set Admin Password:',
+        'windows': 'docker exec -it {name} pihole -a -p YOUR_PASSWORD',
+        'linux': 'sudo docker exec -it {name} pihole -a -p YOUR_PASSWORD',
+    },
+}
 
 
 # Image name → CLI tool mapping (extensible)

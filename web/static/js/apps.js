@@ -208,6 +208,13 @@ function _showAccessInfo(name, info) {
         html += `</div>`;
     }
 
+    if (info.setup_hint) {
+        html += `<div style="margin-top:12px;padding:12px;background:rgba(236,72,153,0.08);border:1px solid rgba(236,72,153,0.2);border-radius:var(--radius-sm)">`;
+        html += `<div style="font-size:11px;font-weight:700;color:var(--pink);margin-bottom:6px">${esc(info.setup_hint.title)}</div>`;
+        html += `<div style="font-family:monospace;font-size:12px;user-select:all;word-break:break-all;color:var(--text)">${esc(info.setup_hint.command)}</div>`;
+        html += `</div>`;
+    }
+
     showModal(name + ' Ready', html, [{ label: 'OK', cls: 'btn-primary' }]);
 }
 

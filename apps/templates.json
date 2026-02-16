@@ -86,12 +86,9 @@
         {"name_suffix": "dnsmasq", "mount": "/etc/dnsmasq.d"}
       ],
       "env": [
-        {"key": "WEBPASSWORD", "label": "Admin Password", "type": "password", "generate": true},
         {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
       ],
-      "post_install": [
-        "docker exec {name} pihole -a -p {WEBPASSWORD}"
-      ],
+      "post_install_hint": "pihole_password",
       "restart": "unless-stopped"
     },
     {

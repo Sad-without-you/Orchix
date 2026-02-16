@@ -489,6 +489,14 @@ def _build_access_message(manifest, config, instance_name):
         for label, val in creds:
             lines.append(f'{label}: {val}')
 
+    # Post-install hints (OS-aware setup commands)
+    hint = template.get('post_install_hint', '')
+    if hint:
+        hint_lines = _get_post_install_hint(hint, instance_name)
+        if hint_lines:
+            lines.append('')
+            lines.extend(hint_lines)
+
     return '\n'.join(lines)
 
 
@@ -512,3 +520,24 @@ def _detect_cli_command(image, config, instance_name):
             tool = cmd(config) if callable(cmd) else cmd
             return f'docker exec -it {instance_name} {tool}'
     return None
+
+
+# Post-install hints: OS-aware setup instructions
+_POST_INSTALL_HINTS = {
+    'pihole_password': {
+        'title': 'Set Admin Password:',
+        'windows': 'docker exec -it {name} pihole -a -p YOUR_PASSWORD',
+        'linux': 'sudo docker exec -it {name} pihole -a -p YOUR_PASSWORD',
+    },
+}
+
+
+def _get_post_install_hint(hint_key, instance_name):
+    """Get OS-aware post-install hint lines."""
+    from utils.system import is_windows
+    hint = _POST_INSTALL_HINTS.get(hint_key)
+    if not hint:
+        return []
+    platform = 'windows' if is_windows() else 'linux'
+    cmd = hint[platform].replace('{name}', instance_name)
+    return [hint['title'], cmd]
