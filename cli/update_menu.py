@@ -6,7 +6,6 @@ import subprocess
 import re
 import os
 from utils.docker_utils import safe_docker_run, get_docker_compose_command
-from utils.docker_progress import run_docker_pull_with_progress
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 

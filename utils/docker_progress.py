@@ -114,31 +114,6 @@ def run_command_with_progress(
     return result
 
 
-def filter_docker_errors(stderr: str) -> str:
-    """Filter Docker stderr to show only real errors, not progress lines."""
-    if not stderr:
-        return ""
-
-    # Progress indicators to filter out
-    progress_keywords = [
-        'Pulling', 'Download', 'Extracting', 'Pull complete',
-        'Waiting', 'Verifying', 'Already exists', 'Digest:',
-        'Status:', 'Image is up to date', 'Downloaded newer image'
-    ]
-
-    error_lines = []
-    for line in stderr.split('\n'):
-        # Skip progress lines
-        if any(keyword in line for keyword in progress_keywords):
-            continue
-
-        # Keep non-empty lines
-        if line.strip():
-            error_lines.append(line)
-
-    return '\n'.join(error_lines)
-
-
 def run_docker_pull_with_progress(image: str, callback: Optional[Callable[[int, str], None]] = None) -> subprocess.CompletedProcess:
     """
     Pull Docker image with real-time progress tracking.

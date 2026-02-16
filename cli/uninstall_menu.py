@@ -216,19 +216,16 @@ def uninstall_container(container_name):
             capture_output=True, text=True
         )
         if result is None:
-            show_step("Docker is not available!", "error")
             removal_details['errors'].append("Docker not available")
-        elif result and result.returncode == 0:
-            show_step_detail(f"Container {container_name} stopped")
+        elif result and result.returncode != 0:
+            removal_details['errors'].append("Container stop failed")
 
         # Remove the container
         result = safe_docker_run(
             ['docker', 'rm', '-f', container_name],
             capture_output=True, text=True
         )
-        if result and result.returncode == 0:
-            show_step_detail(f"Container {container_name} removed")
-        elif result and "No such container" not in result.stderr:
+        if result and result.returncode != 0 and "No such container" not in result.stderr:
             removal_details['errors'].append(f"Container removal: {result.stderr.strip()}")
 
         progress.update(task, completed=20, description="Container removed")
@@ -250,11 +247,9 @@ def uninstall_container(container_name):
                     if remove_result is None:
                         continue
                     if remove_result.returncode == 0:
-                        show_step_detail(f"Volume {vol} removed")
                         removal_details['volumes_removed'].append(vol)
                     else:
                         if "no such volume" not in remove_result.stderr.lower():
-                            show_step_detail(f"Volume {vol}: {remove_result.stderr.strip()}")
                             removal_details['errors'].append(f"Volume {vol}: {remove_result.stderr.strip()}")
 
         progress.update(task, completed=45, description="Volumes removed")
@@ -264,10 +259,8 @@ def uninstall_container(container_name):
         if os.path.exists(compose_file):
             try:
                 os.remove(compose_file)
-                show_step_detail(f"Compose file removed: {compose_file}")
                 removal_details['files_removed'].append(compose_file)
             except Exception as e:
-                show_step_detail(f"Could not remove compose file: {e}")
                 removal_details['errors'].append(f"Compose file removal: {str(e)}")
 
         # 3. Remove Dockerfile (if exists)
@@ -275,10 +268,8 @@ def uninstall_container(container_name):
         if os.path.exists(dockerfile):
             try:
                 os.remove(dockerfile)
-                show_step_detail(f"Dockerfile removed: {dockerfile}")
                 removal_details['files_removed'].append(dockerfile)
             except Exception as e:
-                show_step_detail(f"Could not remove Dockerfile: {e}")
                 removal_details['errors'].append(f"Dockerfile removal: {str(e)}")
 
         # 3. Remove config files
@@ -288,14 +279,11 @@ def uninstall_container(container_name):
                 try:
                     if config_file.is_file():
                         config_file.unlink()
-                        show_step_detail(f"Config removed: {config_file.name}")
                         removal_details['files_removed'].append(str(config_file))
                     elif config_file.is_dir():
                         shutil.rmtree(config_file)
-                        show_step_detail(f"Config dir removed: {config_file.name}")
                         removal_details['files_removed'].append(str(config_file))
                 except Exception as e:
-                    show_step_detail(f"Could not remove {config_file.name}: {e}")
                     removal_details['errors'].append(f"Config removal {config_file.name}: {str(e)}")
 
         # 4. Remove backup files
@@ -305,14 +293,11 @@ def uninstall_container(container_name):
                 try:
                     if backup_file.is_file():
                         backup_file.unlink()
-                        show_step_detail(f"Backup removed: {backup_file.name}")
                         removal_details['files_removed'].append(str(backup_file))
                     elif backup_file.is_dir():
                         shutil.rmtree(backup_file)
-                        show_step_detail(f"Backup dir removed: {backup_file.name}")
                         removal_details['files_removed'].append(str(backup_file))
                 except Exception as e:
-                    show_step_detail(f"Could not remove {backup_file.name}: {e}")
                     removal_details['errors'].append(f"Backup removal {backup_file.name}: {str(e)}")
 
         # 5. Remove temp files
@@ -328,17 +313,13 @@ def uninstall_container(container_name):
                     for temp_file in temp_dir.glob(pattern):
                         if temp_file.is_file():
                             temp_file.unlink()
-                            show_step_detail(f"Temp removed: {temp_file.name}")
                             removal_details['files_removed'].append(str(temp_file))
                         elif temp_file.is_dir():
                             shutil.rmtree(temp_file)
-                            show_step_detail(f"Temp dir removed: {temp_file.name}")
                             removal_details['files_removed'].append(str(temp_file))
                 except Exception as e:
-                    show_step_detail(f"Could not remove temp in {temp_dir}: {e}")
                     removal_details['errors'].append(f"Temp cleanup {temp_dir}: {str(e)}")
 
-        show_step("Files cleaned up")
         progress.update(task, completed=65, description="Files cleaned up")
 
         # 7. Docker cleanup - remove images only if no other container uses them
@@ -352,7 +333,6 @@ def uninstall_container(container_name):
             capture_output=True, text=True
         )
         if result and result.returncode == 0:
-            show_step_detail(f"Instance image removed: {instance_image}")
             removal_details['files_removed'].append(f"Image: {instance_image}")
 
         # Fallback for old-style containers (pre instance-tagging)
@@ -374,7 +354,6 @@ def uninstall_container(container_name):
                 continue  # Already handled above
             img_repo = image.rsplit(':', 1)[0] if ':' in image else image
             if img_repo in repos_in_use:
-                show_step_detail(f"Image {image} still in use, skipping")
                 continue
             remove_result = safe_docker_run(
                 ['docker', 'rmi', image],
@@ -383,14 +362,9 @@ def uninstall_container(container_name):
             if remove_result is None:
                 continue
             if remove_result.returncode == 0:
-                show_step_detail(f"Image removed: {image}")
                 removal_details['files_removed'].append(f"Image: {image}")
-            else:
-                if "No such image" not in remove_result.stderr:
-                    show_step_detail(f"Could not remove image {image}")
 
         # Remove dangling volumes ONLY if they belong to THIS instance
-        show_step_detail("Cleaning up orphaned volumes...")
         result = safe_docker_run(
             ['docker', 'volume', 'ls', '--filter', 'dangling=true', '--format', '{{.Name}}'],
             capture_output=True,
@@ -410,7 +384,6 @@ def uninstall_container(container_name):
                     if remove_result is None:
                         continue
                     if remove_result.returncode == 0:
-                        show_step_detail(f"Dangling volume removed: {vol}")
                         removal_details['volumes_removed'].append(vol)
 
         # Clean up unused networks only (NOT volumes - other instances may use them)
@@ -420,9 +393,6 @@ def uninstall_container(container_name):
             capture_output=True,
             text=True
         )
-
-        if prune_result is not None and prune_result.returncode == 0:
-            show_step("System cleanup done")
 
         progress.update(task, completed=100, description="Uninstall complete!")
 
