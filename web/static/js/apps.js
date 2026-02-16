@@ -132,11 +132,13 @@ function checkInstallConflicts() {
 
         const nameWarn = document.getElementById('name-conflict-warn');
         const portWarn = document.getElementById('port-conflict-warn');
+        let hasConflict = false;
 
         if (nameWarn) {
             if (res.name_conflict) {
                 nameWarn.textContent = `Container "${name}" already exists`;
                 nameWarn.style.display = 'block';
+                hasConflict = true;
             } else {
                 nameWarn.style.display = 'none';
             }
@@ -145,9 +147,18 @@ function checkInstallConflicts() {
             if (res.port_conflict) {
                 portWarn.textContent = `Port ${port} is already in use`;
                 portWarn.style.display = 'block';
+                hasConflict = true;
             } else {
                 portWarn.style.display = 'none';
             }
+        }
+
+        // Disable Install button when conflicts exist
+        const installBtn = document.querySelector('.modal-actions .btn-primary');
+        if (installBtn) {
+            installBtn.disabled = hasConflict;
+            installBtn.style.opacity = hasConflict ? '0.4' : '';
+            installBtn.style.pointerEvents = hasConflict ? 'none' : '';
         }
     }, 400);
 }
@@ -177,9 +188,15 @@ async function doInstall(appName, fields) {
     hideProgressModal();
 
     if (res && res.success) {
-        if (res.access_info) {
+        // Track install flow for cancel protection
+        window._installFlow = { containerName: instanceName };
+
+        if (res.post_install_action && res.post_install_action.type === 'set_password') {
+            _showSetPasswordDialog(res.post_install_action, res.access_info, instanceName);
+        } else if (res.access_info) {
             _showAccessInfo(instanceName, res.access_info);
         } else {
+            window._installFlow = null;
             showToast('success', res.message);
         }
     } else {
@@ -187,7 +204,48 @@ async function doInstall(appName, fields) {
     }
 }
 
+function _showSetPasswordDialog(action, accessInfo, instanceName) {
+    const showDialog = () => {
+        let html = `<p style="color:var(--green);font-weight:600;margin-bottom:12px">Installed successfully</p>`;
+        html += `<div class="form-group"><label>${esc(action.prompt)} <span style="color:var(--pink)">*</span></label>`;
+        html += `<input type="password" id="post-install-pw" class="form-input" placeholder="Enter password..." autofocus required></div>`;
+        html += `<p id="pw-error" style="font-size:12px;color:var(--red);display:none">Password is required!</p>`;
+
+        showModal(instanceName + ' Ready', html, [
+            { label: 'Set Password', cls: 'btn-primary', action: async () => {
+                const pw = document.getElementById('post-install-pw').value.trim();
+                if (!pw) {
+                    document.getElementById('pw-error').style.display = 'block';
+                    document.getElementById('post-install-pw').style.borderColor = 'var(--red)';
+                    document.getElementById('post-install-pw').focus();
+                    return;
+                }
+                const res = await API.post('/api/apps/set-password', {
+                    container_name: action.container_name,
+                    password: pw
+                });
+                closeModal();
+                window._installFlow = null;
+                if (res && res.success) {
+                    showToast('success', 'Password set successfully');
+                } else {
+                    showToast('error', (res && res.message) || 'Failed to set password');
+                }
+                if (accessInfo) _showAccessInfo(instanceName, accessInfo);
+            }}
+        ]);
+    };
+
+    // Set restore callback for "Back" button in cancel confirm
+    window._installFlow = { containerName: instanceName, restore: showDialog };
+    showDialog();
+}
+
 function _showAccessInfo(name, info) {
+    // Set restore callback if still in install flow
+    if (window._installFlow) {
+        window._installFlow.restore = () => _showAccessInfo(name, info);
+    }
     let html = `<p style="color:var(--green);font-weight:600;margin-bottom:12px">Installed successfully</p>`;
 
     if (info.type === 'web' && info.url) {
@@ -215,7 +273,7 @@ function _showAccessInfo(name, info) {
         html += `</div>`;
     }
 
-    showModal(name + ' Ready', html, [{ label: 'OK', cls: 'btn-primary' }]);
+    showModal(name + ' Ready', html, [{ label: 'OK', cls: 'btn-primary', fn: () => { window._installFlow = null; } }]);
 }
 
 // ============ Backups Page ============

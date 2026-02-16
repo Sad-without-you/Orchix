@@ -114,13 +114,16 @@ function showToast(type, message) {
     }, 3000);
 }
 
+// Track active install flow for cancel protection
+window._installFlow = null; // { containerName: 'xxx' } when install is in progress
+
 function showModal(title, bodyHtml, actions) {
     const overlay = document.getElementById('modal-overlay');
     const modal = document.getElementById('modal-content');
     modal.innerHTML = `
         <div class="modal-header">
             <h2>${esc(title)}</h2>
-            <button class="modal-close" data-action="hideModal">
+            <button class="modal-close" data-action="_tryDismissModal">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <line x1="4" y1="4" x2="12" y2="12"/>
                     <line x1="12" y1="4" x2="4" y2="12"/>
@@ -135,7 +138,11 @@ function showModal(title, bodyHtml, actions) {
         const btn = document.createElement('button');
         btn.className = `btn ${a.cls || ''}`;
         btn.textContent = a.label;
-        btn.onclick = () => { hideModal(); if (a.fn) a.fn(); };
+        if (a.action) {
+            btn.onclick = a.action;
+        } else {
+            btn.onclick = () => { hideModal(); if (a.fn) a.fn(); };
+        }
         actionsEl.appendChild(btn);
     });
     overlay.classList.remove('hidden');
@@ -146,9 +153,50 @@ function hideModal() {
     document.getElementById('modal-content').classList.remove('wide');
 }
 
+function closeModal() { hideModal(); }
+
+function _tryDismissModal() {
+    if (window._installFlow) {
+        _showCancelInstallConfirm();
+    } else {
+        hideModal();
+    }
+}
+
+function _showCancelInstallConfirm() {
+    const flow = window._installFlow;
+    if (!flow) { hideModal(); return; }
+
+    const modal = document.getElementById('modal-content');
+    modal.innerHTML = `
+        <div class="modal-header"><h2>Cancel Installation?</h2></div>
+        <div class="modal-body">
+            <p>The container <strong>${esc(flow.containerName)}</strong> has already been installed.</p>
+            <p style="color:var(--text2);margin-top:8px">If you cancel now, the container and its data will be removed.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" id="cancel-install-back">Back</button>
+            <button class="btn btn-danger" id="cancel-install-confirm">Remove & Cancel</button>
+        </div>
+    `;
+    document.getElementById('cancel-install-back').onclick = () => {
+        // Re-show the previous modal content by triggering the flow's restore function
+        if (flow.restore) flow.restore();
+    };
+    document.getElementById('cancel-install-confirm').onclick = async () => {
+        hideModal();
+        showProgressModal('Removing ' + flow.containerName, 'Cleaning up...');
+        await API.post('/api/containers/' + encodeURIComponent(flow.containerName) + '/uninstall', {});
+        hideProgressModal();
+        window._installFlow = null;
+        showToast('info', flow.containerName + ' removed');
+        if (typeof Router !== 'undefined') Router.navigate('#/apps');
+    };
+}
+
 // Close modal on overlay click
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
-    if (e.target === this) hideModal();
+    if (e.target === this) _tryDismissModal();
 });
 
 // Progress modal for long operations (install, uninstall, update)

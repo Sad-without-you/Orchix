@@ -1,8 +1,46 @@
+import json
 import os
+import re
 import secrets
 from apps.installer_base import BaseInstaller
 from utils.docker_progress import run_docker_with_progress
 from utils.validation import sanitize_yaml_value, validate_container_name
+
+
+def _parse_docker_error(stderr):
+    """Parse Docker stderr into a short, readable error message."""
+    text = stderr.strip()
+    if not text:
+        return ''
+    lower = text.lower()
+
+    if 'port is already allocated' in lower:
+        m = re.search(r'(\d+\.\d+\.\d+\.\d+:\d+)', text)
+        port = m.group(1) if m else 'unknown'
+        return f'Port {port} is already in use. Choose a different port.'
+
+    if 'is the docker daemon running' in lower or 'cannot connect' in lower:
+        return 'Docker is not running. Start Docker first.'
+
+    if 'no such image' in lower or 'manifest unknown' in lower:
+        return 'Docker image not found. Check your internet connection.'
+
+    if 'network' in lower and 'not found' in lower:
+        return 'Docker network error. Try restarting Docker.'
+
+    if 'permission denied' in lower:
+        return 'Permission denied. Run with admin/sudo privileges.'
+
+    if 'no space left' in lower:
+        return 'No disk space left. Free up space and try again.'
+
+    # Fallback: extract last meaningful line
+    for line in reversed(text.splitlines()):
+        line = line.strip()
+        if line and not line.startswith(('time=', ' ', '|')):
+            return line[:200] if len(line) > 200 else line
+
+    return 'Unknown error. Check Docker logs for details.'
 
 
 class TemplateInstaller(BaseInstaller):
@@ -82,8 +120,133 @@ class TemplateInstaller(BaseInstaller):
                 os.remove(compose_file)
             except OSError:
                 pass
+            self._cleanup_failed(instance_name)
+            self._last_error = _parse_docker_error(result.stderr or '')
             return False
+
+        # Clean up anonymous volumes after successful install
+        self._cleanup_anon_volumes(instance_name)
         return True
+
+    def get_last_error(self):
+        """Return the last install error message."""
+        return getattr(self, '_last_error', '')
+
+    def _cleanup_failed(self, instance_name):
+        """Remove container and orphan volumes after failed install."""
+        from utils.docker_utils import safe_docker_run
+
+        # Get anonymous volumes before removing container
+        result = safe_docker_run(
+            ['docker', 'inspect', instance_name, '--format', '{{json .Mounts}}'],
+            capture_output=True, text=True
+        )
+        anon_vols = []
+        if result and result.returncode == 0:
+            try:
+                for m in json.loads(result.stdout.strip()):
+                    name = m.get('Name', '')
+                    if (m.get('Type') == 'volume' and len(name) == 64
+                            and all(c in '0123456789abcdef' for c in name)):
+                        anon_vols.append(name)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Remove failed container
+        safe_docker_run(
+            ['docker', 'rm', '-f', instance_name],
+            capture_output=True, text=True
+        )
+
+        # Remove anonymous volumes
+        for vol in anon_vols:
+            safe_docker_run(
+                ['docker', 'volume', 'rm', '-f', vol],
+                capture_output=True, text=True
+            )
+
+        # Remove named volumes we created
+        for v in self.template.get('volumes', []):
+            if not v.get('bind'):
+                vol_name = f"{instance_name}_{v['name_suffix']}"
+                safe_docker_run(
+                    ['docker', 'volume', 'rm', '-f', vol_name],
+                    capture_output=True, text=True
+                )
+
+    def _cleanup_anon_volumes(self, instance_name):
+        """Map image VOLUME paths to named volumes to prevent anonymous volumes."""
+        from utils.docker_utils import safe_docker_run
+
+        # Inspect container mounts to find anonymous volumes and their paths
+        result = safe_docker_run(
+            ['docker', 'inspect', instance_name, '--format', '{{json .Mounts}}'],
+            capture_output=True, text=True
+        )
+        if not result or result.returncode != 0:
+            return
+
+        try:
+            mounts = json.loads(result.stdout.strip())
+        except (json.JSONDecodeError, ValueError):
+            return
+
+        anon_mounts = []
+        for m in mounts:
+            name = m.get('Name', '')
+            if (m.get('Type') == 'volume' and len(name) == 64
+                    and all(c in '0123456789abcdef' for c in name)):
+                anon_mounts.append({'name': name, 'dest': m['Destination']})
+
+        if not anon_mounts:
+            return
+
+        compose_file = f"docker-compose-{instance_name}.yml"
+
+        # Add named volumes for each anonymous mount path in compose
+        with open(compose_file, 'r', encoding='utf-8') as f:
+            lines = f.read().splitlines()
+
+        # Find last service-level volume line (indented "      - ...")
+        last_svc_vol = -1
+        for i, line in enumerate(lines):
+            if re.match(r'^      - \S+:/', line):
+                last_svc_vol = i
+
+        new_vol_lines = []
+        new_vol_defs = []
+        for m in anon_mounts:
+            suffix = m['dest'].strip('/').replace('/', '_').replace('.', '_')
+            vol_name = f"{instance_name}_{suffix}"
+            new_vol_lines.append(f"      - {vol_name}:{m['dest']}")
+            new_vol_defs.append(f"  {vol_name}:\n    name: {vol_name}")
+
+        # Insert volume mappings after last service volume line
+        if last_svc_vol >= 0:
+            for j, vl in enumerate(new_vol_lines):
+                lines.insert(last_svc_vol + 1 + j, vl)
+
+        # Add volume definitions at end
+        for vd in new_vol_defs:
+            lines.append(vd)
+
+        with open(compose_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines) + '\n')
+
+        # Recreate: down removes container + anon volumes, up uses updated compose
+        safe_docker_run(
+            ['docker', 'compose', '-f', compose_file, 'down'],
+            capture_output=True, text=True
+        )
+        for m in anon_mounts:
+            safe_docker_run(
+                ['docker', 'volume', 'rm', '-f', m['name']],
+                capture_output=True, text=True
+            )
+        safe_docker_run(
+            ['docker', 'compose', '-f', compose_file, 'up', '-d'],
+            capture_output=True, text=True
+        )
 
     def _generate_compose(self, instance_name, config):
         t = self.template

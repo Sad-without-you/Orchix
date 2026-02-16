@@ -393,45 +393,57 @@ def install_app(app_name, manifest):
     
     show_step("Configuration ready")
 
-    # Install
-    show_step(f"Installing {manifest['display_name']} as '{instance_name}'...", "active")
-    success = installer.install(config, instance_name)
-    
-    if success:
-        # Tag image with instance-specific name for safe uninstall
-        compose_file = f"docker-compose-{instance_name}.yml"
-        _tag_instance_image(instance_name, compose_file)
+    # Install (with port retry loop)
+    while True:
+        show_step(f"Installing {manifest['display_name']} as '{instance_name}'...", "active")
+        success = installer.install(config, instance_name)
 
-        show_step_final(f"{manifest['display_name']} installed successfully!", True)
+        if success:
+            # Tag image with instance-specific name for safe uninstall
+            compose_file = f"docker-compose-{instance_name}.yml"
+            _tag_instance_image(instance_name, compose_file)
 
-        # Log audit event for PRO users
-        license_manager = get_license_manager()
-        audit_logger = get_audit_logger(enabled=license_manager.is_pro())
-        audit_logger.log_event(
-            AuditEventType.INSTALL,
-            app_name,
-            {
-                'instance_name': instance_name,
-                'version': manifest.get('version', 'unknown'),
-                'port': config.get('port', 'N/A'),
-                'status': 'success'
-            }
-        )
-        
-        # Get success message from hook or generate access info
-        from apps.hook_loader import get_hook_loader
-        hook_loader = get_hook_loader()
+            show_step_final(f"{manifest['display_name']} installed successfully!", True)
 
-        if hook_loader.has_hook(manifest, 'success_message'):
-            message = hook_loader.execute_hook(manifest, 'success_message', config)
-            if message:
-                show_result_panel(message.strip(), f"{manifest['display_name']} Ready")
-        else:
-            message = _build_access_message(manifest, config, instance_name)
-            show_result_panel(message, f"{manifest['display_name']} Ready")
-    else:
+            # Log audit event for PRO users
+            license_manager = get_license_manager()
+            audit_logger = get_audit_logger(enabled=license_manager.is_pro())
+            audit_logger.log_event(
+                AuditEventType.INSTALL,
+                app_name,
+                {
+                    'instance_name': instance_name,
+                    'version': manifest.get('version', 'unknown'),
+                    'port': config.get('port', 'N/A'),
+                    'status': 'success'
+                }
+            )
+
+            # Get success message from hook or generate access info
+            from apps.hook_loader import get_hook_loader
+            hook_loader = get_hook_loader()
+
+            # Run post-install action (e.g. set password interactively)
+            _run_post_install_action(manifest, instance_name)
+
+            if hook_loader.has_hook(manifest, 'success_message'):
+                message = hook_loader.execute_hook(manifest, 'success_message', config)
+                if message:
+                    show_result_panel(message.strip(), f"{manifest['display_name']} Ready")
+            else:
+                message = _build_access_message(manifest, config, instance_name)
+                show_result_panel(message, f"{manifest['display_name']} Ready")
+            break
+
+        # Install failed
         show_step_final("Installation failed!", False)
-        
+
+        err = ''
+        if hasattr(installer, 'get_last_error'):
+            err = installer.get_last_error()
+            if err:
+                show_error(err)
+
         # Log failure for PRO users
         license_manager = get_license_manager()
         audit_logger = get_audit_logger(enabled=license_manager.is_pro())
@@ -445,7 +457,26 @@ def install_app(app_name, manifest):
                 'status': 'failed'
             }
         )
-    
+
+        # If port conflict, offer to change port and retry
+        if 'port' in err.lower() and 'already' in err.lower():
+            print()
+            retry = select_from_list(
+                "Port is already in use. Change port?",
+                ["🔄 Enter new port", "⬅️  Cancel"]
+            )
+            if "new port" in retry.lower():
+                new_port = step_input(f"New port [{config.get('port', '')}]: ").strip()
+                if new_port:
+                    try:
+                        config['port'] = int(new_port)
+                    except ValueError:
+                        show_error("Invalid port number")
+                        break
+                    continue
+            break
+        break
+
     input("\nPress Enter...")
 
 
@@ -484,18 +515,20 @@ def _build_access_message(manifest, config, instance_name):
             creds.append((env.get('label', env['key']), val))
         elif val and env.get('key', '').upper().endswith(('_USER', '_USERNAME')):
             creds.append((env.get('label', env['key']), val))
+
+    # Default credentials (built into the image, not from env vars)
+    for dc in template.get('default_credentials', []):
+        creds.append((dc['label'], dc['value']))
+
+    # Credentials from container logs (e.g. filebrowser generates random password)
+    if template.get('credentials_from_logs') and instance_name:
+        log_creds = _extract_credentials_from_logs(instance_name)
+        creds.extend(log_creds)
+
     if creds:
         lines.append('')
         for label, val in creds:
             lines.append(f'{label}: {val}')
-
-    # Post-install hints (OS-aware setup commands)
-    hint = template.get('post_install_hint', '')
-    if hint:
-        hint_lines = _get_post_install_hint(hint, instance_name)
-        if hint_lines:
-            lines.append('')
-            lines.extend(hint_lines)
 
     return '\n'.join(lines)
 
@@ -526,10 +559,71 @@ def _detect_cli_command(image, config, instance_name):
 _POST_INSTALL_HINTS = {
     'pihole_password': {
         'title': 'Set Admin Password:',
-        'windows': 'docker exec -it {name} pihole -a -p YOUR_PASSWORD',
-        'linux': 'sudo docker exec -it {name} pihole -a -p YOUR_PASSWORD',
+        'windows': 'docker exec -it {name} pihole setpassword YOUR_PASSWORD',
+        'linux': 'sudo pihole setpassword YOUR_PASSWORD',
     },
 }
+
+
+def _run_post_install_action(manifest, instance_name):
+    """Run interactive post-install actions (e.g. set password)."""
+    from cli.ui import show_step_detail, step_input
+    from utils.docker_utils import safe_docker_run
+
+    template = manifest.get('_template', {})
+    action = template.get('post_install_action')
+    if not action:
+        return
+
+    if action['type'] == 'set_password':
+        print()
+        show_step_detail(action['prompt'])
+        while True:
+            password = step_input("  Password: ").strip()
+            if password:
+                break
+            show_step_detail("Password is required!")
+        cmd = action['command'].replace('{name}', instance_name).replace('{password}', password)
+        result = safe_docker_run(
+            cmd.split(),
+            capture_output=True, text=True
+        )
+        if result and result.returncode == 0:
+            show_step_detail("Password set successfully!")
+        else:
+            show_step_detail("Could not set password. Set it later manually.")
+
+
+def _extract_credentials_from_logs(instance_name):
+    """Extract auto-generated credentials from container logs."""
+    import re
+    from utils.docker_utils import safe_docker_run
+
+    result = safe_docker_run(
+        ['docker', 'logs', '--tail', '50', instance_name],
+        capture_output=True, text=True
+    )
+    if not result or result.returncode != 0:
+        return []
+
+    logs = (result.stdout or '') + (result.stderr or '')
+    creds = []
+
+    # Pattern: "User 'X' initialized with randomly generated password: Y"
+    m = re.search(
+        r"[Uu]ser\s+'?(\w+)'?\s+initialized\s+with.*password:\s*(\S+)", logs
+    )
+    if m:
+        creds.append(('Username', m.group(1)))
+        creds.append(('Password', m.group(2)))
+        return creds
+
+    # Generic pattern: "password: XYZ" or "Password: XYZ"
+    m = re.search(r'[Pp]assword:\s*(\S{8,})', logs)
+    if m:
+        creds.append(('Generated Password', m.group(1)))
+
+    return creds
 
 
 def _get_post_install_hint(hint_key, instance_name):

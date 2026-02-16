@@ -167,18 +167,33 @@ def install_app():
 
         # Build access info
         access_info = _get_access_info(manifest, config, instance_name)
-        return jsonify({
+        response = {
             'success': True,
             'message': f'{instance_name} installed successfully',
             'access_info': access_info
-        })
+        }
+
+        # Include post-install action if available
+        template = manifest.get('_template', {})
+        action = template.get('post_install_action')
+        if action and action.get('type') == 'set_password':
+            response['post_install_action'] = {
+                'type': 'set_password',
+                'prompt': action['prompt'],
+                'container_name': instance_name,
+            }
+
+        return jsonify(response)
 
     # Check if Docker stopped during install
     docker_after = check_docker_status()
     if not docker_after.get('running'):
         return jsonify({'success': False, 'message': docker_after.get('message', 'Docker stopped during installation')}), 503
 
-    return jsonify({'success': False, 'message': 'Installation failed. Check container logs for details.'}), 500
+    # Show actual Docker error if available
+    err = installer.get_last_error() if hasattr(installer, 'get_last_error') else ''
+    msg = f'Installation failed: {err}' if err else 'Installation failed. Check container logs for details.'
+    return jsonify({'success': False, 'message': msg}), 500
 
 
 @bp.route('/apps/update', methods=['POST'])
@@ -243,6 +258,46 @@ def update_app():
         return jsonify({'success': True, 'message': f'{container_name} updated successfully'})
 
     return jsonify({'success': False, 'message': 'Update failed'}), 500
+
+
+@bp.route('/apps/set-password', methods=['POST'])
+@require_permission('apps.install')
+def set_container_password():
+    """Set password for a container after installation (e.g. Pi-hole)."""
+    from utils.docker_utils import safe_docker_run
+
+    data = request.json
+    container_name = data.get('container_name', '')
+    password = data.get('password', '')
+
+    if not container_name or not password:
+        return jsonify({'success': False, 'message': 'container_name and password required'}), 400
+
+    try:
+        container_name = validate_container_name(container_name)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+    # Find the manifest to get the command template
+    from apps.manifest_loader import load_all_manifests
+    from cli.update_menu import _resolve_manifest
+
+    manifests = load_all_manifests()
+    manifest = _resolve_manifest(container_name, manifests)
+    if not manifest:
+        return jsonify({'success': False, 'message': 'Unknown container'}), 400
+
+    template = manifest.get('_template', {})
+    action = template.get('post_install_action')
+    if not action or action.get('type') != 'set_password':
+        return jsonify({'success': False, 'message': 'No password action for this app'}), 400
+
+    cmd = action['command'].replace('{name}', container_name).replace('{password}', password)
+    result = safe_docker_run(cmd.split(), capture_output=True, text=True)
+
+    if result and result.returncode == 0:
+        return jsonify({'success': True, 'message': 'Password set successfully'})
+    return jsonify({'success': False, 'message': 'Failed to set password'}), 500
 
 
 @bp.route('/apps/check-conflicts')
@@ -331,26 +386,49 @@ def _get_access_info(manifest, config, instance_name):
         elif val and env.get('key', '').upper().endswith(('_USER', '_USERNAME')):
             info['credentials'].append({'label': env.get('label', env['key']), 'value': val})
 
-    # Post-install hints (OS-aware setup commands)
-    hint_key = template.get('post_install_hint', '')
-    if hint_key:
-        from utils.system import is_windows
-        hint = _POST_INSTALL_HINTS.get(hint_key)
-        if hint:
-            platform = 'windows' if is_windows() else 'linux'
-            cmd = hint[platform].replace('{name}', instance_name)
-            info['setup_hint'] = {'title': hint['title'], 'command': cmd}
+    # Default credentials (built into the image, not from env vars)
+    for dc in template.get('default_credentials', []):
+        info['credentials'].append({'label': dc['label'], 'value': dc['value']})
+
+    # Credentials from container logs (e.g. filebrowser generates random password)
+    if template.get('credentials_from_logs'):
+        log_creds = _extract_credentials_from_logs(instance_name)
+        if log_creds:
+            info['credentials'].extend(log_creds)
 
     return info
 
 
-_POST_INSTALL_HINTS = {
-    'pihole_password': {
-        'title': 'Set Admin Password:',
-        'windows': 'docker exec -it {name} pihole -a -p YOUR_PASSWORD',
-        'linux': 'sudo docker exec -it {name} pihole -a -p YOUR_PASSWORD',
-    },
-}
+def _extract_credentials_from_logs(instance_name):
+    """Extract auto-generated credentials from container logs."""
+    import re
+    from utils.docker_utils import safe_docker_run
+
+    result = safe_docker_run(
+        ['docker', 'logs', '--tail', '50', instance_name],
+        capture_output=True, text=True
+    )
+    if not result or result.returncode != 0:
+        return []
+
+    logs = (result.stdout or '') + (result.stderr or '')
+    creds = []
+
+    # Pattern: "User 'X' initialized with randomly generated password: Y"
+    m = re.search(
+        r"[Uu]ser\s+'?(\w+)'?\s+initialized\s+with.*password:\s*(\S+)", logs
+    )
+    if m:
+        creds.append({'label': 'Username', 'value': m.group(1)})
+        creds.append({'label': 'Password', 'value': m.group(2)})
+        return creds
+
+    # Generic pattern: "password: XYZ" or "Password: XYZ"
+    m = re.search(r'[Pp]assword:\s*(\S{8,})', logs)
+    if m:
+        creds.append({'label': 'Generated Password', 'value': m.group(1)})
+
+    return creds
 
 
 # Image name → CLI tool mapping (extensible)

@@ -88,7 +88,11 @@
       "env": [
         {"key": "TZ", "label": "Timezone", "default": "Europe/Berlin"}
       ],
-      "post_install_hint": "pihole_password",
+      "post_install_action": {
+        "type": "set_password",
+        "prompt": "Set Pi-hole Admin Password",
+        "command": "docker exec {name} pihole setpassword {password}"
+      },
       "restart": "unless-stopped"
     },
     {
@@ -283,9 +287,11 @@
       ],
       "volumes": [
         {"name_suffix": "data", "mount": "/srv"},
-        {"name_suffix": "db", "mount": "/database"}
+        {"name_suffix": "db", "mount": "/database"},
+        {"name_suffix": "config", "mount": "/config"}
       ],
       "env": [],
+      "credentials_from_logs": true,
       "restart": "unless-stopped"
     },
     {
@@ -477,6 +483,10 @@
       ],
       "env": [
         {"key": "DISABLE_IPV6", "label": "Disable IPv6", "default": "true"}
+      ],
+      "default_credentials": [
+        {"label": "Email", "value": "admin@example.com"},
+        {"label": "Password", "value": "changeme"}
       ],
       "restart": "unless-stopped"
     },
