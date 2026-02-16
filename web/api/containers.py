@@ -415,3 +415,130 @@ def uninstall_container(name):
         'message': f'{name} completely uninstalled',
         'details': removal_details
     })
+
+
+@bp.route('/containers/<name>/uninstall-stream', methods=['POST'])
+@require_permission('containers.uninstall')
+def uninstall_container_stream(name):
+    """Completely uninstall a container with Server-Sent Events progress streaming."""
+    from flask import Response, stream_with_context
+    import json
+
+    def generate():
+        try:
+            try:
+                validated_name = validate_container_name(name)
+            except ValueError as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                return
+
+            from cli.uninstall_menu import (
+                _get_container_images, _volume_belongs_to_instance
+            )
+
+            removal_details = {'volumes_removed': [], 'files_removed': [], 'errors': []}
+            compose_file = f"docker-compose-{validated_name}.yml"
+
+            yield f"data: {json.dumps({'progress': 10, 'status': 'Collecting container info...'})}\n\n"
+
+            # Collect images before removal
+            images_to_remove = _get_container_images(validated_name, compose_file)
+
+            # Collect ALL volumes
+            container_volumes = set()
+            inspect_result = safe_docker_run(
+                ['docker', 'inspect', '--format', '{{range .Mounts}}{{.Name}} {{end}}', validated_name],
+                capture_output=True, text=True
+            )
+            if inspect_result and inspect_result.returncode == 0:
+                for vol in inspect_result.stdout.strip().split():
+                    if vol.strip():
+                        container_volumes.add(vol.strip())
+
+            yield f"data: {json.dumps({'progress': 25, 'status': 'Stopping container...'})}\n\n"
+
+            # 1. Stop and remove container
+            safe_docker_run(['docker', 'stop', validated_name], capture_output=True, text=True)
+            result = safe_docker_run(['docker', 'rm', '-f', validated_name], capture_output=True, text=True)
+            if result and result.returncode != 0 and result.stderr and "No such container" not in result.stderr:
+                removal_details['errors'].append(f"Container: {result.stderr.strip()}")
+
+            yield f"data: {json.dumps({'progress': 50, 'status': 'Removing volumes...'})}\n\n"
+
+            # 2. Remove volumes
+            result = safe_docker_run(
+                ['docker', 'volume', 'ls', '--format', '{{.Name}}'],
+                capture_output=True, text=True
+            )
+            if result and result.returncode == 0:
+                for vol in result.stdout.strip().split('\n'):
+                    if vol and (_volume_belongs_to_instance(vol, validated_name) or vol in container_volumes):
+                        r = safe_docker_run(['docker', 'volume', 'rm', '-f', vol], capture_output=True, text=True)
+                        if r and r.returncode == 0:
+                            removal_details['volumes_removed'].append(vol)
+
+            yield f"data: {json.dumps({'progress': 70, 'status': 'Cleaning up files...'})}\n\n"
+
+            # 3. Remove files
+            for path in [compose_file, f"Dockerfile-{validated_name}"]:
+                if os.path.exists(path):
+                    try:
+                        os.remove(path)
+                        removal_details['files_removed'].append(path)
+                    except Exception:
+                        pass
+
+            for dir_path, pattern in [("config", f"{validated_name}*"), ("backups", f"*{validated_name}*")]:
+                d = Path(dir_path)
+                if d.exists():
+                    for f in d.glob(pattern):
+                        try:
+                            if f.is_file():
+                                f.unlink()
+                            elif f.is_dir():
+                                shutil.rmtree(f)
+                            removal_details['files_removed'].append(str(f))
+                        except Exception:
+                            pass
+
+            yield f"data: {json.dumps({'progress': 85, 'status': 'Removing images...'})}\n\n"
+
+            # 4. Remove images
+            instance_image = f"{validated_name}:orchix"
+            r = safe_docker_run(['docker', 'rmi', instance_image], capture_output=True, text=True)
+            if r and r.returncode == 0:
+                removal_details['files_removed'].append(f"Image: {instance_image}")
+
+            repos_in_use = set()
+            r = safe_docker_run(['docker', 'ps', '-a', '--format', '{{.Image}}'], capture_output=True, text=True)
+            if r and r.returncode == 0:
+                for img in r.stdout.strip().split('\n'):
+                    img = img.strip()
+                    if img:
+                        repo = img.rsplit(':', 1)[0] if ':' in img else img
+                        repos_in_use.add(repo)
+
+            for image in images_to_remove:
+                if image == instance_image:
+                    continue
+                img_repo = image.rsplit(':', 1)[0] if ':' in image else image
+                if img_repo in repos_in_use:
+                    continue
+                r = safe_docker_run(['docker', 'rmi', image], capture_output=True, text=True)
+                if r and r.returncode == 0:
+                    removal_details['files_removed'].append(f"Image: {image}")
+
+            yield f"data: {json.dumps({'progress': 95, 'status': 'Finalizing...'})}\n\n"
+
+            # 5. Prune unused networks
+            safe_docker_run(['docker', 'network', 'prune', '-f'], capture_output=True, text=True)
+
+            # 6. Audit log
+            _log_audit('UNINSTALL', validated_name, removal_details)
+
+            yield f"data: {json.dumps({'success': True, 'message': f'{validated_name} completely uninstalled', 'details': removal_details, 'progress': 100})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')

@@ -280,6 +280,133 @@ def update_app():
     return jsonify({'success': False, 'message': 'Update failed'}), 500
 
 
+@bp.route('/apps/update-stream', methods=['POST'])
+@require_permission('apps.update')
+def update_app_stream():
+    """Update app with Server-Sent Events progress streaming."""
+    import subprocess
+    import re
+
+    data = request.json
+    container_name = data.get('container_name')
+    update_type = data.get('update_type', 'version_update')
+
+    def generate():
+        try:
+            if not container_name:
+                yield f"data: {json.dumps({'error': 'container_name required'})}\n\n"
+                return
+
+            try:
+                validated_name = validate_container_name(container_name)
+            except ValueError as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                return
+
+            allowed_update_types = {'version_update', 'config_update', 'beta_update', 'next_update'}
+            if update_type not in allowed_update_types:
+                yield f"data: {json.dumps({'error': 'Invalid update type'})}\n\n"
+                return
+
+            from apps.manifest_loader import load_all_manifests
+            from cli.update_menu import _resolve_manifest, _retag_after_update
+            from license import get_license_manager
+
+            manifests = load_all_manifests()
+            manifest = _resolve_manifest(validated_name, manifests)
+
+            if not manifest:
+                yield f"data: {json.dumps({'error': f'No manifest found for {validated_name}'})}\n\n"
+                return
+
+            UpdaterClass = manifest.get('updater_class')
+            if not UpdaterClass:
+                yield f"data: {json.dumps({'error': 'No updater available'})}\n\n"
+                return
+
+            updater = UpdaterClass(manifest)
+            actions = updater.get_available_actions()
+            if update_type not in actions:
+                yield f"data: {json.dumps({'error': f'Update type \"{update_type}\" not available'})}\n\n"
+                return
+
+            yield f"data: {json.dumps({'progress': 10, 'status': 'Pulling latest image...'})}\n\n"
+
+            # Get image from manifest for pull tracking
+            template = manifest.get('_template', {})
+            image = template.get('image', '')
+
+            if image:
+                # Pull new image with progress
+                process = subprocess.Popen(
+                    ['docker', 'pull', image],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1
+                )
+
+                layers_total = 0
+                layers_done = 0
+                last_progress = 10
+
+                for line in iter(process.stdout.readline, ''):
+                    if not line:
+                        break
+
+                    if 'Pulling fs layer' in line:
+                        layers_total += 1
+                    elif 'Pull complete' in line or 'Already exists' in line:
+                        layers_done += 1
+
+                    if layers_total > 0:
+                        pct = int((layers_done / layers_total) * 100)
+                        progress = 10 + int(pct * 0.6)  # 10-70%
+                        if progress > last_progress:
+                            last_progress = progress
+                            status = f"Pulling image... ({layers_done}/{layers_total} layers)"
+                            yield f"data: {json.dumps({'progress': progress, 'status': status})}\n\n"
+
+                process.wait()
+                if process.returncode != 0:
+                    yield f"data: {json.dumps({'error': 'Failed to pull new image'})}\n\n"
+                    return
+
+            yield f"data: {json.dumps({'progress': 75, 'status': 'Updating container...'})}\n\n"
+
+            # Run update
+            method = getattr(updater, update_type, None)
+            if not method:
+                yield f"data: {json.dumps({'error': f'Unknown update type: {update_type}'})}\n\n"
+                return
+
+            success = method()
+
+            if success:
+                _retag_after_update(validated_name)
+                yield f"data: {json.dumps({'progress': 95, 'status': 'Finalizing...'})}\n\n"
+
+                # Audit log
+                try:
+                    from license.audit_logger import get_audit_logger, AuditEventType
+                    lm = get_license_manager()
+                    logger = get_audit_logger(enabled=lm.is_pro())
+                    logger.log_event(AuditEventType.UPDATE, validated_name, {
+                        'update_type': update_type, 'status': 'success', 'source': 'web_ui'
+                    })
+                except Exception:
+                    pass
+
+                yield f"data: {json.dumps({'success': True, 'message': f'{validated_name} updated successfully', 'progress': 100})}\n\n"
+            else:
+                yield f"data: {json.dumps({'error': 'Update failed'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+
+
 @bp.route('/apps/set-password', methods=['POST'])
 @require_permission('apps.install')
 def set_container_password():

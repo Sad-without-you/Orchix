@@ -6,6 +6,11 @@ import subprocess
 import re
 import os
 from utils.docker_utils import safe_docker_run, get_docker_compose_command
+from utils.docker_progress import run_docker_pull_with_progress
+from rich.console import Console
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+
+console = Console()
 
 
 def get_installed_containers():
@@ -121,26 +126,44 @@ def update_app(container_name, manifest):
     if "Cancel" in choice:
         return
     
-    # Execute selected action
-    show_step("Executing update...", "active")
+    # Execute selected action with progress bar
     success = False
 
-    try:
-        if "Latest" in choice:
-            success = updater.version_update()
-        elif "Configuration" in choice:
-            success = updater.config_update()
-        elif "Beta" in choice:
-            success = updater.beta_update()
-        elif "next" in choice:
-            success = updater.next_update()
-    except Exception as e:
-        show_step(f"Update error: {e}", "error")
-        success = False
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task("Starting update...", total=100)
+
+        try:
+            # Step 1: Pull new image and update (0% -> 75%)
+            progress.update(task, completed=25, description="Pulling new image...")
+
+            if "Latest" in choice:
+                success = updater.version_update()
+            elif "Configuration" in choice:
+                success = updater.config_update()
+            elif "Beta" in choice:
+                success = updater.beta_update()
+            elif "next" in choice:
+                success = updater.next_update()
+
+            if not success:
+                progress.update(task, completed=100, description="Update failed!")
+            else:
+                # Step 2: Re-tag and restart (75% -> 100%)
+                progress.update(task, completed=75, description="Applying update...")
+                _retag_after_update(container_name)
+                progress.update(task, completed=100, description="Update complete!")
+
+        except Exception as e:
+            progress.update(task, completed=100, description=f"Update error: {e}")
+            success = False
 
     if success:
-        # Re-tag image for orchix-tagged containers
-        _retag_after_update(container_name)
         show_step_final("Update complete!", True)
     else:
         show_step_final("Update failed!", False)

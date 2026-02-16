@@ -180,15 +180,57 @@ function confirmUninstall(name) {
 }
 
 async function doUninstall(name) {
-    showProgressModal(`Uninstalling ${name}`, 'Removing container, volumes, and images...');
+    showProgressModalWithBar(`Uninstalling ${name}`, 'Initializing...', 0);
     try {
-        const res = await API.post(`/api/containers/${name}/uninstall`);
+        const response = await fetch(`/api/containers/${name}/uninstall-stream`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`
+            }
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let finalResult = null;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.substring(6));
+
+                    if (data.error) {
+                        hideProgressModal();
+                        showToast('error', data.error);
+                        return;
+                    }
+
+                    if (data.progress !== undefined) {
+                        updateProgressBar(data.progress, data.status || '');
+                    }
+
+                    if (data.success) {
+                        finalResult = data;
+                    }
+                }
+            }
+        }
+
         hideProgressModal();
-        if (res && res.success) {
-            showToast('success', res.message);
+
+        if (finalResult && finalResult.success) {
+            showToast('success', finalResult.message);
             setTimeout(refreshContainers, 500);
         } else {
-            showToast('error', (res && res.message) || 'Uninstall failed');
+            showToast('error', 'Uninstall failed');
         }
     } catch (err) {
         hideProgressModal();
@@ -219,17 +261,66 @@ async function showUpdateDialog(name) {
 
 async function doUpdate(name, updateType) {
     hideModal();
-    showProgressModal(`Updating ${name}`, 'Pulling latest image and recreating container...');
-    const res = await API.post('/api/apps/update', {
-        container_name: name,
-        update_type: updateType
-    });
-    hideProgressModal();
-    if (res && res.success) {
-        showToast('success', res.message);
-        setTimeout(refreshContainers, 1000);
-    } else {
-        showToast('error', (res && res.message) || 'Update failed');
+    showProgressModalWithBar(`Updating ${name}`, 'Initializing...', 0);
+
+    try {
+        const response = await fetch('/api/apps/update-stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`
+            },
+            body: JSON.stringify({
+                container_name: name,
+                update_type: updateType
+            })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let finalResult = null;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.substring(6));
+
+                    if (data.error) {
+                        hideProgressModal();
+                        showToast('error', data.error);
+                        return;
+                    }
+
+                    if (data.progress !== undefined) {
+                        updateProgressBar(data.progress, data.status || '');
+                    }
+
+                    if (data.success) {
+                        finalResult = data;
+                    }
+                }
+            }
+        }
+
+        hideProgressModal();
+
+        if (finalResult && finalResult.success) {
+            showToast('success', finalResult.message);
+            setTimeout(refreshContainers, 1000);
+        } else {
+            showToast('error', 'Update failed');
+        }
+    } catch (err) {
+        hideProgressModal();
+        showToast('error', 'Update failed: ' + err.message);
     }
 }
 
