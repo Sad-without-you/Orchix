@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response, stream_with_context
 from web.auth import require_permission
 from utils.validation import validate_container_name, validate_port
+import json
 
 bp = Blueprint('api_apps', __name__, url_prefix='/api')
 
@@ -59,141 +60,160 @@ def get_config_schema(name):
     return jsonify({'fields': fields, 'is_template': True})
 
 
-@bp.route('/apps/install', methods=['POST'])
+@bp.route('/apps/install-stream', methods=['POST'])
 @require_permission('apps.install')
-def install_app():
+def install_stream():
+    """Install app with Server-Sent Events progress streaming."""
+    import subprocess
+    import re
+    from utils.docker_utils import safe_docker_run
+
     data = request.json
     app_name = data.get('app_name')
     instance_name = data.get('instance_name', app_name)
     user_config = data.get('config', {})
 
-    if not app_name:
-        return jsonify({'success': False, 'message': 'app_name required'}), 400
-
-    # Check Docker status first
-    from utils.docker_utils import check_docker_status
-    docker = check_docker_status()
-    if not docker.get('running'):
-        return jsonify({'success': False, 'message': docker.get('message', 'Docker is not running')}), 503
-
-    # Validate names to prevent path traversal and injection
-    try:
-        app_name = validate_container_name(app_name)
-        instance_name = validate_container_name(instance_name)
-    except ValueError as e:
-        return jsonify({'success': False, 'message': str(e)}), 400
-
-    # Validate port
-    try:
-        raw_port = user_config.get('port')
-        if raw_port is not None:
-            user_config['port'] = validate_port(raw_port)
-    except ValueError as e:
-        return jsonify({'success': False, 'message': str(e)}), 400
-
-    from apps.manifest_loader import load_manifest
-    from utils.license_check import can_install_app
-    from license import get_license_manager
-
-    try:
-        manifest = load_manifest(app_name)
-    except ValueError as e:
-        return jsonify({'success': False, 'message': str(e)}), 400
-
-    # License check
-    check = can_install_app(manifest)
-    if not check['allowed']:
-        return jsonify({'success': False, 'message': 'PRO license required'}), 403
-
-    # Container limit check - count only managed/visible containers
-    lm = get_license_manager()
-    if lm.is_free():
-        from cli.container_menu import get_visible_containers
-        visible, _ = get_visible_containers()
-        limit = lm.get_container_limit()
-        if len(visible) >= limit:
-            return jsonify({'success': False, 'message': f"Container limit reached ({limit})"}), 403
-
-    # Multi-instance protection: FREE tier ALWAYS uses app_name as instance_name
-    from cli.install_menu import check_container_exists
-    if lm.is_free():
-        # Force instance_name to app_name - no custom names for FREE tier
-        instance_name = app_name
-        if check_container_exists(app_name):
-            return jsonify({
-                'success': False,
-                'message': f"Container '{app_name}' already exists. Multi-Instance requires PRO."
-            }), 403
-
-    # Get installer
-    InstallerClass = manifest.get('installer_class')
-    if not InstallerClass:
-        return jsonify({'success': False, 'message': 'No installer available'}), 400
-
-    installer = InstallerClass(manifest)
-
-    # Build config
-    default_port = manifest.get('default_ports', [5678])
-    config = {
-        'port': user_config.get('port', default_port[0] if default_port else 5678),
-        'instance_name': instance_name,
-        'volume_name': f"{instance_name}_data",
-    }
-
-    # For template apps: process env vars via get_web_configuration
-    if manifest.get('_is_template') and hasattr(installer, 'get_web_configuration'):
-        env_config = installer.get_web_configuration(user_config)
-        config.update(env_config)
-
-    config.update(user_config)
-
-    try:
-        success = installer.install(config, instance_name)
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Installation error: {str(e)}'}), 500
-
-    if success:
-        # Audit log
+    def generate():
         try:
-            from license.audit_logger import get_audit_logger, AuditEventType
-            logger = get_audit_logger(enabled=lm.is_pro())
-            logger.log_event(AuditEventType.INSTALL, app_name, {
-                'instance_name': instance_name,
-                'port': config.get('port'),
-                'source': 'web_ui'
-            })
-        except Exception:
-            pass
+            # Validation & setup (same as normal install)
+            from apps.manifest_loader import load_all_manifests
+            from license.manager import get_license_manager
 
-        # Build access info
-        access_info = _get_access_info(manifest, config, instance_name)
-        response = {
-            'success': True,
-            'message': f'{instance_name} installed successfully',
-            'access_info': access_info
-        }
+            manifests = load_all_manifests()
+            manifest = manifests.get(app_name)
+            if not manifest:
+                yield f"data: {json.dumps({'error': 'App not found'})}\n\n"
+                return
 
-        # Include post-install action if available
-        template = manifest.get('_template', {})
-        action = template.get('post_install_action')
-        if action and action.get('type') == 'set_password':
-            response['post_install_action'] = {
-                'type': 'set_password',
-                'prompt': action['prompt'],
-                'container_name': instance_name,
+            lm = get_license_manager()
+            limit = lm.get_container_limit()
+
+            from cli.container_menu import get_all_containers
+            current = len(get_all_containers())
+            if current >= limit:
+                yield f"data: {json.dumps({'error': f'Container limit reached ({limit})'})}\n\n"
+                return
+
+            from cli.install_menu import check_container_exists
+            if lm.is_free():
+                instance_name_final = app_name
+                if check_container_exists(app_name):
+                    yield f"data: {json.dumps({'error': 'Container already exists. Multi-Instance requires PRO.'})}\n\n"
+                    return
+            else:
+                instance_name_final = instance_name
+
+            InstallerClass = manifest.get('installer_class')
+            if not InstallerClass:
+                yield f"data: {json.dumps({'error': 'No installer available'})}\n\n"
+                return
+
+            installer = InstallerClass(manifest)
+
+            # Build config
+            default_port = manifest.get('default_ports', [5678])
+            config = {
+                'port': user_config.get('port', default_port[0] if default_port else 5678),
+                'instance_name': instance_name_final,
+                'volume_name': f"{instance_name_final}_data",
             }
 
-        return jsonify(response)
+            if manifest.get('_is_template') and hasattr(installer, 'get_web_configuration'):
+                env_config = installer.get_web_configuration(user_config)
+                config.update(env_config)
 
-    # Check if Docker stopped during install
-    docker_after = check_docker_status()
-    if not docker_after.get('running'):
-        return jsonify({'success': False, 'message': docker_after.get('message', 'Docker stopped during installation')}), 503
+            config.update(user_config)
 
-    # Show actual Docker error if available
-    err = installer.get_last_error() if hasattr(installer, 'get_last_error') else ''
-    msg = f'Installation failed: {err}' if err else 'Installation failed. Check container logs for details.'
-    return jsonify({'success': False, 'message': msg}), 500
+            # Get image name for pull tracking
+            template = manifest.get('_template', {})
+            image = template.get('image', '')
+
+            # Stream progress: Pull image with progress tracking
+            if image:
+                yield f"data: {json.dumps({'progress': 10, 'status': 'Pulling image...'})}\n\n"
+
+                # Pull image with progress
+                process = subprocess.Popen(
+                    ['docker', 'pull', image],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1
+                )
+
+                layers_total = 0
+                layers_done = 0
+                last_progress = 10
+
+                for line in iter(process.stdout.readline, ''):
+                    if not line:
+                        break
+
+                    # Count total layers
+                    if 'Pulling fs layer' in line:
+                        layers_total += 1
+                    elif 'Pull complete' in line or 'Already exists' in line:
+                        layers_done += 1
+
+                    # Calculate progress based on completed layers
+                    if layers_total > 0:
+                        layer_pct = int((layers_done / layers_total) * 100)
+                        progress = 10 + int(layer_pct * 0.6)  # Scale 0-100% to 10-70%
+                        if progress > last_progress:
+                            last_progress = progress
+                            status = f"Pulling image... ({layers_done}/{layers_total} layers)"
+                            yield f"data: {json.dumps({'progress': progress, 'status': status})}\n\n"
+
+                process.wait()
+                yield f"data: {json.dumps({'progress': 70, 'status': 'Image pulled'})}\n\n"
+
+            # Install (compose up)
+            yield f"data: {json.dumps({'progress': 75, 'status': 'Starting container...'})}\n\n"
+
+            success = installer.install(config, instance_name_final)
+
+            if success:
+                yield f"data: {json.dumps({'progress': 95, 'status': 'Finalizing...'})}\n\n"
+
+                # Audit log
+                try:
+                    from license.audit_logger import get_audit_logger, AuditEventType
+                    logger = get_audit_logger(enabled=lm.is_pro())
+                    logger.log_event(AuditEventType.INSTALL, app_name, {
+                        'instance_name': instance_name_final,
+                        'port': config.get('port'),
+                        'source': 'web_ui'
+                    })
+                except Exception:
+                    pass
+
+                # Build access info
+                access_info = _get_access_info(manifest, config, instance_name_final)
+                response = {
+                    'success': True,
+                    'message': f'{instance_name_final} installed successfully',
+                    'access_info': access_info,
+                    'progress': 100
+                }
+
+                # Include post-install action if available
+                action = template.get('post_install_action')
+                if action and action.get('type') == 'set_password':
+                    response['post_install_action'] = {
+                        'type': 'set_password',
+                        'prompt': action['prompt'],
+                        'container_name': instance_name_final,
+                    }
+
+                yield f"data: {json.dumps(response)}\n\n"
+            else:
+                err = installer.get_last_error() if hasattr(installer, 'get_last_error') else ''
+                yield f"data: {json.dumps({'error': f'Installation failed: {err}'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 
 @bp.route('/apps/update', methods=['POST'])

@@ -177,30 +177,92 @@ async function doInstall(appName, fields) {
         }
     }
 
-    showProgressModal(`Installing ${instanceName}`, 'Pulling image and starting container...');
+    // Track install flow BEFORE showing progress modal
+    window._installFlow = { containerName: instanceName };
 
-    const res = await API.post('/api/apps/install', {
-        app_name: appName,
-        instance_name: instanceName,
-        config: config
-    });
+    showProgressModalWithBar(`Installing ${instanceName}`, 'Initializing...', 0);
 
-    hideProgressModal();
+    // Use EventSource for SSE progress streaming
+    const eventSource = new EventSource(
+        '/api/apps/install-stream?' + new URLSearchParams({
+            app_name: appName,
+            instance_name: instanceName,
+            config: JSON.stringify(config)
+        })
+    );
 
-    if (res && res.success) {
-        // Track install flow for cancel protection
-        window._installFlow = { containerName: instanceName };
+    // Note: EventSource doesn't support POST, so we need to use fetch with ReadableStream instead
+    eventSource.close();
 
-        if (res.post_install_action && res.post_install_action.type === 'set_password') {
-            _showSetPasswordDialog(res.post_install_action, res.access_info, instanceName);
-        } else if (res.access_info) {
-            _showAccessInfo(instanceName, res.access_info);
+    // Use fetch with streaming instead
+    try {
+        const response = await fetch('/api/apps/install-stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`
+            },
+            body: JSON.stringify({
+                app_name: appName,
+                instance_name: instanceName,
+                config: config
+            })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let finalResult = null;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.substring(6));
+
+                    if (data.error) {
+                        hideProgressModal();
+                        window._installFlow = null;
+                        showToast('error', data.error);
+                        return;
+                    }
+
+                    if (data.progress !== undefined) {
+                        updateProgressBar(data.progress, data.status || '');
+                    }
+
+                    if (data.success) {
+                        finalResult = data;
+                    }
+                }
+            }
+        }
+
+        hideProgressModal();
+
+        if (finalResult && finalResult.success) {
+            if (finalResult.post_install_action && finalResult.post_install_action.type === 'set_password') {
+                _showSetPasswordDialog(finalResult.post_install_action, finalResult.access_info, instanceName);
+            } else if (finalResult.access_info) {
+                _showAccessInfo(instanceName, finalResult.access_info);
+            } else {
+                window._installFlow = null;
+                showToast('success', finalResult.message);
+            }
         } else {
             window._installFlow = null;
-            showToast('success', res.message);
+            showToast('error', 'Installation failed');
         }
-    } else {
-        showToast('error', (res && res.message) || 'Installation failed');
+    } catch (err) {
+        hideProgressModal();
+        window._installFlow = null;
+        showToast('error', 'Installation failed: ' + err.message);
     }
 }
 

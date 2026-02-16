@@ -108,9 +108,24 @@ class TemplateInstaller(BaseInstaller):
         with open(compose_file, 'w', encoding='utf-8') as f:
             f.write(compose)
 
+        # Pull image with progress bar
+        image = self.template.get('image', '')
+        if image:
+            from utils.docker_progress import run_docker_pull_with_progress
+            pull_result = run_docker_pull_with_progress(image)
+            if pull_result.returncode != 0:
+                try:
+                    os.remove(compose_file)
+                except OSError:
+                    pass
+                self._cleanup_failed(instance_name)
+                self._last_error = f"Failed to pull image {image}"
+                return False
+
+        # Start container (image already pulled)
         result = run_docker_with_progress(
-            ['docker', 'compose', '-f', compose_file, 'up', '-d'],
-            f"Pulling and starting {instance_name}",
+            ['docker', 'compose', '-f', compose_file, 'up', '-d', '--no-build'],
+            f"Starting {instance_name}",
             encoding='utf-8',
             errors='ignore'
         )

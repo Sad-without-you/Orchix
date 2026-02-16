@@ -156,6 +156,12 @@ function hideModal() {
 function closeModal() { hideModal(); }
 
 function _tryDismissModal() {
+    // Don't allow dismissing progress modals (install/uninstall in progress)
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay.dataset.progressModal === 'true') {
+        return;
+    }
+
     if (window._installFlow) {
         _showCancelInstallConfirm();
     } else {
@@ -214,6 +220,7 @@ function showProgressModal(title, statusText) {
         </div>
     `;
     overlay.classList.remove('hidden');
+    overlay.dataset.progressModal = 'true'; // Mark as non-dismissible progress modal
 }
 
 function updateProgressStatus(text) {
@@ -222,7 +229,36 @@ function updateProgressStatus(text) {
 }
 
 function hideProgressModal() {
-    document.getElementById('modal-overlay').classList.add('hidden');
+    const overlay = document.getElementById('modal-overlay');
+    overlay.classList.add('hidden');
+    delete overlay.dataset.progressModal;
+}
+
+// Progress modal with actual progress bar (for install with streaming)
+function showProgressModalWithBar(title, statusText, progress) {
+    const overlay = document.getElementById('modal-overlay');
+    const modal = document.getElementById('modal-content');
+    modal.innerHTML = `
+        <div class="modal-body" style="text-align:center;padding:40px 24px">
+            <h3 style="margin-bottom:16px">${esc(title)}</h3>
+            <div style="width:100%;background:var(--surface2);border-radius:12px;height:8px;overflow:hidden;margin-bottom:12px">
+                <div id="progress-bar-fill" style="height:100%;background:linear-gradient(90deg,var(--pink),var(--teal));width:${progress}%;transition:width 0.3s ease"></div>
+            </div>
+            <p id="progress-status" style="color:var(--text2);font-size:0.9rem">${esc(statusText) || 'Please wait...'}</p>
+            <p id="progress-percent" style="color:var(--text3);font-size:0.8rem;margin-top:4px">${progress}%</p>
+        </div>
+    `;
+    overlay.classList.remove('hidden');
+    overlay.dataset.progressModal = 'true';
+}
+
+function updateProgressBar(progress, status) {
+    const fill = document.getElementById('progress-bar-fill');
+    const statusEl = document.getElementById('progress-status');
+    const percentEl = document.getElementById('progress-percent');
+    if (fill) fill.style.width = progress + '%';
+    if (statusEl && status) statusEl.textContent = status;
+    if (percentEl) percentEl.textContent = progress + '%';
 }
 
 function getCpuClass(val) {

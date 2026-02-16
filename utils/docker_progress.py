@@ -1,9 +1,11 @@
 import subprocess
 import platform
+import re
 from rich.console import Console
 from rich.spinner import Spinner
 from rich.live import Live
-from typing import List, Optional
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+from typing import List, Optional, Callable
 
 # Platform detection for compatible symbols
 IS_WINDOWS = platform.system().lower() == 'windows'
@@ -135,3 +137,75 @@ def filter_docker_errors(stderr: str) -> str:
             error_lines.append(line)
 
     return '\n'.join(error_lines)
+
+
+def run_docker_pull_with_progress(image: str, callback: Optional[Callable[[int, str], None]] = None) -> subprocess.CompletedProcess:
+    """
+    Pull Docker image with real-time progress tracking.
+
+    Args:
+        image: Docker image name (e.g. 'nginx:latest')
+        callback: Optional callback function(progress: int, status: str) for progress updates
+
+    Returns:
+        subprocess.CompletedProcess with pull result
+    """
+    console.print(f"  │     Pulling image {image}...")
+
+    process = subprocess.Popen(
+        ['docker', 'pull', image],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+
+    layers_total = 0
+    layers_done = 0
+    last_progress = 0
+
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task("Pulling layers...", total=100)
+
+        for line in iter(process.stdout.readline, ''):
+            if not line:
+                break
+
+            # Count total layers
+            if 'Pulling fs layer' in line:
+                layers_total += 1
+            elif 'Pull complete' in line or 'Already exists' in line:
+                layers_done += 1
+
+            # Calculate progress
+            if layers_total > 0:
+                pct = int((layers_done / layers_total) * 100)
+                if pct > last_progress:
+                    last_progress = pct
+                    progress.update(task, completed=pct)
+                    status = f"Pulled {layers_done}/{layers_total} layers"
+                    progress.update(task, description=status)
+
+                    # Call callback if provided (for web UI streaming)
+                    if callback:
+                        callback(pct, status)
+
+    process.wait()
+
+    if process.returncode == 0:
+        console.print(f"  │     {SYMBOL_SUCCESS} Image pulled successfully!", style="bold green")
+    else:
+        console.print(f"  │     {SYMBOL_FAILED} Image pull failed!", style="bold red")
+
+    return subprocess.CompletedProcess(
+        args=['docker', 'pull', image],
+        returncode=process.returncode,
+        stdout='',
+        stderr=''
+    )
