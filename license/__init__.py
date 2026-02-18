@@ -1,4 +1,4 @@
-# ORCHIX v1.2
+# ORCHIX v1.3
 from license.manager import LicenseManager, get_license_manager
 from license.features import (
     FREE_FEATURES,

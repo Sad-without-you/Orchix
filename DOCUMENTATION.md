@@ -1,10 +1,10 @@
 # ORCHIX - Complete Documentation
 
 <p align="center">
-  <img src="web/static/favicon.svg?v=1.2" width="100" height="100" alt="ORCHIX Logo">
+  <img src="web/static/favicon.svg?v=1.3" width="100" height="100" alt="ORCHIX Logo">
 </p>
 
-**Version:** 1.2
+**Version:** 1.3
 **License:** Commercial (€29/month)
 **Platform:** Linux, Windows (WSL2)
 
@@ -118,7 +118,7 @@ python main.py
 
 ```
 ╭─────────────────────────────────────╮
-│          ORCHIX v1.2                │
+│          ORCHIX v1.3                │
 │   Container Management System       │
 ╰─────────────────────────────────────╯
 

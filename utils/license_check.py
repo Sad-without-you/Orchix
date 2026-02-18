@@ -1,4 +1,4 @@
-# ORCHIX v1.2
+# ORCHIX v1.3
 '''Centralized license checking for apps'''
 
 from license import get_license_manager, PRICING

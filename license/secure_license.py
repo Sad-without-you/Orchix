@@ -1,4 +1,4 @@
-# ORCHIX v1.2
+# ORCHIX v1.3
 import hashlib
 import hmac
 import os

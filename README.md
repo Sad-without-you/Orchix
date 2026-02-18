@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="web/static/favicon.svg?v=1.2" width="80" height="80" alt="ORCHIX">
+  <img src="web/static/favicon.svg?v=1.3" width="80" height="80" alt="ORCHIX">
 </p>
 
 <h1 align="center">ORCHIX</h1>
 <p align="center"><strong>DevOps Container Management System</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/ORCHIX-v1.2-14b8a6" alt="Version">
+  <img src="https://img.shields.io/badge/ORCHIX-v1.3-14b8a6" alt="Version">
   <img src="https://img.shields.io/badge/License-Commercial-brightgreen" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.8%2B-blue" alt="Python">

@@ -1,4 +1,4 @@
-// ORCHIX v1.2 - SVG App Icons
+// ORCHIX v1.3 - SVG App Icons
 // Sources: Simple Icons (MIT) for brand icons, custom SVGs for generic categories
 
 const APP_ICONS = {

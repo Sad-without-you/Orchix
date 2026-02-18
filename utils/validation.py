@@ -1,4 +1,4 @@
-# ORCHIX v1.2 - Input validation and sanitization
+# ORCHIX v1.3 - Input validation and sanitization
 import re
 
 

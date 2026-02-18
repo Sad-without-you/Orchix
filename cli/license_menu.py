@@ -1,4 +1,4 @@
-# ORCHIX v1.2
+# ORCHIX v1.3
 from cli.ui import show_panel, select_from_list, show_info, show_success, show_error, show_warning
 from license import get_license_manager, PRICING
 from license.features import get_pro_benefits

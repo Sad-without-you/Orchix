@@ -1,4 +1,4 @@
-// ORCHIX v1.2 - Dashboard Page
+// ORCHIX v1.3 - Dashboard Page
 
 Router.register('#/dashboard', function(el) {
     el.innerHTML = `
@@ -359,7 +359,7 @@ async function loadSystemOverview() {
                 </div>
                 <div style="flex:1">
                     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin-bottom:2px">ORCHIX</div>
-                    <div style="font-size:1.05rem;font-weight:700;color:var(--text)">${updateRes && updateRes.current_version ? 'v' + esc(updateRes.current_version) : 'v1.2'}</div>
+                    <div style="font-size:1.05rem;font-weight:700;color:var(--text)">${updateRes && updateRes.current_version ? 'v' + esc(updateRes.current_version) : 'v1.3'}</div>
                 </div>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;font-size:0.86rem">

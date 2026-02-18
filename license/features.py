@@ -1,4 +1,4 @@
-# ORCHIX v1.2
+# ORCHIX v1.3
 # FREE TIER
 FREE_FEATURES = {
     'max_containers': 3,

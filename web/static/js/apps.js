@@ -1,4 +1,4 @@
-// ORCHIX v1.2 - Applications Page
+// ORCHIX v1.3 - Applications Page
 
 Router.register('#/apps', async function(el) {
     el.innerHTML = `

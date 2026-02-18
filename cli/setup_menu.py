@@ -1,4 +1,4 @@
-# ORCHIX v1.2
+# ORCHIX v1.3
 from cli.ui import select_from_list, show_panel, show_success, show_error, show_info, show_warning
 from utils.system import (
     detect_os, detect_package_manager, check_docker, check_dependencies,

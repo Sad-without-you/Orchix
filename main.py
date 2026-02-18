@@ -32,7 +32,7 @@ def print_header():
     logo.append(" | | | | |_) | |   | |_| || | \\  / \n", style="cyan")
     logo.append(" | |_| |  _ <| |___|  _  || | /  \\ \n", style="cyan")
     logo.append("  \\___/|_| \\_\\\\____|_| |_|___/_/\\_\\\n\n", style="dim cyan")
-    logo.append("  v1.2", style="bold white")
+    logo.append("  v1.3", style="bold white")
     logo.append("  |  Container Management System", style="dim")
 
     panel = Panel(
