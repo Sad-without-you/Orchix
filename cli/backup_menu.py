@@ -11,6 +11,153 @@ BACKUP_DIR = Path('backups')
 BACKUP_DIR.mkdir(exist_ok=True)
 
 
+def _get_meta_path(backup_path: Path) -> Path:
+    '''Get .meta file path for a backup file (handles .tar.gz double extension).'''
+    name = backup_path.name
+    for ext in ('.tar.gz', '.zip', '.sql', '.rdb'):
+        if name.endswith(ext):
+            stem = name[:-len(ext)]
+            return backup_path.parent / f"{stem}.meta"
+    return backup_path.with_suffix('.meta')
+
+
+def _generic_volume_backup(container_name: str) -> bool:
+    '''Generic volume backup. Uses ZIP on Windows, TAR.GZ on Linux.'''
+    from utils.system import is_windows
+    try:
+        # Get named volumes for this container
+        result = subprocess.run(
+            ['docker', 'inspect', container_name, '--format',
+             '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}\n{{end}}{{end}}'],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            show_warning("Could not inspect container volumes")
+            return False
+
+        volumes = [v.strip() for v in result.stdout.strip().splitlines() if v.strip()]
+        if not volumes:
+            show_warning("No named volumes found for this container")
+            return False
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        volume_name = volumes[0]
+        backup_dir_abs = str(BACKUP_DIR.resolve())
+
+        if is_windows():
+            backup_name = f"{container_name}_{timestamp}.zip"
+            backup_result = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data:ro',
+                 '-v', f'{backup_dir_abs}:/backup',
+                 'alpine', 'sh', '-c',
+                 f'apk add --no-cache zip -q && cd /data && zip -r /backup/{backup_name} .'],
+                capture_output=True, text=True
+            )
+        else:
+            backup_name = f"{container_name}_{timestamp}.tar.gz"
+            backup_result = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data:ro',
+                 '-v', f'{backup_dir_abs}:/backup',
+                 'alpine', 'tar', 'czf', f'/backup/{backup_name}', '-C', '/data', '.'],
+                capture_output=True, text=True
+            )
+
+        if backup_result.returncode != 0:
+            show_warning("Volume backup command failed")
+            return False
+
+        # Write meta file — order must match list_backups() parser:
+        # line 0: container, line 1: app_type, line 2: created, line 3: volume
+        meta_path = _get_meta_path(BACKUP_DIR / backup_name)
+        with open(meta_path, 'w') as f:
+            f.write(f"container: {container_name}\n")
+            f.write(f"app_type: generic\n")
+            f.write(f"created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"volume: {volume_name}\n")
+        return True
+
+    except Exception as e:
+        show_warning(f"Backup error: {e}")
+        return False
+
+
+def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
+    '''Generic volume restore. Handles ZIP and TAR.GZ backups.'''
+    try:
+        # Read volume name from meta file
+        meta_path = _get_meta_path(backup_file)
+        volume_name = None
+        if meta_path.exists():
+            with open(meta_path, 'r') as f:
+                for line in f:
+                    if line.startswith('volume:'):
+                        volume_name = line.split(':', 1)[1].strip()
+                        break
+
+        if not volume_name:
+            # Fallback: inspect container for named volumes
+            result = subprocess.run(
+                ['docker', 'inspect', container_name, '--format',
+                 '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}\n{{end}}{{end}}'],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                vols = [v.strip() for v in result.stdout.strip().splitlines() if v.strip()]
+                if vols:
+                    volume_name = vols[0]
+
+        if not volume_name:
+            show_warning("Could not determine volume to restore into")
+            return False
+
+        backup_dir_abs = str(BACKUP_DIR.resolve())
+        backup_name = backup_file.name
+
+        # Stop container first
+        show_info(f"Stopping {container_name}...")
+        subprocess.run(['docker', 'stop', container_name], capture_output=True)
+
+        # Restore based on format
+        if backup_name.endswith('.zip'):
+            restore_result = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data',
+                 '-v', f'{backup_dir_abs}:/backup:ro',
+                 'alpine', 'sh', '-c',
+                 f'apk add --no-cache unzip -q && rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; unzip -o /backup/{backup_name} -d /data'],
+                capture_output=True, text=True
+            )
+        elif backup_name.endswith('.tar.gz'):
+            restore_result = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data',
+                 '-v', f'{backup_dir_abs}:/backup:ro',
+                 'alpine', 'sh', '-c',
+                 f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; tar xzf /backup/{backup_name} -C /data'],
+                capture_output=True, text=True
+            )
+        else:
+            show_warning(f"Unsupported backup format: {backup_name}")
+            subprocess.run(['docker', 'start', container_name], capture_output=True)
+            return False
+
+        # Restart container
+        show_info(f"Starting {container_name}...")
+        subprocess.run(['docker', 'start', container_name], capture_output=True)
+
+        if restore_result.returncode != 0:
+            show_warning(f"Restore command failed: {restore_result.stderr[:200]}")
+            return False
+
+        return True
+
+    except Exception as e:
+        show_warning(f"Restore error: {e}")
+        return False
+
+
 def show_backup_menu():
     '''Backup and restore menu'''
     
@@ -120,19 +267,18 @@ def create_backup_menu():
     print()
     
     if manifest:
-        # Use hook-based backup
+        # Use hook-based backup if available
         from apps.hook_loader import get_hook_loader
         hook_loader = get_hook_loader()
-        
+
         if hook_loader.has_hook(manifest, 'backup'):
             success = hook_loader.execute_hook(manifest, 'backup', container_name)
         else:
-            show_warning(f"No backup hook available for {manifest['name']}")
-            success = False
+            # Fallback: generic volume backup
+            success = _generic_volume_backup(container_name)
     else:
-        # Fallback: generic backup (for unknown containers)
-        show_warning("No manifest found - backup not supported")
-        success = False
+        # Fallback: generic volume backup for unknown containers
+        success = _generic_volume_backup(container_name)
     
     if success:
         show_success("Backup created successfully!")
@@ -163,7 +309,7 @@ def restore_backup_menu():
     apps_with_backups = {}
     
     for backup in backups:
-        meta_file = backup.with_suffix('.meta')
+        meta_file = _get_meta_path(backup)
         if meta_file.exists():
             with open(meta_file, 'r') as f:
                 lines = f.readlines()
@@ -228,7 +374,7 @@ def restore_backup_menu():
     backup_choices = []
     for backup in sorted(app_backups, reverse=True):
         # Read metadata for timestamp
-        meta_file = backup.with_suffix('.meta')
+        meta_file = _get_meta_path(backup)
         if meta_file.exists():
             with open(meta_file, 'r') as f:
                 lines = f.readlines()
@@ -253,7 +399,7 @@ def restore_backup_menu():
     selected_backup = BACKUP_DIR / backup_name
     
     # Read metadata
-    meta_file = selected_backup.with_suffix('.meta')
+    meta_file = _get_meta_path(selected_backup)
     if not meta_file.exists():
         show_error("Metadata file not found!")
         input("Press Enter...")
@@ -289,16 +435,16 @@ def restore_backup_menu():
         # Use hook-based restore
         from apps.hook_loader import get_hook_loader
         hook_loader = get_hook_loader()
-        
+
         if hook_loader.has_hook(manifest, 'restore'):
             success = hook_loader.execute_hook(manifest, 'restore', selected_backup, container_name)
         else:
-            show_warning(f"No restore hook available for {manifest['name']}")
-            success = False
+            show_info("Restoring generic backup...")
+            success = _generic_volume_restore(container_name, selected_backup)
     else:
-        # Fallback: restore not supported
-        show_warning("No manifest found - restore not supported")
-        success = False
+        # Generic fallback for unknown containers
+        show_info("Restoring generic backup...")
+        success = _generic_volume_restore(container_name, selected_backup)
     
     if success:
         show_success("Restore completed!")
@@ -316,7 +462,7 @@ def restore_backup_menu():
 def create_metadata(container_name, backup_file, app_type):
     '''Create metadata file for backup'''
 
-    meta_file = backup_file.with_suffix('.meta')
+    meta_file = _get_meta_path(backup_file)
 
     # Get Docker image version from container
     image_version = "unknown"
@@ -370,23 +516,22 @@ def list_backups():
         
         for backup in sorted(backups, reverse=True):
             # Read metadata
-            meta_file = backup.with_suffix('.meta')
+            meta_file = _get_meta_path(backup)
             if meta_file.exists():
                 with open(meta_file, 'r') as f:
                     lines = f.readlines()
-                    container = lines[0].split(':')[1].strip()
-                    app_type = lines[1].split(':')[1].strip()
-                    timestamp = lines[2].split(':')[1].strip()[:19]
-                    
+                    container = lines[0].split(':', 1)[1].strip()
+                    app_type = lines[1].split(':', 1)[1].strip()
+                    timestamp = lines[2].split(':', 1)[1].strip()[:19]
+
                     # Get icon from manifest
                     base_name = container.split('_')[0] if '_' in container else container
                     manifest = manifests.get(base_name) or manifests.get(app_type)
-                    
+
                     if manifest:
                         icon = manifest.get('icon', '📦')
                         type_display = f"{icon} {manifest['display_name']}"
                     else:
-                        # Fallback icons
                         if app_type == 'postgres':
                             type_display = "🐘 PostgreSQL"
                         elif app_type == 'n8n':
@@ -395,11 +540,11 @@ def list_backups():
                             type_display = "🔴 Redis"
                         else:
                             type_display = f"📦 {app_type}"
-                    
+
                     # Format indicator
-                    if backup.suffix == '.zip':
+                    if backup.name.endswith('.zip'):
                         format_display = "📦 ZIP"
-                    elif backup.suffix == '.gz':
+                    elif backup.name.endswith('.tar.gz'):
                         format_display = "📦 TAR.GZ"
                     elif backup.suffix == '.sql':
                         format_display = "💾 SQL"
@@ -407,7 +552,7 @@ def list_backups():
                         format_display = "🔴 RDB"
                     else:
                         format_display = backup.suffix
-                    
+
                     table.add_row(container, type_display, format_display, timestamp, backup.name)
             else:
                 table.add_row("Unknown", "Unknown", "Unknown", "Unknown", backup.name)
@@ -439,7 +584,7 @@ def delete_backup_menu():
     apps_with_backups = {}
     
     for backup in backups:
-        meta_file = backup.with_suffix('.meta')
+        meta_file = _get_meta_path(backup)
         if meta_file.exists():
             with open(meta_file, 'r') as f:
                 lines = f.readlines()
@@ -504,7 +649,7 @@ def delete_backup_menu():
     backup_choices = []
     for backup in sorted(app_backups, reverse=True):
         # Read metadata for timestamp
-        meta_file = backup.with_suffix('.meta')
+        meta_file = _get_meta_path(backup)
         if meta_file.exists():
             with open(meta_file, 'r') as f:
                 lines = f.readlines()
@@ -546,7 +691,7 @@ def delete_backup_menu():
     try:
         selected_backup.unlink()
         
-        meta_file = selected_backup.with_suffix('.meta')
+        meta_file = _get_meta_path(selected_backup)
         if meta_file.exists():
             meta_file.unlink()
         
