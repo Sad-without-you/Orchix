@@ -38,24 +38,46 @@ def list_containers():
     containers = _get_visible_container_names()
     result = []
 
-    # Try to get sizes (optional, may be slow)
+    # Get sizes and ports together
     sizes = {}
+    ports_map = {}
+    images_map = {}
     try:
-        size_result = safe_docker_run(
-            ['docker', 'ps', '-a', '--format', '{{.Names}}|{{.Size}}'],
+        import re
+        pr = safe_docker_run(
+            ['docker', 'ps', '-a', '--format', '{{.Names}}|{{.Size}}|{{.Ports}}|{{.Image}}'],
             capture_output=True, text=True, timeout=10
         )
-        if size_result and size_result.returncode == 0:
-            import re
-            for line in size_result.stdout.strip().split('\n'):
-                if '|' in line:
-                    parts = line.split('|', 1)
-                    raw_size = parts[1].strip()
-                    virtual_match = re.search(r'virtual\s+([\d.]+\s*[kKMGT]?B)', raw_size)
-                    if virtual_match:
-                        sizes[parts[0].strip()] = virtual_match.group(1)
-                    else:
-                        sizes[parts[0].strip()] = raw_size.split('(')[0].strip()
+        if pr and pr.returncode == 0:
+            for line in pr.stdout.strip().split('\n'):
+                if '|' not in line:
+                    continue
+                parts = line.split('|', 3)
+                cname = parts[0].strip()
+                raw_size = parts[1].strip() if len(parts) > 1 else ''
+                raw_ports = parts[2].strip() if len(parts) > 2 else ''
+                images_map[cname] = parts[3].strip() if len(parts) > 3 else ''
+
+                virtual_match = re.search(r'virtual\s+([\d.]+\s*[kKMGT]?B)', raw_size)
+                sizes[cname] = virtual_match.group(1) if virtual_match else raw_size.split('(')[0].strip()
+
+                # Parse port bindings: "0.0.0.0:8080->80/tcp, :::8080->80/tcp"
+                seen_hosts = set()
+                ports_list = []
+                for seg in raw_ports.split(','):
+                    seg = seg.strip()
+                    if '->' not in seg:
+                        continue
+                    host_part, cont_part = seg.split('->', 1)
+                    host_port = host_part.split(':')[-1]
+                    cont_port = cont_part.split('/')[0]
+                    if host_port not in seen_hosts:
+                        seen_hosts.add(host_port)
+                        try:
+                            ports_list.append({'host': int(host_port), 'container': int(cont_port)})
+                        except ValueError:
+                            pass
+                ports_map[cname] = ports_list
     except Exception:
         pass
 
@@ -64,7 +86,9 @@ def list_containers():
         result.append({
             'name': name,
             'status': status,
-            'size': sizes.get(name, '')
+            'size': sizes.get(name, ''),
+            'ports': ports_map.get(name, []),
+            'image': images_map.get(name, '')
         })
     return jsonify(result)
 

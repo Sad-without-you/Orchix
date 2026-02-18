@@ -28,6 +28,51 @@ Router.register('#/containers', async function(el) {
     await refreshContainers();
 });
 
+const _CLI_MAP = {
+    'redis': name => `docker exec -it ${name} redis-cli`,
+    'postgres': name => `docker exec -it ${name} psql -U postgres`,
+    'postgresql': name => `docker exec -it ${name} psql -U postgres`,
+    'mariadb': name => `docker exec -it ${name} mysql -u root -p`,
+    'mysql': name => `docker exec -it ${name} mysql -u root -p`,
+    'mongo': name => `docker exec -it ${name} mongosh`,
+    'mongodb': name => `docker exec -it ${name} mongosh`,
+    'mosquitto': name => `docker exec -it ${name} mosquitto_sub -t "#"`,
+};
+const _WEB_PORTS = new Set([80, 443, 3000, 4000, 4040, 5000, 8000, 8080, 8088, 8443, 8888, 9000, 9090]);
+
+function _buildAccessPopup(c) {
+    if (c.status !== 'running') return '';
+    const lines = [];
+
+    // Web URL from ports
+    if (c.ports && c.ports.length > 0) {
+        for (const p of c.ports) {
+            if (_WEB_PORTS.has(p.container) || _WEB_PORTS.has(p.host)) {
+                const proto = (p.container === 443 || p.host === 443) ? 'https' : 'http';
+                lines.push(`<div style="margin-bottom:4px"><span style="color:var(--text2);font-size:0.72rem">Host</span><br><a href="${proto}://localhost:${p.host}" target="_blank" style="color:var(--teal);text-decoration:none">${proto}://localhost:${p.host}</a></div>`);
+                break;
+            }
+        }
+        // If no web port, show raw host port
+        if (lines.length === 0) {
+            const p = c.ports[0];
+            lines.push(`<div style="margin-bottom:4px"><span style="color:var(--text2);font-size:0.72rem">Host</span><br><span style="color:var(--text)">localhost:${p.host}</span></div>`);
+        }
+    }
+
+    // CLI command from image
+    if (c.image) {
+        const imgBase = c.image.split(':')[0].split('/').pop().toLowerCase();
+        const cmdFn = _CLI_MAP[imgBase];
+        if (cmdFn) {
+            lines.push(`<div><span style="color:var(--text2);font-size:0.72rem">CLI</span><br><span style="color:var(--pink)">${esc(cmdFn(c.name))}</span></div>`);
+        }
+    }
+
+    if (lines.length === 0) return '';
+    return `<div class="c-access-popup">${lines.join('')}</div>`;
+}
+
 async function refreshContainers() {
     const data = await API.get('/api/containers');
     const el = document.getElementById('containers-list');
@@ -50,10 +95,17 @@ async function refreshContainers() {
                 </tr>
             </thead>
             <tbody>
-                ${data.map(c => `
+                ${data.map(c => {
+                    const popup = _buildAccessPopup(c);
+                    return `
                     <tr>
                         <td><input type="checkbox" class="table-checkbox container-cb" value="${esc(c.name)}" data-onchange="updateBatchActions"></td>
-                        <td><span style="color:var(--teal);font-weight:600">${esc(c.name)}</span></td>
+                        <td>
+                            <div class="c-name-wrap">
+                                <span style="color:var(--teal);font-weight:600">${esc(c.name)}</span>
+                                ${popup}
+                            </div>
+                        </td>
                         <td>
                             <span class="status-badge ${c.status === 'running' ? 'running' : 'stopped'}">
                                 ${c.status === 'running' ? 'Running' : esc(c.status.charAt(0).toUpperCase() + c.status.slice(1))}
@@ -83,10 +135,27 @@ async function refreshContainers() {
                             </div>
                         </td>
                     </tr>
-                `).join('')}
+                `}).join('')}
             </tbody>
         </table>
     `;
+    _initAccessPopups();
+}
+
+let _accessTimer = null;
+function _initAccessPopups() {
+    document.querySelectorAll('.c-name-wrap').forEach(wrap => {
+        const popup = wrap.querySelector('.c-access-popup');
+        if (!popup) return;
+
+        const show = () => { clearTimeout(_accessTimer); popup.classList.add('visible'); };
+        const hide = () => { _accessTimer = setTimeout(() => popup.classList.remove('visible'), 120); };
+
+        wrap.addEventListener('mouseenter', show);
+        wrap.addEventListener('mouseleave', hide);
+        popup.addEventListener('mouseenter', show);
+        popup.addEventListener('mouseleave', hide);
+    });
 }
 
 function filterContainers() {
