@@ -196,9 +196,9 @@ class LicenseKeyValidator:
             key: License key string
         """
         import json
-        from pathlib import Path
+        from config import ORCHIX_CONFIG_DIR
 
-        LICENSE_FILE = Path.home() / '.orchix_license'
+        LICENSE_FILE = ORCHIX_CONFIG_DIR / '.orchix_license'
 
         if LICENSE_FILE.exists():
             try:
@@ -218,9 +218,9 @@ class LicenseKeyValidator:
     def _validate_offline_grace_period(cls, key: str) -> dict:
         """Validate using offline grace period (7 days after last successful validation)"""
         import json
-        from pathlib import Path
+        from config import ORCHIX_CONFIG_DIR
 
-        LICENSE_FILE = Path.home() / '.orchix_license'
+        LICENSE_FILE = ORCHIX_CONFIG_DIR / '.orchix_license'
 
         if not LICENSE_FILE.exists():
             return {

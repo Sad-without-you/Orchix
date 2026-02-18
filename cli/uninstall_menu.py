@@ -6,6 +6,7 @@ from pathlib import Path
 from license.audit_logger import get_audit_logger, AuditEventType
 from license import get_license_manager
 from utils.docker_utils import get_docker_compose_command, safe_docker_run
+from config import ORCHIX_CONFIG_DIR
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 
@@ -143,7 +144,7 @@ def uninstall_container(container_name):
     temp_patterns = [
         Path("tmp") / f"{container_name}*",
         Path(".temp") / f"{container_name}*",
-        Path.home() / f".orchix_{container_name}*",
+        ORCHIX_CONFIG_DIR / f".orchix_{container_name}*",
     ]
     
     for pattern in temp_patterns:
@@ -304,7 +305,7 @@ def uninstall_container(container_name):
         temp_patterns = [
             (Path("tmp"), f"{container_name}*"),
             (Path(".temp"), f"{container_name}*"),
-            (Path.home(), f".orchix_{container_name}*"),
+            (ORCHIX_CONFIG_DIR, f".orchix_{container_name}*"),
         ]
 
         for temp_dir, pattern in temp_patterns:

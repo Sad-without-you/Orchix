@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 from datetime import datetime
 from license.features import FREE_FEATURES, PRO_FEATURES, FEATURE_DESCRIPTIONS
+from config import ORCHIX_CONFIG_DIR
 
-LICENSE_FILE = Path.home() / '.orchix_license'
-MANAGED_CONTAINERS_FILE = Path.home() / '.orchix_managed_containers.json'
+LICENSE_FILE = ORCHIX_CONFIG_DIR / '.orchix_license'
+MANAGED_CONTAINERS_FILE = ORCHIX_CONFIG_DIR / '.orchix_managed_containers.json'
 
 
 class LicenseManager:

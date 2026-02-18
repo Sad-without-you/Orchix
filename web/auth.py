@@ -14,8 +14,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 auth_bp = Blueprint('auth', __name__)
 
 # File paths
-USERS_FILE = Path.home() / '.orchix_web_users.json'
-PASSWORD_FILE = Path.home() / '.orchix_web_password'  # Legacy, kept for migration
+from config import ORCHIX_CONFIG_DIR
+USERS_FILE = ORCHIX_CONFIG_DIR / '.orchix_web_users.json'
+PASSWORD_FILE = ORCHIX_CONFIG_DIR / '.orchix_web_password'  # Legacy, kept for migration
 
 # Constants
 VALID_ROLES = ('admin', 'operator', 'viewer')

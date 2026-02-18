@@ -21,8 +21,9 @@ def create_app():
     )
 
     # Secret key for sessions
-    secret_file = os.path.join(os.path.expanduser('~'), '.orchix_web_secret')
-    if os.path.exists(secret_file):
+    from config import ORCHIX_CONFIG_DIR
+    secret_file = ORCHIX_CONFIG_DIR / '.orchix_web_secret'
+    if secret_file.exists():
         with open(secret_file, 'r') as f:
             app.secret_key = f.read().strip()
     else:
