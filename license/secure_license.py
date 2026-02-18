@@ -163,7 +163,8 @@ class LicenseKeyValidator:
                 'tier': tier,
                 'expires': expires,
                 'customer_email': customer_email,
-                'license_id': license_data.get('id')
+                'license_id': license_data.get('id'),
+                'current_activations': current_activations
             }
 
         except requests.exceptions.Timeout:
@@ -172,6 +173,56 @@ class LicenseKeyValidator:
             raise Exception("Cannot reach license server - please check your internet connection")
         except Exception as e:
             raise Exception(f"Validation error: {str(e)}")
+
+    @classmethod
+    def increment_activations(cls, license_id: int, current_activations: int):
+        """Increment current_activations counter in Supabase after activation"""
+        try:
+            requests.patch(
+                f'{cls.SUPABASE_URL}/rest/v1/licenses',
+                params={'id': f'eq.{license_id}'},
+                headers={
+                    'apikey': cls.SUPABASE_KEY,
+                    'Authorization': f'Bearer {cls.SUPABASE_KEY}',
+                    'Content-Type': 'application/json'
+                },
+                json={'current_activations': current_activations + 1},
+                timeout=cls.REQUEST_TIMEOUT
+            )
+        except Exception as e:
+            print(f"Warning: Could not increment activations: {e}")
+
+    @classmethod
+    def decrement_activations(cls, key: str):
+        """Decrement current_activations counter in Supabase on deactivation"""
+        try:
+            response = requests.get(
+                f'{cls.SUPABASE_URL}/rest/v1/licenses',
+                params={'license_key': f'eq.{key}', 'select': 'id,current_activations'},
+                headers={
+                    'apikey': cls.SUPABASE_KEY,
+                    'Authorization': f'Bearer {cls.SUPABASE_KEY}'
+                },
+                timeout=cls.REQUEST_TIMEOUT
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    license_id = data[0]['id']
+                    current = max(0, int(data[0].get('current_activations', 1)) - 1)
+                    requests.patch(
+                        f'{cls.SUPABASE_URL}/rest/v1/licenses',
+                        params={'id': f'eq.{license_id}'},
+                        headers={
+                            'apikey': cls.SUPABASE_KEY,
+                            'Authorization': f'Bearer {cls.SUPABASE_KEY}',
+                            'Content-Type': 'application/json'
+                        },
+                        json={'current_activations': current},
+                        timeout=cls.REQUEST_TIMEOUT
+                    )
+        except Exception as e:
+            print(f"Warning: Could not decrement activations: {e}")
 
     @classmethod
     def _validate_offline(cls, key: str) -> dict:

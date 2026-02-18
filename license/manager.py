@@ -101,37 +101,48 @@ class LicenseManager:
     
     def activate_pro(self, license_key):
         '''Activate PRO license with key'''
-        validation = self._validate_key(license_key)
-        if validation:
-            try:
-                LICENSE_FILE.parent.mkdir(exist_ok=True)
+        from license.secure_license import LicenseKeyValidator
 
-                # Get key info including expiry
-                from license.secure_license import LicenseKeyValidator
-                key_info = LicenseKeyValidator.get_key_info(license_key)
+        # Validate online and get full result including license_id
+        result = LicenseKeyValidator.validate_key(license_key)
+        if not result.get('valid'):
+            print(f"  License validation failed: {result['message']}")
+            return False
+        if LicenseKeyValidator.check_expiry(license_key):
+            print("  License has expired")
+            return False
 
-                # Prepare license data
-                license_data = {
-                    'tier': 'PRO',
-                    'key': license_key,
-                    'expiry': key_info['expires'].isoformat() if key_info['expires'] else None,
-                    'activated': datetime.now().isoformat(),
-                    'last_validated': datetime.now().isoformat()
-                }
+        try:
+            LICENSE_FILE.parent.mkdir(exist_ok=True)
 
-                # Save as JSON
-                with open(LICENSE_FILE, 'w') as f:
-                    json.dump(license_data, f, indent=2)
+            # Prepare license data
+            license_data = {
+                'tier': 'PRO',
+                'key': license_key,
+                'expiry': result['expires'].isoformat() if result.get('expires') else None,
+                'activated': datetime.now().isoformat(),
+                'last_validated': datetime.now().isoformat()
+            }
 
-                self.tier = 'PRO'
-                self.license_key = license_key
-                self.expiry_date = key_info['expires']
-                self.clear_managed_containers()
-                return True
-            except Exception as e:
-                print(f"Failed to save license: {e}")
-                return False
-        return False
+            # Save as JSON
+            with open(LICENSE_FILE, 'w') as f:
+                json.dump(license_data, f, indent=2)
+
+            # Increment activation counter in Supabase
+            if result.get('license_id') is not None:
+                LicenseKeyValidator.increment_activations(
+                    result['license_id'],
+                    result.get('current_activations', 0)
+                )
+
+            self.tier = 'PRO'
+            self.license_key = license_key
+            self.expiry_date = result.get('expires')
+            self.clear_managed_containers()
+            return True
+        except Exception as e:
+            print(f"Failed to save license: {e}")
+            return False
     
     def _validate_key(self, key):
         '''Validate license key with cryptographic verification'''
@@ -155,6 +166,11 @@ class LicenseManager:
     def deactivate(self):
         '''Deactivate license (back to FREE)'''
         try:
+            # Decrement activation counter in Supabase before removing local file
+            if self.license_key:
+                from license.secure_license import LicenseKeyValidator
+                LicenseKeyValidator.decrement_activations(self.license_key)
+
             if LICENSE_FILE.exists():
                 LICENSE_FILE.unlink()
             self.tier = 'FREE'
