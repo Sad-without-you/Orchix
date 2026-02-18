@@ -248,11 +248,26 @@ def login():
         user = users_data.get('users', {}).get(username)
 
         if user and check_password_hash(user['password_hash'], password):
-            # Enforce user limit: on FREE tier, only admin users can log in
+            # Enforce user limit (prevents file-editing bypass)
             try:
                 from license import get_license_manager
                 lm = get_license_manager()
-                if not lm.is_pro() and user.get('role') != 'admin':
+                max_users = lm.get_feature('max_users') or FREE_MAX_USERS
+                all_users = users_data.get('users', {})
+                if len(all_users) > max_users:
+                    # Sort by creation date; only first max_users are allowed
+                    sorted_names = sorted(all_users.keys(),
+                                         key=lambda u: all_users[u].get('created_at', ''))
+                    allowed = set(sorted_names[:max_users])
+                    # Always let the oldest admin in to prevent total lockout
+                    admins = [u for u in sorted_names if all_users[u].get('role') == 'admin']
+                    if admins:
+                        allowed.add(admins[0])
+                    if username not in allowed:
+                        tier = lm.get_tier_display()
+                        return render_template('login.html',
+                            error=f'User limit exceeded ({tier}: max {max_users} users). Contact your administrator.')
+                elif not lm.is_pro() and user.get('role') != 'admin':
                     return render_template('login.html',
                         error='User limit reached (FREE tier). Only admin can log in. Upgrade to PRO for multi-user.')
             except Exception:

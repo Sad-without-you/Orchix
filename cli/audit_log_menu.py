@@ -58,8 +58,6 @@ def show_audit_log_menu():
     audit_logger = get_audit_logger(enabled=True)
 
     while True:
-        show_panel("Audit Log Manager", "View system activity and user actions")
-
         count, oldest_days = _get_log_stats(audit_logger)
         retention = _get_retention_days()
         if count > 0:
