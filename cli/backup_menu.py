@@ -5,6 +5,9 @@ from datetime import datetime
 from cli.ui import select_from_list, show_panel, show_success, show_error, show_info, show_warning
 from rich.console import Console
 from rich.table import Table
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+
+console = Console()
 
 # Backup directory
 BACKUP_DIR = Path('backups')
@@ -116,7 +119,6 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
         backup_name = backup_file.name
 
         # Stop container first
-        show_info(f"Stopping {container_name}...")
         subprocess.run(['docker', 'stop', container_name], capture_output=True)
 
         # Restore based on format
@@ -144,7 +146,6 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
             return False
 
         # Restart container
-        show_info(f"Starting {container_name}...")
         subprocess.run(['docker', 'start', container_name], capture_output=True)
 
         if restore_result.returncode != 0:
@@ -263,26 +264,29 @@ def create_backup_menu():
     manifest = container_manifest_map.get(container_name)
     
     # Create backup
-    show_info(f"Creating backup for {container_name}...")
     print()
-    
-    if manifest:
-        # Use hook-based backup if available
-        from apps.hook_loader import get_hook_loader
-        hook_loader = get_hook_loader()
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task(f"Creating backup for {container_name}...", total=100)
 
-        if hook_loader.has_hook(manifest, 'backup'):
-            success = hook_loader.execute_hook(manifest, 'backup', container_name)
+        if manifest:
+            from apps.hook_loader import get_hook_loader
+            hook_loader = get_hook_loader()
+            if hook_loader.has_hook(manifest, 'backup'):
+                success = hook_loader.execute_hook(manifest, 'backup', container_name)
+            else:
+                success = _generic_volume_backup(container_name)
         else:
-            # Fallback: generic volume backup
             success = _generic_volume_backup(container_name)
-    else:
-        # Fallback: generic volume backup for unknown containers
-        success = _generic_volume_backup(container_name)
-    
-    if success:
-        show_success("Backup created successfully!")
-    else:
+
+        progress.update(task, completed=100, description="Backup complete!" if success else "Backup failed!")
+
+    if not success:
         show_error("Backup failed!")
     
     print()
@@ -429,27 +433,29 @@ def restore_backup_menu():
     manifest = manifests.get(base_name) or manifests.get(app_type)
     
     # Execute restore
-    show_info(f"Restoring {app_type} backup...")
-    
-    if manifest:
-        # Use hook-based restore
-        from apps.hook_loader import get_hook_loader
-        hook_loader = get_hook_loader()
+    print()
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task(f"Restoring {container_name}...", total=100)
 
-        if hook_loader.has_hook(manifest, 'restore'):
-            success = hook_loader.execute_hook(manifest, 'restore', selected_backup, container_name)
+        if manifest:
+            from apps.hook_loader import get_hook_loader
+            hook_loader = get_hook_loader()
+            if hook_loader.has_hook(manifest, 'restore'):
+                success = hook_loader.execute_hook(manifest, 'restore', selected_backup, container_name)
+            else:
+                success = _generic_volume_restore(container_name, selected_backup)
         else:
-            show_info("Restoring generic backup...")
             success = _generic_volume_restore(container_name, selected_backup)
-    else:
-        # Generic fallback for unknown containers
-        show_info("Restoring generic backup...")
-        success = _generic_volume_restore(container_name, selected_backup)
-    
-    if success:
-        show_success("Restore completed!")
-        print()
 
+        progress.update(task, completed=100, description="Restore complete!" if success else "Restore failed!")
+
+    if success:
         # Check if image version differs from backup
         _check_image_version(meta_file, container_name)
     else:
@@ -688,16 +694,28 @@ def delete_backup_menu():
         return
     
     # Delete backup and metadata
-    try:
-        selected_backup.unlink()
-        
-        meta_file = _get_meta_path(selected_backup)
-        if meta_file.exists():
-            meta_file.unlink()
-        
-        show_success("Backup deleted!")
-    except Exception as e:
-        show_error(f"Failed to delete backup: {e}")
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task(f"Deleting {backup_name}...", total=100)
+        try:
+            selected_backup.unlink()
+            meta_file = _get_meta_path(selected_backup)
+            if meta_file.exists():
+                meta_file.unlink()
+            success = True
+            err = None
+        except Exception as e:
+            success = False
+            err = str(e)
+        progress.update(task, completed=100, description="Deleted!" if success else "Delete failed!")
+
+    if not success:
+        show_error(f"Failed to delete backup: {err}")
 
     print()
     input("Press Enter...")

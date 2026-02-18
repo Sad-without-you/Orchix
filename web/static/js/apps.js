@@ -430,13 +430,24 @@ async function doCreateBackup() {
     const name = document.getElementById('backup-container')?.value;
     if (!name) return;
 
-    showToast('info', `Creating backup for ${name}...`);
+    hideModal();
+    showProgressModalWithBar('Creating Backup', `Preparing backup for ${name}...`, 5);
+    window._backupFlow = true;
+
+    updateProgressBar(20, 'Stopping container if needed...');
     const res = await API.post('/api/backups/create', { container_name: name });
+
     if (res && res.success) {
+        updateProgressBar(100, 'Backup created!');
+        await new Promise(r => setTimeout(r, 900));
+        hideModal();
+        window._backupFlow = false;
         showToast('success', 'Backup created');
         window.location.hash = '#/backups';
         Router.navigate();
     } else {
+        hideModal();
+        window._backupFlow = false;
         showToast('error', (res && res.message) || 'Backup failed');
     }
 }
@@ -452,11 +463,24 @@ function confirmRestore(filename, container) {
 }
 
 async function doRestore(filename) {
-    showToast('info', 'Restoring backup...');
+    hideModal();
+    showProgressModalWithBar('Restoring Backup', `Preparing restore...`, 5);
+    window._restoreFlow = true;
+
+    updateProgressBar(20, 'Stopping container...');
     const res = await API.post('/api/backups/restore', { filename: filename });
+
     if (res && res.success) {
-        showToast('success', res.message);
+        updateProgressBar(90, 'Starting container...');
+        await new Promise(r => setTimeout(r, 600));
+        updateProgressBar(100, 'Restore complete!');
+        await new Promise(r => setTimeout(r, 900));
+        hideModal();
+        window._restoreFlow = false;
+        showToast('success', res.message || 'Restore complete');
     } else {
+        hideModal();
+        window._restoreFlow = false;
         showToast('error', (res && res.message) || 'Restore failed');
     }
 }
@@ -472,11 +496,22 @@ function confirmDeleteBackup(filename) {
 }
 
 async function doDeleteBackup(filename) {
+    hideModal();
+    showProgressModalWithBar('Deleting Backup', `Deleting ${esc(filename)}...`, 30);
+    window._deleteBackupFlow = true;
+
     const res = await API.post('/api/backups/delete', { filename: filename });
+
     if (res && res.success) {
-        showToast('success', res.message);
+        updateProgressBar(100, 'Deleted!');
+        await new Promise(r => setTimeout(r, 700));
+        hideModal();
+        window._deleteBackupFlow = false;
+        showToast('success', res.message || 'Backup deleted');
         await loadBackups();
     } else {
+        hideModal();
+        window._deleteBackupFlow = false;
         showToast('error', (res && res.message) || 'Delete failed');
     }
 }

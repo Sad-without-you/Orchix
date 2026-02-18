@@ -166,11 +166,15 @@ function _tryDismissModal() {
     if (window._installFlow) {
         _showCancelInstallConfirm();
     } else if (window._importFlow) {
-        // Import in progress - prevent dismissal
         showToast('info', 'Import in progress - please wait');
     } else if (window._exportFlow) {
-        // Export in progress - prevent dismissal
         showToast('info', 'Export in progress - please wait');
+    } else if (window._backupFlow) {
+        showToast('info', 'Backup in progress - please wait');
+    } else if (window._restoreFlow) {
+        showToast('info', 'Restore in progress - please wait');
+    } else if (window._deleteBackupFlow) {
+        showToast('info', 'Delete in progress - please wait');
     } else {
         hideModal();
     }

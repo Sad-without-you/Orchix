@@ -1,28 +1,78 @@
 # ORCHIX v1.3
+import json
 from cli.ui import select_from_list, show_panel, show_info, show_warning, show_error
 from license import get_license_manager
 from license.audit_logger import get_audit_logger, AuditEventType
 from rich.table import Table
 from rich.console import Console
 from datetime import datetime
+from config import ORCHIX_CONFIG_DIR
+
+AUDIT_CONFIG_FILE = ORCHIX_CONFIG_DIR / '.orchix_audit_config.json'
+
+
+def _get_retention_days() -> int:
+    """Read saved retention period (days). Default 90."""
+    try:
+        if AUDIT_CONFIG_FILE.exists():
+            data = json.loads(AUDIT_CONFIG_FILE.read_text(encoding='utf-8'))
+            return int(data.get('retention_days', 90))
+    except Exception:
+        pass
+    return 90
+
+
+def _save_retention_days(days: int):
+    """Persist retention period selection."""
+    AUDIT_CONFIG_FILE.write_text(
+        json.dumps({'retention_days': days}, indent=2), encoding='utf-8'
+    )
+
+
+def _get_log_stats(audit_logger):
+    """Return (count, oldest_days) for current audit log."""
+    events = audit_logger.get_recent_events(limit=100000)
+    if not events:
+        return 0, 0
+    # get_recent_events returns newest-first; oldest is last
+    oldest_ts = events[-1].get('timestamp', '')
+    try:
+        oldest_dt = datetime.fromisoformat(oldest_ts)
+        days = (datetime.now() - oldest_dt).days
+    except Exception:
+        days = 0
+    return len(events), days
 
 
 def show_audit_log_menu():
     """Show audit log menu (PRO only)"""
-    
+
     # Check license
     license_manager = get_license_manager()
     if not license_manager.is_pro():
         show_warning("🔒 Audit Logs require PRO license!")
         input("Press Enter...")
         return
-    
+
     # Initialize audit logger for PRO users
     audit_logger = get_audit_logger(enabled=True)
-    
+
     while True:
         show_panel("Audit Log Manager", "View system activity and user actions")
-        
+
+        count, oldest_days = _get_log_stats(audit_logger)
+        retention = _get_retention_days()
+        if count > 0:
+            days_left = max(0, retention - oldest_days)
+            if days_left == 0:
+                stats_str = f"{count} entries | deletion overdue!"
+            else:
+                stats_str = f"{count} entries | {days_left}d until oldest deleted"
+        else:
+            stats_str = "no logs"
+
+        show_panel("Audit Log Manager", f"View system activity and user actions  |  {stats_str}")
+
         choices = [
             "📊 View Recent Events",
             "👤 View User Activity",
@@ -30,7 +80,7 @@ def show_audit_log_menu():
             "🧹 Clear Old Logs",
             "⬅️  Back to Main Menu"
         ]
-        
+
         choice = select_from_list("Select option", choices)
         
         if "Recent Events" in choice:
@@ -209,11 +259,19 @@ def _show_app_events(audit_logger):
 def _clear_old_logs(audit_logger):
     """Clear old audit logs"""
     show_panel("Clear Old Logs", "Remove old audit entries")
-    
-    show_info("By default, logs older than 90 days will be kept.")
-    show_info("Recent logs will be preserved.")
+
+    count, oldest_days = _get_log_stats(audit_logger)
+    retention = _get_retention_days()
+    if count > 0:
+        days_left = max(0, retention - oldest_days)
+        show_info(f"Total entries: {count}  |  Oldest entry: {oldest_days} days ago")
+        show_info(f"Current retention: {retention} days  |  Days until oldest deleted: {days_left}")
+    else:
+        show_info("No log entries found.")
     print()
-    
+    show_info("Select how many days of logs to KEEP. Everything older will be deleted.")
+    print()
+
     days_options = [
         "Keep last 30 days",
         "Keep last 90 days (default)",
@@ -221,18 +279,19 @@ def _clear_old_logs(audit_logger):
         "Keep last 1 year",
         "⬅️  Cancel"
     ]
-    
+
     choice = select_from_list("Select retention period", days_options)
-    
+
     days_map = {
         "30": 30,
         "90": 90,
         "180": 180,
         "1 year": 365
     }
-    
+
     for key, value in days_map.items():
         if key in choice:
             audit_logger.clear_old_logs(days=value)
-            show_info(f"✅ Cleared logs older than {key}")
+            _save_retention_days(value)
+            show_info(f"✅ Cleared logs older than {key}. Retention set to {value} days.")
             break

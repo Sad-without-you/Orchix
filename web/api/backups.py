@@ -1,3 +1,5 @@
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from flask import Blueprint, jsonify, request
 from web.auth import require_permission
@@ -5,6 +7,122 @@ from utils.validation import validate_filename, validate_container_name
 
 bp = Blueprint('api_backups', __name__, url_prefix='/api')
 BACKUP_DIR = Path(__file__).parent.parent.parent / 'backups'
+
+
+def _get_meta_path(backup_path: Path) -> Path:
+    name = backup_path.name
+    for ext in ('.tar.gz', '.zip', '.sql', '.rdb'):
+        if name.endswith(ext):
+            stem = name[:-len(ext)]
+            return backup_path.parent / f"{stem}.meta"
+    return backup_path.with_suffix('.meta')
+
+
+def _generic_volume_backup(container_name: str) -> bool:
+    from utils.system import is_windows
+    try:
+        result = subprocess.run(
+            ['docker', 'inspect', container_name, '--format',
+             '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}\n{{end}}{{end}}'],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            return False
+        volumes = [v.strip() for v in result.stdout.strip().splitlines() if v.strip()]
+        if not volumes:
+            return False
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        volume_name = volumes[0]
+        backup_dir_abs = str(BACKUP_DIR.resolve())
+
+        if is_windows():
+            backup_name = f"{container_name}_{timestamp}.zip"
+            br = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data:ro',
+                 '-v', f'{backup_dir_abs}:/backup',
+                 'alpine', 'sh', '-c',
+                 f'apk add --no-cache zip -q && cd /data && zip -r /backup/{backup_name} .'],
+                capture_output=True, text=True
+            )
+        else:
+            backup_name = f"{container_name}_{timestamp}.tar.gz"
+            br = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data:ro',
+                 '-v', f'{backup_dir_abs}:/backup',
+                 'alpine', 'tar', 'czf', f'/backup/{backup_name}', '-C', '/data', '.'],
+                capture_output=True, text=True
+            )
+
+        if br.returncode != 0:
+            return False
+
+        meta_path = _get_meta_path(BACKUP_DIR / backup_name)
+        with open(meta_path, 'w') as f:
+            f.write(f"container: {container_name}\n")
+            f.write(f"app_type: generic\n")
+            f.write(f"created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"volume: {volume_name}\n")
+        return True
+    except Exception:
+        return False
+
+
+def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
+    try:
+        meta_path = _get_meta_path(backup_file)
+        volume_name = None
+        if meta_path.exists():
+            with open(meta_path, 'r') as f:
+                for line in f:
+                    if line.startswith('volume:'):
+                        volume_name = line.split(':', 1)[1].strip()
+                        break
+        if not volume_name:
+            result = subprocess.run(
+                ['docker', 'inspect', container_name, '--format',
+                 '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}\n{{end}}{{end}}'],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                vols = [v.strip() for v in result.stdout.strip().splitlines() if v.strip()]
+                if vols:
+                    volume_name = vols[0]
+        if not volume_name:
+            return False
+
+        backup_dir_abs = str(BACKUP_DIR.resolve())
+        backup_name = backup_file.name
+        subprocess.run(['docker', 'stop', container_name], capture_output=True)
+
+        if backup_name.endswith('.zip'):
+            rr = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data',
+                 '-v', f'{backup_dir_abs}:/backup:ro',
+                 'alpine', 'sh', '-c',
+                 f'apk add --no-cache unzip -q && rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; unzip -o /backup/{backup_name} -d /data'],
+                capture_output=True, text=True
+            )
+        elif backup_name.endswith('.tar.gz'):
+            rr = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{volume_name}:/data',
+                 '-v', f'{backup_dir_abs}:/backup:ro',
+                 'alpine', 'sh', '-c',
+                 f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; tar xzf /backup/{backup_name} -C /data'],
+                capture_output=True, text=True
+            )
+        else:
+            subprocess.run(['docker', 'start', container_name], capture_output=True)
+            return False
+
+        subprocess.run(['docker', 'start', container_name], capture_output=True)
+        return rr.returncode == 0
+    except Exception:
+        return False
 
 
 def _require_pro():
@@ -33,7 +151,7 @@ def list_backups():
     result = []
     for backup in sorted(backups, key=lambda f: f.stat().st_mtime, reverse=True):
         meta = {}
-        meta_file = backup.with_suffix('.meta')
+        meta_file = _get_meta_path(backup)
         if meta_file.exists():
             try:
                 lines = meta_file.read_text().splitlines()
@@ -43,9 +161,9 @@ def list_backups():
                         key = key.strip().lower()
                         if key == 'container':
                             meta['container'] = val.strip()
-                        elif key == 'type':
+                        elif key in ('type', 'app_type'):
                             meta['type'] = val.strip()
-                        elif key == 'timestamp':
+                        elif key in ('timestamp', 'created'):
                             meta['timestamp'] = val.strip()[:19]
             except Exception:
                 pass
@@ -89,22 +207,23 @@ def create_backup():
     if manifest and hook_loader.has_hook(manifest, 'backup'):
         try:
             success = hook_loader.execute_hook(manifest, 'backup', container_name)
-            if success:
-                # Audit log
-                try:
-                    from license import get_license_manager
-                    from license.audit_logger import get_audit_logger, AuditEventType
-                    lm = get_license_manager()
-                    logger = get_audit_logger(enabled=lm.is_pro())
-                    logger.log_event(AuditEventType.BACKUP, container_name, {'source': 'web_ui'})
-                except Exception:
-                    pass
-                return jsonify({'success': True, 'message': f'Backup created for {container_name}'})
-            return jsonify({'success': False, 'message': 'Backup hook returned failure'}), 500
         except Exception as e:
             return jsonify({'success': False, 'message': f'Backup error: {str(e)}'}), 500
+    else:
+        # Generic volume backup fallback
+        success = _generic_volume_backup(container_name)
 
-    return jsonify({'success': False, 'message': f'No backup hook available for {base_name}'}), 400
+    if success:
+        try:
+            from license import get_license_manager
+            from license.audit_logger import get_audit_logger, AuditEventType
+            lm = get_license_manager()
+            logger = get_audit_logger(enabled=lm.is_pro())
+            logger.log_event(AuditEventType.BACKUP, container_name, {'source': 'web_ui'})
+        except Exception:
+            pass
+        return jsonify({'success': True, 'message': f'Backup created for {container_name}'})
+    return jsonify({'success': False, 'message': 'Backup failed'}), 500
 
 
 @bp.route('/backups/restore', methods=['POST'])
@@ -132,7 +251,7 @@ def restore_backup():
         return jsonify({'success': False, 'message': 'Backup file not found'}), 404
 
     # Read metadata
-    meta_file = backup_file.with_suffix('.meta')
+    meta_file = _get_meta_path(backup_file)
     if not meta_file.exists():
         return jsonify({'success': False, 'message': 'Metadata file not found'}), 404
 
@@ -146,7 +265,7 @@ def restore_backup():
                 key = key.strip().lower()
                 if key == 'container':
                     container_name = val.strip()
-                elif key == 'type':
+                elif key in ('type', 'app_type'):
                     app_type = val.strip()
     except Exception:
         return jsonify({'success': False, 'message': 'Cannot read metadata'}), 500
@@ -163,26 +282,28 @@ def restore_backup():
     base_name = container_name.split('_')[0] if '_' in container_name else container_name
     manifest = manifests.get(base_name) or manifests.get(app_type)
 
-    if not manifest or not hook_loader.has_hook(manifest, 'restore'):
-        return jsonify({'success': False, 'message': 'No restore hook available'}), 400
+    if manifest and hook_loader.has_hook(manifest, 'restore'):
+        try:
+            success = hook_loader.execute_hook(manifest, 'restore', backup_file, container_name)
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Restore error: {str(e)}'}), 500
+    else:
+        # Generic volume restore fallback
+        success = _generic_volume_restore(container_name, backup_file)
 
-    try:
-        success = hook_loader.execute_hook(manifest, 'restore', backup_file, container_name)
-        if success:
-            try:
-                from license import get_license_manager
-                from license.audit_logger import get_audit_logger, AuditEventType
-                lm = get_license_manager()
-                logger = get_audit_logger(enabled=lm.is_pro())
-                logger.log_event(AuditEventType.RESTORE, container_name, {
-                    'backup_file': filename, 'source': 'web_ui'
-                })
-            except Exception:
-                pass
-            return jsonify({'success': True, 'message': f'Backup restored for {container_name}'})
-        return jsonify({'success': False, 'message': 'Restore failed'}), 500
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Restore error: {str(e)}'}), 500
+    if success:
+        try:
+            from license import get_license_manager
+            from license.audit_logger import get_audit_logger, AuditEventType
+            lm = get_license_manager()
+            logger = get_audit_logger(enabled=lm.is_pro())
+            logger.log_event(AuditEventType.RESTORE, container_name, {
+                'backup_file': filename, 'source': 'web_ui'
+            })
+        except Exception:
+            pass
+        return jsonify({'success': True, 'message': f'Backup restored for {container_name}'})
+    return jsonify({'success': False, 'message': 'Restore failed'}), 500
 
 
 @bp.route('/backups/delete', methods=['POST'])
@@ -210,7 +331,7 @@ def delete_backup():
 
     try:
         backup_file.unlink()
-        meta_file = backup_file.with_suffix('.meta')
+        meta_file = _get_meta_path(backup_file)
         if meta_file.exists():
             meta_file.unlink()
         return jsonify({'success': True, 'message': f'Backup {filename} deleted'})
