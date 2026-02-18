@@ -17,13 +17,12 @@ class LicenseManager:
         self.tier, self.license_key, self.expiry_date = self._load_license()
 
     def _load_license(self):
-        '''Load license from file'''
+        '''Load license from file and validate online'''
         if LICENSE_FILE.exists():
             try:
                 with open(LICENSE_FILE, 'r') as f:
                     content = f.read().strip()
 
-                    # Try to parse as JSON (new format)
                     try:
                         data = json.loads(content)
                         tier = data.get('tier', 'FREE')
@@ -38,7 +37,24 @@ class LicenseManager:
                             except:
                                 pass
 
-                        # Check if license is expired
+                        # PRO always requires a valid key — no key = FREE
+                        if tier == 'PRO' and not license_key:
+                            self._write_free_license()
+                            return 'FREE', None, None
+
+                        # PRO must be re-validated online on every start
+                        if tier == 'PRO':
+                            from license.secure_license import LicenseKeyValidator
+                            result = LicenseKeyValidator.validate_key(license_key)
+                            if not result.get('valid'):
+                                # Key is invalid/revoked — downgrade to FREE
+                                self._write_free_license()
+                                return 'FREE', None, None
+                            # Update expiry from server response if available
+                            if result.get('expires'):
+                                expiry_date = result['expires']
+
+                        # Check local expiry as fallback
                         if tier == 'PRO' and expiry_date:
                             if expiry_date.tzinfo is not None:
                                 from datetime import timezone
@@ -46,17 +62,25 @@ class LicenseManager:
                             else:
                                 now = datetime.now()
                             if now > expiry_date:
+                                self._write_free_license()
                                 return 'FREE', None, None
 
                         return tier, license_key, expiry_date
                     except json.JSONDecodeError:
-                        # Old format - just "PRO" string
-                        if content == 'PRO':
-                            return 'PRO', None, None
+                        # Old format - just "PRO" string (no key to validate)
+                        pass
             except Exception:
                 pass
 
         return 'FREE', None, None
+
+    def _write_free_license(self):
+        '''Downgrade license file to FREE'''
+        try:
+            if LICENSE_FILE.exists():
+                LICENSE_FILE.unlink()
+        except Exception:
+            pass
     
     def is_pro(self):
         '''Check if PRO license'''
