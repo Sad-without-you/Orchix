@@ -114,8 +114,9 @@ function showToast(type, message) {
     }, 3000);
 }
 
-// Track active install flow for cancel protection
+// Track active install/import flow for cancel protection
 window._installFlow = null; // { containerName: 'xxx' } when install is in progress
+window._importFlow = null; // true when import is in progress
 
 function showModal(title, bodyHtml, actions) {
     const overlay = document.getElementById('modal-overlay');
@@ -156,7 +157,7 @@ function hideModal() {
 function closeModal() { hideModal(); }
 
 function _tryDismissModal() {
-    // Don't allow dismissing progress modals (install/uninstall in progress)
+    // Don't allow dismissing progress modals (install/uninstall/import/export in progress)
     const overlay = document.getElementById('modal-overlay');
     if (overlay.dataset.progressModal === 'true') {
         return;
@@ -164,6 +165,12 @@ function _tryDismissModal() {
 
     if (window._installFlow) {
         _showCancelInstallConfirm();
+    } else if (window._importFlow) {
+        // Import in progress - prevent dismissal
+        showToast('info', 'Import in progress - please wait');
+    } else if (window._exportFlow) {
+        // Export in progress - prevent dismissal
+        showToast('info', 'Export in progress - please wait');
     } else {
         hideModal();
     }

@@ -719,18 +719,66 @@ async function doExport() {
     }
 
     hideModal();
-    showProgressModal('Exporting Migration Package', `Backing up ${containers.length} container(s)...`);
-    const res = await API.post('/api/migrations/export', {
-        containers: containers,
-        target_platform: platform
-    });
-    hideProgressModal();
-    if (res && res.success) {
-        showToast('success', res.message);
-        window.location.hash = '#/migration';
-        Router.navigate();
-    } else {
-        showToast('error', (res && res.message) || 'Export failed');
+
+    showProgressModalWithBar('Exporting Migration Package', 'Initializing...', 0);
+    window._exportFlow = true;
+
+    try {
+        const response = await fetch('/api/migrations/export-stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                containers: containers,
+                target_platform: platform
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Export failed');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let finalResult = null;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value);
+            const lines = text.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.substring(6));
+
+                    updateProgressBar(data.progress, data.status || 'Processing...');
+
+                    if (data.progress === 100) {
+                        finalResult = data;
+                    }
+                }
+            }
+        }
+
+        window._exportFlow = false;
+        hideModal();
+
+        if (finalResult && finalResult.success) {
+            showToast('success', 'Migration package created successfully!');
+            window.location.hash = '#/migration';
+            Router.navigate();
+        } else {
+            showToast('error', finalResult?.status || 'Export failed');
+        }
+
+    } catch (err) {
+        window._exportFlow = false;
+        hideModal();
+        showToast('error', 'Export failed: ' + err.message);
     }
 }
 
@@ -762,15 +810,79 @@ async function doImport() {
     if (!filename) return;
 
     hideModal();
-    showProgressModal('Importing Migration Package', 'Restoring containers and volumes...');
-    const res = await API.post('/api/migrations/import', { filename: filename });
-    hideProgressModal();
-    if (res && res.success) {
-        showToast('success', res.message);
-        window.location.hash = '#/migration';
-        Router.navigate();
-    } else {
-        showToast('error', (res && res.message) || 'Import failed');
+    showProgressModalWithBar('Importing Migration Package', 'Initializing...', 0);
+
+    // Mark as import flow to prevent dismissal
+    window._importFlow = true;
+
+    try {
+        const response = await fetch('/api/migrations/import-stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('orchix-session-token')}`,
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ filename: filename })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let finalResult = null;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.substring(6));
+
+                    if (data.error) {
+                        hideProgressModal();
+                        window._importFlow = null;
+                        showToast('error', data.error);
+                        return;
+                    }
+
+                    if (data.progress !== undefined) {
+                        updateProgressBar(data.progress, data.status || '');
+                    }
+
+                    if (data.success) {
+                        finalResult = data;
+                    }
+                }
+            }
+        }
+
+        // Process remaining buffer
+        if (buffer.trim() && buffer.trim().startsWith('data: ')) {
+            const data = JSON.parse(buffer.trim().substring(6));
+            if (data.success) {
+                finalResult = data;
+            }
+        }
+
+        hideProgressModal();
+        window._importFlow = null;
+
+        if (finalResult && finalResult.success) {
+            showToast('success', finalResult.message);
+            window.location.hash = '#/migration';
+            Router.navigate();
+        } else {
+            showToast('error', 'Import failed');
+        }
+    } catch (err) {
+        hideProgressModal();
+        window._importFlow = null;
+        showToast('error', 'Import failed: ' + err.message);
     }
 }
 

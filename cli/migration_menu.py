@@ -6,8 +6,12 @@ from pathlib import Path
 from datetime import datetime
 from cli.ui import show_panel, select_from_list, show_info, show_success, show_error, show_warning
 from license import PRICING
-from utils.system import is_windows 
+from utils.system import is_windows
 import shutil
+from rich.console import Console
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+
+console = Console()
 
 # Migration directory
 MIGRATION_DIR = Path('migrations')
@@ -253,16 +257,13 @@ def export_migration_package():
         return
     
     print()
-    
+
     # Create migration package
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     package_name = f"orchix_migration_{timestamp}"
     package_dir = MIGRATION_DIR / package_name
     package_dir.mkdir(exist_ok=True)
-    
-    show_info("Creating migration package...")
-    print()
-    
+
     migration_data = {
         'version': '2.0.0',
         'timestamp': timestamp,
@@ -270,44 +271,53 @@ def export_migration_package():
         'target_platform': 'windows' if target_is_windows else 'linux',
         'containers': []
     }
-    
-    # Process each container
-    for container in selected_containers:
-        show_info(f"Processing {container}...")
-        
-        container_data = {
-            'name': container,
-            'compose_file': f'docker-compose-{container}.yml',
-            'backup_file': None
-        }
-        
-        # Copy compose file
-        compose_src = Path(f'docker-compose-{container}.yml')
-        if compose_src.exists():
-            compose_dst = package_dir / compose_src.name
-            shutil.copy2(compose_src, compose_dst)
-            show_success(f"  ✓ Compose file copied")
-        else:
-            show_warning(f"  ⚠ No compose file found")
-        
-        # Create backup with target platform
-        show_info(f"  Creating backup...")
-        backup_created = _create_container_backup(container, package_dir, target_is_windows)
-        
-        if backup_created:
-            container_data['backup_file'] = backup_created
-            show_success(f"  ✓ Backup created: {backup_created}")
-        else:
-            show_warning(f"  ⚠ Backup failed")
-        
-        migration_data['containers'].append(container_data)
-        print()
-    
+
+    # Process each container with progress bar
+    total = len(selected_containers)
+
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        main_task = progress.add_task("Creating migration package...", total=total * 100)
+
+        for idx, container in enumerate(selected_containers):
+            progress.update(main_task, completed=idx * 100 + 10, description=f"Processing {container}...")
+
+            container_data = {
+                'name': container,
+                'compose_file': f'docker-compose-{container}.yml',
+                'backup_file': None
+            }
+
+            # Copy compose file
+            progress.update(main_task, completed=idx * 100 + 30, description=f"Copying {container} files...")
+            compose_src = Path(f'docker-compose-{container}.yml')
+            if compose_src.exists():
+                compose_dst = package_dir / compose_src.name
+                shutil.copy2(compose_src, compose_dst)
+
+            # Create backup with target platform
+            progress.update(main_task, completed=idx * 100 + 50, description=f"Backing up {container}...")
+            backup_created = _create_container_backup(container, package_dir, target_is_windows)
+
+            if backup_created:
+                container_data['backup_file'] = backup_created
+
+            migration_data['containers'].append(container_data)
+            progress.update(main_task, completed=(idx + 1) * 100, description=f"✅ {idx + 1}/{total} processed")
+
+    print()
+
     # Write manifest with UTF-8
+    show_info("Finalizing package...")
     manifest_file = package_dir / 'migration_manifest.json'
     with open(manifest_file, 'w', encoding='utf-8') as f:
         json.dump(migration_data, f, indent=2)
-    
+
     # Write README with UTF-8
     readme_file = package_dir / 'README.txt'
     with open(readme_file, 'w', encoding='utf-8') as f:
@@ -589,8 +599,7 @@ def _wait_for_container_ready(container_name, timeout=30):
             hook_loader.execute_hook(manifest, 'ready_check', container_name, timeout)
             return
     
-    # Fallback: generic wait
-    show_info(f"  Waiting for container to be ready...")
+    # Fallback: generic wait (silent to avoid interrupting progress bar)
     time.sleep(5)
 
 
@@ -681,115 +690,110 @@ def import_migration_package():
     manifests = load_all_manifests()
     hook_loader = get_hook_loader()
     
-    # Import each container
+    # Import each container with progress bar
     print()
-    show_info("Starting import...")
-    print()
-    
-    for container_data in manifest_data.get('containers', []):
-        container_name = container_data.get('name')
-        show_info(f"Importing {container_name}...")
-        
-        # Check if container already exists
-        result = subprocess.run(
-            ['docker', 'ps', '-a', '--filter', f'name=^{container_name}$', '--format', '{{.Names}}'],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            errors='ignore'
-        )
-        
-        if container_name in result.stdout:
-            show_warning(f"  ⚠ Container '{container_name}' already exists - skipping")
-            print()
-            continue
-        
-        # Copy compose file
-        compose_file = container_data.get('compose_file')
-        if compose_file:
-            compose_src = extract_dir / compose_file
-            compose_dst = Path(compose_file)
-            
-            if compose_src.exists():
-                shutil.copy2(compose_src, compose_dst)
-                show_success(f"  ✓ Compose file installed")
-            else:
-                show_warning(f"  ⚠ Compose file not found")
-        
-        # Deploy container
-        show_info(f"  Starting container...")
-        result = subprocess.run(
-            ['docker', 'compose', '-f', compose_file, 'up', '-d'],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            errors='ignore'
-        )
-        
-        if result.returncode == 0:
-            show_success(f"  ✓ Container started")
-        else:
-            show_error(f"  ✗ Failed to start: {result.stderr}")
-            print()
-            continue
-        
-        # Wait for container to be ready
-        _wait_for_container_ready(container_name)
-        
-        # Restore backup using hooks
-        backup_file = container_data.get('backup_file')
-        if backup_file:
-            backup_src = extract_dir / backup_file
-            backup_dst = BACKUP_DIR / backup_file
-            
-            if backup_src.exists():
-                # Move backup to backups directory
-                shutil.copy2(backup_src, backup_dst)
-                
-                # Move metadata too
-                meta_src_path = _get_meta_file(Path(extract_dir / backup_file))
-                if meta_src_path.exists():
-                    meta_dst = _get_meta_file(backup_dst)
-                    shutil.copy2(meta_src_path, meta_dst)
-                
-                show_info(f"  Restoring backup...")
-                
-                # Get manifest for restore
-                base_name = container_name.split('_')[0] if '_' in container_name else container_name
-                app_manifest = manifests.get(base_name)
-                
-                # If no manifest, try to detect from container
-                if not app_manifest:
-                    result = subprocess.run(
-                        ['docker', 'inspect', container_name, '--format', '{{.Config.Image}}'],
-                        capture_output=True,
-                        text=True,
-                        encoding='utf-8',
-                        errors='ignore'
-                    )
-                    
-                    if result.returncode == 0:
-                        image = result.stdout.strip().lower()
-                        
-                        for app_name, manifest in manifests.items():
-                            if app_name in image:
-                                app_manifest = manifest
-                                break
-                
-                # Restore using hooks
-                if app_manifest and hook_loader.has_hook(app_manifest, 'restore'):
-                    success = hook_loader.execute_hook(app_manifest, 'restore', backup_dst, container_name)
-                else:
-                    show_warning(f"  ⚠ No restore hook available")
-                    success = False
-                
-                if success:
-                    show_success(f"  ✓ Backup restored")
-                else:
-                    show_warning(f"Backup restore failed")
-        
-        show_success(f"✅ {container_name} imported!")
-        print()
+
+    containers_list = manifest_data.get('containers', [])
+    total_containers = len(containers_list)
+
+    with Progress(
+        TextColumn("  │     [progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        main_task = progress.add_task("Starting import...", total=total_containers * 100)
+
+        for idx, container_data in enumerate(containers_list):
+            container_name = container_data.get('name')
+            progress.update(main_task, completed=idx * 100 + 10, description=f"Checking {container_name}...")
+
+            # Check if container already exists
+            result = subprocess.run(
+                ['docker', 'ps', '-a', '--filter', f'name=^{container_name}$', '--format', '{{.Names}}'],
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='ignore'
+            )
+
+            if container_name in result.stdout:
+                progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} already exists - skipped")
+                continue
+
+            # Copy compose file
+            progress.update(main_task, completed=idx * 100 + 20, description=f"Installing {container_name}...")
+            compose_file = container_data.get('compose_file')
+            if compose_file:
+                compose_src = extract_dir / compose_file
+                compose_dst = Path(compose_file)
+
+                if compose_src.exists():
+                    shutil.copy2(compose_src, compose_dst)
+
+            # Deploy container
+            progress.update(main_task, completed=idx * 100 + 40, description=f"Starting {container_name}...")
+            result = subprocess.run(
+                ['docker', 'compose', '-f', compose_file, 'up', '-d'],
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='ignore'
+            )
+
+            if result.returncode != 0:
+                progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} failed to start")
+                continue
+
+            # Wait for container to be ready
+            progress.update(main_task, completed=idx * 100 + 60, description=f"Initializing {container_name}...")
+            _wait_for_container_ready(container_name)
+
+            # Restore backup using hooks
+            progress.update(main_task, completed=idx * 100 + 80, description=f"Restoring {container_name}...")
+            backup_file = container_data.get('backup_file')
+            if backup_file:
+                backup_src = extract_dir / backup_file
+                backup_dst = BACKUP_DIR / backup_file
+
+                if backup_src.exists():
+                    # Move backup to backups directory
+                    shutil.copy2(backup_src, backup_dst)
+
+                    # Move metadata too
+                    meta_src_path = _get_meta_file(Path(extract_dir / backup_file))
+                    if meta_src_path.exists():
+                        meta_dst = _get_meta_file(backup_dst)
+                        shutil.copy2(meta_src_path, meta_dst)
+
+                    # Get manifest for restore
+                    base_name = container_name.split('_')[0] if '_' in container_name else container_name
+                    app_manifest = manifests.get(base_name)
+
+                    # If no manifest, try to detect from container
+                    if not app_manifest:
+                        result = subprocess.run(
+                            ['docker', 'inspect', container_name, '--format', '{{.Config.Image}}'],
+                            capture_output=True,
+                            text=True,
+                            encoding='utf-8',
+                            errors='ignore'
+                        )
+
+                        if result.returncode == 0:
+                            image = result.stdout.strip().lower()
+
+                            for app_name, manifest in manifests.items():
+                                if app_name in image:
+                                    app_manifest = manifest
+                                    break
+
+                    # Restore using hooks (skip silently if no hook exists)
+                    if app_manifest and hook_loader.has_hook(app_manifest, 'restore'):
+                        hook_loader.execute_hook(app_manifest, 'restore', backup_dst, container_name)
+
+            progress.update(main_task, completed=(idx + 1) * 100, description=f"✅ {idx + 1}/{total_containers} imported")
     
     # Cleanup
     shutil.rmtree(extract_dir)
