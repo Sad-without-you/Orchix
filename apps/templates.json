@@ -17,10 +17,10 @@
         {"name_suffix": "data", "mount": "/var/www/html"}
       ],
       "env": [
-        {"key": "WORDPRESS_DB_HOST", "label": "Database Host", "default": "localhost:3306", "required": true},
-        {"key": "WORDPRESS_DB_USER", "label": "Database User", "default": "wordpress", "required": true},
-        {"key": "WORDPRESS_DB_PASSWORD", "label": "Database Password", "type": "password", "generate": true},
-        {"key": "WORDPRESS_DB_NAME", "label": "Database Name", "default": "wordpress", "required": true}
+        {"key": "WORDPRESS_DB_HOST", "label": "Database Host", "default": "localhost:3306", "required": true, "role": "db_host", "db_types": ["mysql"]},
+        {"key": "WORDPRESS_DB_USER", "label": "Database User", "default": "wordpress", "required": true, "db_credential": "user"},
+        {"key": "WORDPRESS_DB_PASSWORD", "label": "Database Password", "type": "password", "generate": true, "db_credential": "password"},
+        {"key": "WORDPRESS_DB_NAME", "label": "Database Name", "default": "wordpress", "required": true, "db_credential": "database"}
       ],
       "restart": "unless-stopped"
     },
@@ -133,7 +133,7 @@
       ],
       "volumes": [],
       "env": [
-        {"key": "ADMINER_DEFAULT_SERVER", "label": "Default DB Server", "default": ""}
+        {"key": "ADMINER_DEFAULT_SERVER", "label": "Default DB Server", "default": "", "role": "db_host"}
       ],
       "restart": "unless-stopped"
     },
@@ -152,8 +152,8 @@
       ],
       "volumes": [],
       "env": [
-        {"key": "PMA_HOST", "label": "MySQL Host", "default": "localhost", "required": true},
-        {"key": "PMA_PORT", "label": "MySQL Port", "default": "3306"}
+        {"key": "PMA_HOST", "label": "MySQL Host", "default": "localhost", "required": true, "role": "db_host", "db_types": ["mysql"]},
+        {"key": "PMA_PORT", "label": "MySQL Port", "default": "3306", "db_port": true}
       ],
       "restart": "unless-stopped"
     },

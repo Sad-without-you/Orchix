@@ -60,3 +60,42 @@ def check_docker_status():
         return {'installed': False, 'running': False, 'message': 'Docker is not installed. Use Setup > Install Docker.'}
     except subprocess.TimeoutExpired:
         return {'installed': True, 'running': False, 'message': 'Docker is not responding (timeout). Restart Docker.'}
+
+
+ORCHIX_NETWORK = 'orchix'
+
+
+def ensure_orchix_network():
+    """Create the global orchix network and connect all running ORCHIX containers."""
+    try:
+        from pathlib import Path
+
+        # Create network if it doesn't exist
+        inspect = subprocess.run(
+            ['docker', 'network', 'inspect', ORCHIX_NETWORK],
+            capture_output=True
+        )
+        if inspect.returncode != 0:
+            subprocess.run(
+                ['docker', 'network', 'create', ORCHIX_NETWORK],
+                capture_output=True
+            )
+
+        # Connect all running ORCHIX containers (those with a compose file in CWD)
+        ps = subprocess.run(
+            ['docker', 'ps', '--format', '{{.Names}}'],
+            capture_output=True, text=True
+        )
+        if ps.returncode != 0:
+            return
+
+        for name in ps.stdout.strip().splitlines():
+            if not name:
+                continue
+            if Path(f'docker-compose-{name}.yml').exists():
+                subprocess.run(
+                    ['docker', 'network', 'connect', ORCHIX_NETWORK, name],
+                    capture_output=True
+                )
+    except Exception:
+        pass

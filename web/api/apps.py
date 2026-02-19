@@ -56,8 +56,33 @@ def get_config_schema(name):
             'required': env.get('required', False),
             'generate': env.get('generate', False),
             'options': env.get('options', []),
+            'role': env.get('role', ''),
+            'db_credential': env.get('db_credential', ''),
+            'db_types': env.get('db_types', []),
         })
     return jsonify({'fields': fields, 'is_template': True})
+
+
+@bp.route('/apps/db-candidates')
+@require_permission('apps.read')
+def get_db_candidates():
+    """Return running ORCHIX containers that look like database servers."""
+    from utils.db_discovery import discover_db_containers
+    db_types_param = request.args.get('db_types', '')
+    db_types = [t.strip() for t in db_types_param.split(',') if t.strip()] or None
+    return jsonify(discover_db_containers(db_types=db_types))
+
+
+@bp.route('/apps/db-credentials/<container_name>')
+@require_permission('apps.read')
+def get_db_credentials_endpoint(container_name):
+    """Return user/password/database credentials for a DB container."""
+    try:
+        container_name = validate_container_name(container_name)
+    except ValueError:
+        return jsonify({}), 400
+    from utils.db_discovery import get_db_credentials
+    return jsonify(get_db_credentials(container_name))
 
 
 @bp.route('/apps/install-stream', methods=['POST'])

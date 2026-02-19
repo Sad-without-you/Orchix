@@ -62,7 +62,6 @@ ROLE_PERMISSIONS = {
     'viewer': {
         'dashboard.read',
         'containers.read', 'containers.logs', 'containers.inspect',
-        'containers.compose_read',
         'apps.read',
         'audit.read',
         'license.read',

@@ -4,6 +4,7 @@ import re
 import secrets
 from apps.installer_base import BaseInstaller
 from utils.docker_progress import run_docker_with_progress
+from utils.docker_utils import ORCHIX_NETWORK
 from utils.validation import sanitize_yaml_value, validate_container_name
 
 
@@ -65,8 +66,64 @@ class TemplateInstaller(BaseInstaller):
             show_step_detail(f"Configure {self.template['display_name']}")
             show_step_line()
 
+        _selected_db_container = None  # tracks which DB was chosen for credential auto-fill
+        _db_creds = {}                 # cached credentials from that DB
+
         for env in envs:
-            if env.get('generate'):
+            if env.get('role') == 'db_host':
+                from utils.db_discovery import discover_db_containers, get_db_credentials
+                candidates = discover_db_containers(db_types=env.get('db_types') or None)
+                chosen_container = None
+                if not candidates:
+                    show_step_detail(f"⚠  No database containers found on orchix network.")
+                    show_step_detail(f"   Install MariaDB or PostgreSQL first, or enter hostname manually.")
+                    default = env.get('default', '')
+                    val = step_input(f"{env['label']} [{default or 'hostname'}]: ").strip()
+                    config[env['key']] = val or default
+                elif len(candidates) == 1:
+                    c = candidates[0]
+                    show_step_detail(f"Database found: {c['name']} ({c['image']})")
+                    val = step_input(f"{env['label']} [{c['name']}]: ").strip()
+                    config[env['key']] = val or c['name']
+                    chosen_container = c['name']
+                else:
+                    show_step_detail(f"Multiple databases found:")
+                    for i, c in enumerate(candidates, 1):
+                        show_step_detail(f"  [{i}] {c['name']}  ({c['image']})")
+                    show_step_detail(f"  [m] Enter manually")
+                    choice = step_input(f"Select database (1-{len(candidates)}) or 'm': ").strip()
+                    if choice.lower() == 'm':
+                        val = step_input(f"{env['label']}: ").strip()
+                        config[env['key']] = val or env.get('default', '')
+                    else:
+                        try:
+                            idx = int(choice) - 1
+                            chosen_container = candidates[idx]['name'] if 0 <= idx < len(candidates) else candidates[0]['name']
+                        except (ValueError, IndexError):
+                            chosen_container = candidates[0]['name']
+                        config[env['key']] = chosen_container
+                    show_step_detail(f"{env['label']}: {config[env['key']]}")
+                # Load credentials from selected DB for subsequent fields
+                if chosen_container:
+                    _selected_db_container = chosen_container
+                    _db_creds = get_db_credentials(chosen_container)
+                    if _db_creds:
+                        show_step_detail(f"Credentials loaded from {chosen_container}")
+            elif env.get('db_credential') and _selected_db_container:
+                # Use credentials from the selected DB container
+                role = env.get('db_credential')
+                if role in _db_creds:
+                    config[env['key']] = _db_creds[role]
+                    show_step_detail(f"{env['label']}: [from {_selected_db_container}]")
+                elif env.get('generate'):
+                    val = secrets.token_urlsafe(16)
+                    show_step_detail(f"{env['label']}: [auto-generated]")
+                    config[env['key']] = val
+                else:
+                    default = env.get('default', '')
+                    val = step_input(f"{env['label']} [{default}]: ").strip()
+                    config[env['key']] = val or default
+            elif env.get('generate'):
                 val = secrets.token_urlsafe(16)
                 show_step_detail(f"{env['label']}: [auto-generated]")
                 config[env['key']] = val
@@ -317,6 +374,15 @@ class TemplateInstaller(BaseInstaller):
         if env_lines:
             sections.append("    environment:")
             sections.extend(env_lines)
+
+        # Global orchix network for inter-container communication
+        sections.append("    networks:")
+        sections.append(f"      - {ORCHIX_NETWORK}")
+
+        sections.append("")
+        sections.append("networks:")
+        sections.append(f"  {ORCHIX_NETWORK}:")
+        sections.append("    external: true")
 
         if vol_defs:
             sections.append("")

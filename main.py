@@ -58,11 +58,15 @@ if __name__ == "__main__":
                     pass
 
         print_header()
+        from utils.docker_utils import ensure_orchix_network
+        ensure_orchix_network()
         from web.server import run_web
         run_web(port=port)
     else:
         # CLI mode
         check_sudo()
         print_header()
+        from utils.docker_utils import ensure_orchix_network
+        ensure_orchix_network()
         from cli.main_menu import run_main_loop
         run_main_loop()

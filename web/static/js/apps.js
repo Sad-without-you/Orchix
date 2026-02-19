@@ -72,6 +72,15 @@ async function openInstallDialog(appName, displayName, defaultPorts, imageSizeMb
                     <input type="text" class="form-input" value="(auto-generated)" disabled
                         style="color:var(--text3);font-style:italic">
                 </div>`;
+        } else if (f.role === 'db_host') {
+            // Placeholder — will be replaced after fetching DB candidates
+            fieldsHtml += `
+                <div class="form-group" id="dbhost-group-${esc(f.key)}">
+                    <label>${esc(f.label)}${f.required ? ' *' : ''}</label>
+                    <input type="text" class="form-input" id="cfg-${esc(f.key)}"
+                        value="${esc(f.default || '')}" placeholder="Loading databases...">
+                    <div style="font-size:0.75rem;color:var(--text3);margin-top:0.3rem" id="dbhost-hint-${esc(f.key)}"></div>
+                </div>`;
         } else if (f.type === 'select' && f.options && f.options.length > 0) {
             fieldsHtml += `
                 <div class="form-group">
@@ -113,6 +122,137 @@ async function openInstallDialog(appName, displayName, defaultPorts, imageSizeMb
         { label: 'Install', cls: 'btn-primary', fn: () => doInstall(appName, fields) }
     ]);
     checkInstallConflicts();
+
+    // After modal rendered: resolve DB host fields dynamically
+    const dbHostFields = fields.filter(f => f.role === 'db_host');
+    if (dbHostFields.length > 0) {
+        for (const f of dbHostFields) {
+            const params = f.db_types && f.db_types.length > 0
+                ? `?db_types=${encodeURIComponent(f.db_types.join(','))}`
+                : '';
+            const candidates = await API.get(`/api/apps/db-candidates${params}`) || [];
+            _renderDbHostField(f, fields, candidates);
+            // Auto-fill credentials for the initially selected DB
+            if (candidates.length > 0) {
+                await _applyDbCredentials(candidates[0].name, fields);
+                _fillDbPort(candidates[0].image, fields);
+            }
+        }
+    }
+}
+
+async function _applyDbCredentials(containerName, fields) {
+    if (!containerName || containerName === '__manual__') return;
+    const creds = await API.get(`/api/apps/db-credentials/${encodeURIComponent(containerName)}`) || {};
+
+    for (const f of fields) {
+        if (!f.db_credential) continue;
+        const val = creds[f.db_credential];
+        if (val === undefined) continue;
+
+        const el = document.getElementById(`cfg-${f.key}`);
+        if (el && !el.disabled) {
+            el.value = val;
+            // Make password fields visible (they're normally hidden auto-generated)
+            if (f.generate) {
+                el.disabled = false;
+                el.style.color = '';
+                el.style.fontStyle = '';
+                el.type = 'password';
+            }
+        }
+    }
+}
+
+const _DB_PORTS = { mysql: '3306', postgres: '5432', redis: '6379', mongo: '27017', influxdb: '8086' };
+
+function _detectDbType(image) {
+    const img = (image || '').toLowerCase();
+    if (/mariadb|mysql|percona/.test(img)) return 'mysql';
+    if (/postgres/.test(img)) return 'postgres';
+    if (/redis/.test(img)) return 'redis';
+    if (/mongo/.test(img)) return 'mongo';
+    if (/influxdb/.test(img)) return 'influxdb';
+    return null;
+}
+
+function _fillDbPort(image, fields) {
+    const dbType = _detectDbType(image);
+    if (!dbType || !_DB_PORTS[dbType]) return;
+    for (const f of fields) {
+        if (!f.db_port) continue;
+        const el = document.getElementById(`cfg-${f.key}`);
+        if (el) el.value = _DB_PORTS[dbType];
+    }
+}
+
+function _renderDbHostField(f, fields, candidates) {
+    const hint = document.getElementById(`dbhost-hint-${f.key}`);
+
+    if (candidates.length === 0) {
+        // No DB found — keep text input, show warning
+        const input = document.getElementById(`cfg-${f.key}`);
+        if (input) {
+            input.value = '';
+            const _phNames = { mysql: 'mariadb', postgres: 'postgres', redis: 'redis', mongo: 'mongo', influxdb: 'influxdb' };
+            input.placeholder = f.db_types && f.db_types.length > 0
+                ? 'e.g. ' + f.db_types.map(t => _phNames[t] || t).join(' or ')
+                : 'e.g. mariadb or postgres';
+        }
+        if (hint) {
+            hint.style.color = 'var(--accent)';
+            const _dbNames = { mysql: 'MariaDB or MySQL', postgres: 'PostgreSQL', redis: 'Redis', mongo: 'MongoDB', influxdb: 'InfluxDB' };
+            const dbLabel = f.db_types && f.db_types.length > 0
+                ? f.db_types.map(t => _dbNames[t] || t).join(' or ')
+                : 'a database container';
+            hint.innerHTML = `⚠ No database containers found. Install ${dbLabel} first, or enter the hostname manually.`;
+        }
+    } else if (candidates.length === 1) {
+        // Exactly one DB — pre-fill
+        const input = document.getElementById(`cfg-${f.key}`);
+        if (input) input.value = candidates[0].name;
+        if (hint) hint.innerHTML = `Using <strong>${esc(candidates[0].name)}</strong> <span style="color:var(--text3)">(${esc(candidates[0].image)})</span>`;
+    } else {
+        // Multiple DBs — replace input with select + manual option
+        const input = document.getElementById(`cfg-${f.key}`);
+        if (!input) return;
+
+        const select = document.createElement('select');
+        select.className = 'form-input';
+        select.id = `cfg-${f.key}`;
+        for (const c of candidates) {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.dataset.image = c.image;
+            opt.textContent = `${c.name}  (${c.image})`;
+            select.appendChild(opt);
+        }
+        const manual = document.createElement('option');
+        manual.value = '__manual__';
+        manual.textContent = 'Enter manually...';
+        select.appendChild(manual);
+
+        select.addEventListener('change', async () => {
+            if (select.value === '__manual__') {
+                const newInput = document.createElement('input');
+                newInput.type = 'text';
+                newInput.className = 'form-input';
+                newInput.id = `cfg-${f.key}`;
+                newInput.placeholder = 'container name or hostname';
+                select.replaceWith(newInput);
+                if (hint) hint.innerHTML = '';
+            } else {
+                // Auto-fill credentials and port for newly selected DB
+                const selectedOpt = select.options[select.selectedIndex];
+                await _applyDbCredentials(select.value, fields);
+                _fillDbPort(selectedOpt.dataset.image || '', fields);
+                if (hint) hint.innerHTML = `Credentials loaded from <strong>${esc(select.value)}</strong>`;
+            }
+        });
+
+        input.replaceWith(select);
+        if (hint) hint.innerHTML = `${candidates.length} databases available`;
+    }
 }
 
 let _conflictTimer = null;
