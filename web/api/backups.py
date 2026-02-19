@@ -18,6 +18,11 @@ def _get_meta_path(backup_path: Path) -> Path:
     return backup_path.with_suffix('.meta')
 
 
+def _alpine_image_exists() -> bool:
+    return subprocess.run(['docker', 'image', 'inspect', 'alpine'],
+                         capture_output=True).returncode == 0
+
+
 def _generic_volume_backup(container_name: str) -> bool:
     from utils.system import is_windows
     try:
@@ -35,6 +40,7 @@ def _generic_volume_backup(container_name: str) -> bool:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         volume_name = volumes[0]
         backup_dir_abs = str(BACKUP_DIR.resolve())
+        alpine_existed = _alpine_image_exists()
 
         if is_windows():
             backup_name = f"{container_name}_{timestamp}.zip"
@@ -55,6 +61,9 @@ def _generic_volume_backup(container_name: str) -> bool:
                  'alpine', 'tar', 'czf', f'/backup/{backup_name}', '-C', '/data', '.'],
                 capture_output=True, text=True
             )
+
+        if not alpine_existed:
+            subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
 
         if br.returncode != 0:
             return False
@@ -95,6 +104,7 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
 
         backup_dir_abs = str(BACKUP_DIR.resolve())
         backup_name = backup_file.name
+        alpine_existed = _alpine_image_exists()
         subprocess.run(['docker', 'stop', container_name], capture_output=True)
 
         if backup_name.endswith('.zip'):
@@ -118,6 +128,9 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
         else:
             subprocess.run(['docker', 'start', container_name], capture_output=True)
             return False
+
+        if not alpine_existed:
+            subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
 
         subprocess.run(['docker', 'start', container_name], capture_output=True)
         return rr.returncode == 0

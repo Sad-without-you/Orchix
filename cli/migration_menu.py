@@ -521,7 +521,15 @@ def _generic_volume_backup(container_name, output_dir):
         'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz'
     ] + tar_paths
 
+    alpine_existed = subprocess.run(
+        ['docker', 'image', 'inspect', 'alpine'], capture_output=True
+    ).returncode == 0
+
     result = safe_docker_run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+
+    if not alpine_existed:
+        subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
+
     return result is not None and result.returncode == 0
 
 
