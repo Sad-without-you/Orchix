@@ -507,27 +507,107 @@ def _generic_volume_backup(container_name, output_dir):
         return False
 
     backup_file = output_dir / f"{container_name}_volumes.tar.gz"
-
-    # Create tar.gz from the volume root so the archive has no path prefix.
-    # This ensures the restore (tar xzf -C /data) puts files in the right place.
-    # Only the first (primary) volume is backed up; additional volumes are rare.
-    primary_volume = volumes[0]['name']
-    cmd = ['docker', 'run', '--rm',
-           '-v', f'{primary_volume}:/data:ro',
-           '-v', f'{output_dir.resolve()}:/backup_dst',
-           'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz',
-           '-C', '/data', '.']
-
     alpine_existed = subprocess.run(
         ['docker', 'image', 'inspect', 'alpine'], capture_output=True
     ).returncode == 0
 
-    result = safe_docker_run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+    if len(volumes) == 1:
+        # Single volume: flat archive (files at volume root, no path prefix)
+        cmd = ['docker', 'run', '--rm',
+               '-v', f"{volumes[0]['name']}:/data:ro",
+               '-v', f'{output_dir.resolve()}:/backup_dst',
+               'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz',
+               '-C', '/data', '.']
+        result = safe_docker_run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+    else:
+        # Multi-volume: each volume stored in v0/, v1/, ... subdirectory
+        # Restore detects format and extracts each dir into the right volume
+        vol_args = []
+        for idx, v in enumerate(volumes):
+            vol_args.extend(['-v', f"{v['name']}:/vols/v{idx}:ro"])
+        cmd = (['docker', 'run', '--rm'] + vol_args +
+               ['-v', f'{output_dir.resolve()}:/backup_dst',
+                'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz',
+                '-C', '/vols', '.'])
+        result = safe_docker_run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
 
     if not alpine_existed:
         subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
 
     return result is not None and result.returncode == 0
+
+
+def _restore_container_volumes(container_name, backup_path):
+    """Restore all volumes from a migration backup archive.
+
+    Handles two archive formats:
+      - Single-volume: files at archive root (./file1, ./subdir/...)
+      - Multi-volume: each volume in v0/, v1/,... subdirectory
+
+    Works on both Windows and Linux hosts (all tar ops run inside Alpine).
+    """
+    result = subprocess.run(
+        ['docker', 'inspect', container_name, '--format',
+         '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}\n{{end}}{{end}}'],
+        capture_output=True, text=True, encoding='utf-8', errors='ignore'
+    )
+    volumes = [v.strip() for v in result.stdout.strip().splitlines() if v.strip()]
+    if not volumes:
+        return False
+
+    backup_dir_abs = str(backup_path.parent.resolve())
+    backup_name = backup_path.name
+
+    alpine_existed = subprocess.run(
+        ['docker', 'image', 'inspect', 'alpine'], capture_output=True
+    ).returncode == 0
+
+    # Detect archive format: multi-volume archives contain ./v0/ entries
+    check = subprocess.run(
+        ['docker', 'run', '--rm',
+         '-v', f'{backup_dir_abs}:/backup:ro',
+         'alpine', 'sh', '-c',
+         f'tar tf /backup/{backup_name} | grep -cm1 "^./v0/"'],
+        capture_output=True, text=True
+    )
+    is_multi = check.stdout.strip() == '1'
+
+    subprocess.run(['docker', 'stop', container_name], capture_output=True)
+    success = True
+
+    if is_multi:
+        # Multi-volume: extract v{idx}/ into each corresponding volume
+        for idx, vol_name in enumerate(volumes):
+            rr = subprocess.run(
+                ['docker', 'run', '--rm',
+                 '-v', f'{vol_name}:/data',
+                 '-v', f'{backup_dir_abs}:/backup:ro',
+                 'alpine', 'sh', '-c',
+                 f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
+                 f'tar xzf /backup/{backup_name} --strip-components=2 '
+                 f'--wildcards -C /data "./v{idx}/*"'],
+                capture_output=True, text=True
+            )
+            if rr.returncode != 0:
+                success = False
+    else:
+        # Single-volume flat format: restore into first volume
+        rr = subprocess.run(
+            ['docker', 'run', '--rm',
+             '-v', f'{volumes[0]}:/data',
+             '-v', f'{backup_dir_abs}:/backup:ro',
+             'alpine', 'sh', '-c',
+             f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
+             f'tar xzf /backup/{backup_name} -C /data'],
+            capture_output=True, text=True
+        )
+        success = rr.returncode == 0
+
+    if not alpine_existed:
+        subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
+
+    subprocess.run(['docker', 'start', container_name], capture_output=True)
+    return success
 
 
 def _get_hostname():
@@ -794,12 +874,11 @@ def import_migration_package():
                                     app_manifest = manifest
                                     break
 
-                    # Restore using app hook, or fall back to generic volume restore
+                    # Restore using app hook, or fall back to volume restore
                     if app_manifest and hook_loader.has_hook(app_manifest, 'restore'):
                         hook_loader.execute_hook(app_manifest, 'restore', backup_dst, container_name)
                     else:
-                        from cli.backup_menu import _generic_volume_restore
-                        _generic_volume_restore(container_name, backup_dst)
+                        _restore_container_volumes(container_name, backup_dst)
 
             progress.update(main_task, completed=(idx + 1) * 100, description=f"✅ {idx + 1}/{total_containers} imported")
     
