@@ -379,18 +379,27 @@ def import_migration():
                 shutil.copy2(backup_src, backup_dst)
 
                 # Copy meta file
-                from cli.migration_menu import _get_meta_file
+                from cli.migration_menu import _get_meta_file, _restore_container_volumes
                 meta_src = _get_meta_file(backup_src)
                 if meta_src.exists():
                     meta_dst = _get_meta_file(backup_dst)
                     shutil.copy2(meta_src, meta_dst)
 
-                # Restore via hooks
+                # Wait briefly for container to initialize before restore
+                import time
+                time.sleep(3)
+
+                # Restore via hook, or fall back to generic volume restore
                 base_name = container_name.split('_')[0] if '_' in container_name else container_name
                 manifest = manifests.get(base_name)
                 if manifest and hook_loader.has_hook(manifest, 'restore'):
                     try:
                         hook_loader.execute_hook(manifest, 'restore', backup_dst, container_name)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        _restore_container_volumes(container_name, backup_dst)
                     except Exception:
                         pass
 
@@ -530,18 +539,27 @@ def import_migration_stream():
                         shutil.copy2(backup_src, backup_dst)
 
                         # Copy meta
-                        from cli.migration_menu import _get_meta_file
+                        from cli.migration_menu import _get_meta_file, _restore_container_volumes
                         meta_src = _get_meta_file(backup_src)
                         if meta_src.exists():
                             meta_dst = _get_meta_file(backup_dst)
                             shutil.copy2(meta_src, meta_dst)
 
-                        # Restore via hooks
+                        # Wait briefly for container to initialize before restore
+                        import time
+                        time.sleep(3)
+
+                        # Restore via hook, or fall back to generic volume restore
                         base_name = container_name.split('_')[0] if '_' in container_name else container_name
                         manifest = manifests.get(base_name)
                         if manifest and hook_loader.has_hook(manifest, 'restore'):
                             try:
                                 hook_loader.execute_hook(manifest, 'restore', backup_dst, container_name)
+                            except Exception:
+                                pass
+                        else:
+                            try:
+                                _restore_container_volumes(container_name, backup_dst)
                             except Exception:
                                 pass
 
