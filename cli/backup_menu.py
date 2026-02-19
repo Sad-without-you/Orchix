@@ -395,14 +395,14 @@ def restore_backup_menu():
         if meta_file.exists():
             with open(meta_file, 'r') as f:
                 lines = f.readlines()
-                timestamp = lines[2].split(':')[1].strip()[:19] if len(lines) > 2 else 'Unknown'
+                timestamp = lines[2].split(':', 1)[1].strip()[:19] if len(lines) > 2 else 'Unknown'
         else:
             timestamp = 'Unknown'
-        
+
         backup_choices.append(f"{timestamp} - {backup.name}")
-    
+
     backup_choices.append("⬅️  Cancel")
-    
+
     selected_backup_choice = select_from_list(
         f"Select backup for {container_name}",
         backup_choices
@@ -672,14 +672,14 @@ def delete_backup_menu():
         if meta_file.exists():
             with open(meta_file, 'r') as f:
                 lines = f.readlines()
-                timestamp = lines[2].split(':')[1].strip()[:19] if len(lines) > 2 else 'Unknown'
+                timestamp = lines[2].split(':', 1)[1].strip()[:19] if len(lines) > 2 else 'Unknown'
         else:
             timestamp = 'Unknown'
-        
+
         backup_choices.append(f"{timestamp} - {backup.name}")
-    
+
     backup_choices.append("⬅️  Cancel")
-    
+
     selected_backup_choice = select_from_list(
         f"Select backup to delete",
         backup_choices

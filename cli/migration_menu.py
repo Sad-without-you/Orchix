@@ -508,18 +508,15 @@ def _generic_volume_backup(container_name, output_dir):
 
     backup_file = output_dir / f"{container_name}_volumes.tar.gz"
 
-    # Create tar.gz of all volume data using a temporary alpine container
-    vol_args = []
-    tar_paths = []
-    for v in volumes:
-        safe_name = v['name'].replace('/', '_')
-        vol_args.extend(['-v', f"{v['name']}:/backup_src/{safe_name}:ro"])
-        tar_paths.append(f'/backup_src/{safe_name}')
-
-    cmd = ['docker', 'run', '--rm'] + vol_args + [
-        '-v', f'{output_dir.resolve()}:/backup_dst',
-        'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz'
-    ] + tar_paths
+    # Create tar.gz from the volume root so the archive has no path prefix.
+    # This ensures the restore (tar xzf -C /data) puts files in the right place.
+    # Only the first (primary) volume is backed up; additional volumes are rare.
+    primary_volume = volumes[0]['name']
+    cmd = ['docker', 'run', '--rm',
+           '-v', f'{primary_volume}:/data:ro',
+           '-v', f'{output_dir.resolve()}:/backup_dst',
+           'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz',
+           '-C', '/data', '.']
 
     alpine_existed = subprocess.run(
         ['docker', 'image', 'inspect', 'alpine'], capture_output=True
@@ -797,9 +794,12 @@ def import_migration_package():
                                     app_manifest = manifest
                                     break
 
-                    # Restore using hooks (skip silently if no hook exists)
+                    # Restore using app hook, or fall back to generic volume restore
                     if app_manifest and hook_loader.has_hook(app_manifest, 'restore'):
                         hook_loader.execute_hook(app_manifest, 'restore', backup_dst, container_name)
+                    else:
+                        from cli.backup_menu import _generic_volume_restore
+                        _generic_volume_restore(container_name, backup_dst)
 
             progress.update(main_task, completed=(idx + 1) * 100, description=f"✅ {idx + 1}/{total_containers} imported")
     
