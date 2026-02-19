@@ -59,6 +59,7 @@ def get_config_schema(name):
             'role': env.get('role', ''),
             'db_credential': env.get('db_credential', ''),
             'db_types': env.get('db_types', []),
+            'db_port': env.get('db_port', False),
         })
     return jsonify({'fields': fields, 'is_template': True})
 

@@ -68,15 +68,19 @@ class TemplateInstaller(BaseInstaller):
 
         _selected_db_container = None  # tracks which DB was chosen for credential auto-fill
         _db_creds = {}                 # cached credentials from that DB
+        _selected_db_image = ''        # image of selected DB container (for port detection)
 
         for env in envs:
             if env.get('role') == 'db_host':
                 from utils.db_discovery import discover_db_containers, get_db_credentials
                 candidates = discover_db_containers(db_types=env.get('db_types') or None)
                 chosen_container = None
+                _type_names = {'mysql': 'MariaDB or MySQL', 'postgres': 'PostgreSQL', 'redis': 'Redis', 'mongo': 'MongoDB', 'influxdb': 'InfluxDB'}
+                _db_types = env.get('db_types') or []
+                db_label = ' or '.join(_type_names.get(t, t) for t in _db_types) if _db_types else 'a database container'
                 if not candidates:
                     show_step_detail(f"⚠  No database containers found on orchix network.")
-                    show_step_detail(f"   Install MariaDB or PostgreSQL first, or enter hostname manually.")
+                    show_step_detail(f"   Install {db_label} first, or enter hostname manually.")
                     default = env.get('default', '')
                     val = step_input(f"{env['label']} [{default or 'hostname'}]: ").strip()
                     config[env['key']] = val or default
@@ -86,6 +90,7 @@ class TemplateInstaller(BaseInstaller):
                     val = step_input(f"{env['label']} [{c['name']}]: ").strip()
                     config[env['key']] = val or c['name']
                     chosen_container = c['name']
+                    _selected_db_image = c['image']
                 else:
                     show_step_detail(f"Multiple databases found:")
                     for i, c in enumerate(candidates, 1):
@@ -98,9 +103,11 @@ class TemplateInstaller(BaseInstaller):
                     else:
                         try:
                             idx = int(choice) - 1
-                            chosen_container = candidates[idx]['name'] if 0 <= idx < len(candidates) else candidates[0]['name']
+                            idx = idx if 0 <= idx < len(candidates) else 0
                         except (ValueError, IndexError):
-                            chosen_container = candidates[0]['name']
+                            idx = 0
+                        chosen_container = candidates[idx]['name']
+                        _selected_db_image = candidates[idx]['image']
                         config[env['key']] = chosen_container
                     show_step_detail(f"{env['label']}: {config[env['key']]}")
                 # Load credentials from selected DB for subsequent fields
@@ -119,6 +126,21 @@ class TemplateInstaller(BaseInstaller):
                     val = secrets.token_urlsafe(16)
                     show_step_detail(f"{env['label']}: [auto-generated]")
                     config[env['key']] = val
+                else:
+                    default = env.get('default', '')
+                    val = step_input(f"{env['label']} [{default}]: ").strip()
+                    config[env['key']] = val or default
+            elif env.get('db_port') and _selected_db_image:
+                _port_map = {'mysql': '3306', 'postgres': '5432', 'redis': '6379', 'mongo': '27017', 'influxdb': '8086'}
+                img = _selected_db_image.lower()
+                db_type = ('mysql' if any(k in img for k in ('mariadb', 'mysql', 'percona')) else
+                           'postgres' if 'postgres' in img else
+                           'redis' if 'redis' in img else
+                           'mongo' if 'mongo' in img else
+                           'influxdb' if 'influxdb' in img else None)
+                if db_type and db_type in _port_map:
+                    config[env['key']] = _port_map[db_type]
+                    show_step_detail(f"{env['label']}: [auto-detected: {_port_map[db_type]}]")
                 else:
                     default = env.get('default', '')
                     val = step_input(f"{env['label']} [{default}]: ").strip()
