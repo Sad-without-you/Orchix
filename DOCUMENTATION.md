@@ -6,7 +6,7 @@
 
 **Version:** 1.3
 **License:** Commercial (€29/month)
-**Platform:** Linux, Windows (WSL2)
+**Platform:** Linux, Windows (WSL2 / native)
 
 ---
 
@@ -18,13 +18,14 @@
 4. [Web UI Usage](#web-ui-usage)
 5. [User Management](#user-management)
 6. [Application Templates](#application-templates)
-7. [Backup & Restore](#backup--restore)
-8. [Server Migration](#server-migration)
-9. [License Management](#license-management)
-10. [Security](#security)
-11. [API Reference](#api-reference)
-12. [Troubleshooting](#troubleshooting)
-13. [Advanced Configuration](#advanced-configuration)
+7. [Database Discovery](#database-discovery)
+8. [Backup & Restore](#backup--restore)
+9. [Server Migration](#server-migration)
+10. [License Management](#license-management)
+11. [Security](#security)
+12. [API Reference](#api-reference)
+13. [Troubleshooting](#troubleshooting)
+14. [Advanced Configuration](#advanced-configuration)
 
 ---
 
@@ -36,6 +37,8 @@ ORCHIX is a container management system that simplifies Docker operations throug
 - **30 pre-configured applications** (WordPress, Nextcloud, n8n, PostgreSQL, etc.)
 - **CLI + Web UI** for flexible management
 - **One-click deployment** with automatic port management
+- **Dynamic database discovery** — apps that need a database auto-detect available DB containers
+- **Global orchix network** — all ORCHIX containers communicate by container name
 - **Backup & Migration** tools (PRO)
 - **Audit logging** for compliance (PRO)
 
@@ -71,8 +74,11 @@ cd ORCHIX
 # Install dependencies
 pip3 install -r requirements.txt
 
-# Run ORCHIX
+# Run ORCHIX CLI
 sudo python3 main.py
+
+# Run ORCHIX Web UI
+sudo python3 main.py --web
 ```
 
 #### Windows (PowerShell as Administrator)
@@ -85,8 +91,11 @@ cd ORCHIX
 # Install dependencies
 pip install -r requirements.txt
 
-# Run ORCHIX
+# Run ORCHIX CLI
 python main.py
+
+# Run ORCHIX Web UI
+python main.py --web
 ```
 
 ### Docker Auto-Installation
@@ -111,74 +120,53 @@ If Docker is not installed, ORCHIX will offer to install it automatically:
 ### Launch CLI
 
 ```bash
-python main.py
+sudo python3 main.py          # Linux
+python main.py                # Windows
 ```
 
 ### Main Menu
 
 ```
-╭─────────────────────────────────────╮
-│          ORCHIX v1.3                │
-│   Container Management System       │
-╰─────────────────────────────────────╯
+╭──────────────────────────────────────────────────────╮
+│  Welcome to ORCHIX! | FREE    Containers: 2/3        │
+╰──────────────────────────────────────────────────────╯
 
-1. Install Applications
-2. Manage Containers
-3. Backup & Restore (PRO)
-4. Server Migration (PRO)
-5. System Dashboard
-6. License Management
-7. System Setup
-8. Exit
+1. Dashboard
+2. Install Applications
+3. Update Applications
+4. Uninstall Applications
+5. Container Management
+6. Backup & Restore (PRO only)
+7. Server Migration (PRO only)
+8. Audit Logs (PRO only)
+9. License Manager
+10. System Setup
+11. Exit
 ```
+
+PRO users see Backup, Migration, and Audit Logs without the "(PRO only)" label.
 
 ### Dashboard
 
-```bash
-# Real-time system monitoring
-python main.py
-# Select: 5. System Dashboard
-```
-
-Shows:
-- CPU, RAM, Disk usage
+Shows real-time system stats:
+- CPU, RAM, disk usage
 - Network traffic per interface
-- Running containers
-- Container resource consumption
+- Running containers with resource usage
 
 ### Install Application
 
 ```bash
-# Interactive installation
 python main.py
-# Select: 1. Install Applications
-# Choose application > Configure port > Deploy
+# Select: 2. Install Applications
+# Choose application > Configure settings > Deploy
 ```
 
-Example: Install WordPress
-
-```
-Select application: WordPress
-Enter port (default 8080): 8080
-Install name: wordpress-prod
-
-✓ Pulling images...
-✓ Creating container...
-✓ Starting services...
-
-WordPress is ready at: http://localhost:8080
-```
+When installing apps that require a database (e.g. WordPress, phpMyAdmin), ORCHIX automatically detects running database containers on the orchix network and pre-fills connection details. See [Database Discovery](#database-discovery).
 
 ### Container Management
 
-```bash
-# Manage existing containers
-python main.py
-# Select: 2. Manage Containers
-```
-
-Operations:
-- **Start/Stop/Restart** container
+Operations available:
+- **Start / Stop / Restart**
 - **View Logs** (real-time)
 - **Inspect** container details
 - **Delete** container and volumes
@@ -192,90 +180,56 @@ Operations:
 
 ```bash
 # Default port 5000
-python main.py --web
+sudo python3 main.py --web
 
 # Custom port
-python main.py --web --port 8080
+sudo python3 main.py --web --port 8080
 ```
+
+Then open: `http://localhost:5000` (or replace `localhost` with your server IP)
 
 ### First Login
 
-1. Open browser: `http://localhost:5000`
-2. An admin user is created on first run with a random password shown in the terminal:
+1. Open browser: `http://<server-ip>:5000`
+2. On first run, ORCHIX creates an `admin` user with a random password printed in the terminal:
    ```
-   Admin user created. Username: admin, Password: randompassword123
+   Admin user created. Username: admin, Password: <random>
    ```
-3. Login with username `admin` and the generated password
-4. Change password in Settings or create additional users (PRO: unlimited, FREE: 1 user)
+3. Login with `admin` and the generated password
+4. Change password via the sidebar (bottom-left user section)
 
-### Dashboard
+### Web UI Pages
 
-- **Lily Theme**: Modern dark theme with pink (#ec4899) and teal (#14b8a6) accents
-- **Multi-User RBAC**: Admin, Operator, Viewer roles with permission-based UI
-- **Real-time Updates**: Server-Sent Events (SSE) for live container status
-- **System Overview**: CPU, RAM, disk, network monitoring
-- **Grid View**: Visual cards per application
-- **Filters**: Search by name, category, status
-- **Sidebar Collapse**: Responsive layout for better space management
-- **User Management** (Admin only): Create, edit, and delete users with role assignment
+| Page | URL | Description |
+|------|-----|-------------|
+| Dashboard | `#/dashboard` | System stats, container cards, real-time monitoring |
+| Containers | `#/containers` | Start/stop/restart/logs/inspect/edit compose |
+| Applications | `#/apps` | Install new apps from the template store |
+| Backups | `#/backups` | PRO: Create, restore, delete backups |
+| Migration | `#/migration` | PRO: Export/import containers between servers |
+| Audit Logs | `#/audit` | PRO: View user activity and system events |
+| License | `#/license` | Activate/deactivate PRO license, view features |
+| Users | `#/users` | Admin only: Manage user accounts and roles |
 
-### Install Application
+### Install Application (Web UI)
 
-1. Navigate to **Applications** tab
-2. Click **Install** on desired app
+1. Navigate to **Applications**
+2. Click **Install** on the desired app
 3. Configure:
-   - Installation name
+   - Instance name
    - Port number
-   - Custom YAML (optional)
-4. Click **Deploy**
-5. Monitor installation progress
-6. Access app via **Open** button
+   - Database host (auto-detected if a compatible DB is running — see [Database Discovery](#database-discovery))
+   - Additional environment variables
+4. Click **Install**
+5. Monitor real-time installation progress via the progress bar
+6. Access the app via the **Open** button once installation completes
 
-### Backup & Restore (PRO)
+### Sidebar
 
-#### Create Backup
-
-1. Navigate to **Containers** tab
-2. Select container
-3. Click **Backup** button
-4. Backup is saved to: `backups/<container>/<timestamp>/`
-
-Includes:
-- All Docker volumes
-- `docker-compose.yml`
-- Metadata (timestamp, size, version)
-
-#### Restore Backup
-
-1. Navigate to **Backups** tab
-2. Select backup
-3. Click **Restore**
-4. Container is recreated with restored data
-
-### Server Migration (PRO)
-
-#### Export Migration Package
-
-1. Navigate to **Migration** tab
-2. Select containers to migrate
-3. Click **Export**
-4. Download `.tar.gz` (Linux) or `.zip` (Windows)
-
-Package contains:
-- Backups of all selected containers
-- `docker-compose.yml` files
-- Migration manifest
-
-#### Import Migration Package
-
-1. Navigate to **Migration** tab
-2. Upload migration package
-3. Click **Import**
-4. ORCHIX automatically:
-   - Extracts package
-   - Creates containers
-   - Restores volumes
-   - Starts services
+- **License badge** (top): Shows FREE or PRO status
+- **Navigation**: Links to all pages; PRO-locked pages are visually dimmed for FREE users
+- **Quick links**: Documentation, GitHub, Support (PRO only)
+- **User section** (bottom): Username, role, logout button
 
 ---
 
@@ -287,52 +241,65 @@ ORCHIX uses Role-Based Access Control (RBAC) with three roles:
 
 | Role | Description |
 |------|-------------|
-| **Admin** | Full access. Can manage users, licenses, system updates, and all operations. |
-| **Operator** | Can manage containers, apps, backups, and migrations. Cannot manage users or system settings. |
-| **Viewer** | Read-only access. Can view dashboards, logs, and container status. Cannot perform any actions. |
+| **Admin** | Full access. Manages users, licenses, system settings, and all operations. |
+| **Operator** | Manages containers, apps, backups, and migrations. Cannot manage users or system settings. |
+| **Viewer** | Read-only access. Views dashboard, logs, and container status. Cannot take any actions. |
+
+### Permissions Matrix
+
+| Capability | Admin | Operator | Viewer |
+|-----------|:-----:|:--------:|:------:|
+| View dashboard & container status | ✓ | ✓ | ✓ |
+| View container logs | ✓ | ✓ | ✓ |
+| Inspect containers | ✓ | ✓ | ✓ |
+| Start / stop / restart containers | ✓ | ✓ | ✗ |
+| Install / update / uninstall apps | ✓ | ✓ | ✗ |
+| View & edit compose files | ✓ | ✓ | ✗ |
+| Create & restore backups (PRO) | ✓ | ✓ | ✗ |
+| Delete backups (PRO) | ✓ | ✗ | ✗ |
+| Server migration (PRO) | ✓ | ✓ | ✗ |
+| View audit logs (PRO) | ✓ | ✓ | ✓ |
+| Manage users | ✓ | ✗ | ✗ |
+| License & system updates | ✓ | ✗ | ✗ |
+| Change own password | ✓ | ✓ | ✓ |
 
 ### Managing Users (Admin only)
 
 **Web UI:**
-1. Navigate to **Users** in the sidebar (Admin only)
-2. View all users with their roles and last login
+1. Navigate to **Users** (Admin only — hidden for other roles)
+2. View all users, their roles, and last login time
 3. Click **Add User** to create a new user
-4. Click on a user to edit role or reset password
+4. Click the actions menu on a user to edit role or reset password
 5. Click **Delete** to remove a user
 
 **Rules:**
-- Usernames must be 3-32 characters, lowercase alphanumeric with `-` and `_`
-- Passwords must be 8-1024 characters
+- Usernames: 3–32 characters, lowercase alphanumeric with `-` and `_`
+- Passwords: 8–1024 characters
 - Cannot delete yourself or the last admin
-- Cannot demote the last admin
+- Cannot demote the last admin to a lower role
 
 ### User Limits
 
-- **FREE**: 1 user (the initial admin)
-- **PRO**: Unlimited users
+- **FREE**: 1 user (the initial admin only)
+- **PRO**: Up to 3 users (Admin + Operator + Viewer, any combination)
 
 ### License Downgrade Behavior
 
 When a PRO license expires or is deactivated:
 - **Existing containers keep running** and can be started/stopped/restarted
-- **New container creation** is blocked when over the FREE limit (3)
-- **Only admin users can log in** on FREE tier - other users are blocked with a clear message
+- **New container creation** is blocked when at the FREE limit (3)
+- **Only the admin user can log in** — Operator and Viewer accounts are blocked with a clear message
 - **New user creation** is blocked
 - **PRO features** (backups, migration, audit) become inaccessible
-- No data is deleted - existing containers, users, and backups remain intact
+- **No data is deleted** — containers, users, and backups remain intact
 
-### First Setup
+If you had more than 3 containers when PRO expires, ORCHIX prompts you to select which 3 to keep managing. See [Container Selection](#container-selection-free-tier-downgrade).
 
-On first run, ORCHIX creates an `admin` user with a randomly generated password displayed in the terminal. If you're migrating from an older single-password version, the existing password is automatically migrated to an admin user.
+### Password Reset (Emergency)
 
-### Password Reset
-
-Any user can change their own password via the Web UI sidebar menu. Admins can reset any user's password via the Users panel.
-
-To reset all users (emergency):
 ```bash
-# Delete user database - a new admin will be created on restart
-rm ~/.orchix_web_users.json        # Linux
+# Delete the user database — a new admin with a random password is created on restart
+rm ~/.orchix_web_users.json           # Linux
 del %USERPROFILE%\.orchix_web_users.json  # Windows
 python main.py --web
 ```
@@ -341,53 +308,77 @@ python main.py --web
 
 ## Application Templates
 
-### Available Applications
+### Available Applications (30 total)
 
 #### Web & CMS
-- **WordPress** - CMS platform
-- **Nextcloud** - File sync & share
-- **Nginx Proxy Manager** - Reverse proxy with SSL
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **WordPress** 📝 | Open-source CMS and blogging platform | 8080 |
+| **Nextcloud** ☁️ | Self-hosted cloud storage solution | 8085 |
+| **Nginx Proxy Manager** 🔒 | Easy SSL reverse proxy with Let's Encrypt | 8080 / 8081 / 8443 |
+| **Traefik** 🔀 | Modern reverse proxy and load balancer | 80 / 443 / 8081 |
 
 #### Databases
-- **PostgreSQL** - Relational database
-- **MariaDB** - MySQL fork
-- **Redis** - In-memory cache
-- **InfluxDB** - Time-series DB
-- **Qdrant** - Vector database
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **MariaDB** 🗃️ | Popular MySQL-compatible relational database | 3306 |
+| **PostgreSQL** 🐘 | Open source relational database | 5432 |
+| **Redis** 🔴 | In-memory data structure store and cache | 6379 |
+| **InfluxDB** 📈 | Time-series database for metrics | 8086 |
+| **Qdrant** 🔍 | Vector similarity search engine | 6333 / 6334 |
 
 #### DevOps & Automation
-- **n8n** - Workflow automation
-- **Gitea** - Git server
-- **Traefik** - Cloud-native reverse proxy
-- **Watchtower** - Container auto-updater
-- **Dozzle** - Docker log viewer
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **n8n** ⚡ | Workflow automation platform | 5678 |
+| **Gitea** 🦊 | Lightweight self-hosted Git service | 3000 / 2222 (SSH) |
+| **Watchtower** 🔄 | Automatic Docker container updates | — |
+| **Dozzle** 📋 | Real-time Docker container log viewer | 8080 |
 
 #### Monitoring
-- **Grafana** - Metrics visualization
-- **Uptime Kuma** - Uptime monitoring
-- **Changedetection.io** - Website change detector
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **Grafana** 📊 | Monitoring and observability platform | 3000 |
+| **Uptime Kuma** 📡 | Self-hosted uptime monitoring tool | 3001 |
+| **Changedetection.io** 👁️ | Website change detection and monitoring | 5000 |
 
 #### Security
-- **Vaultwarden** - Password manager (Bitwarden)
-- **Pi-hole** - Network-wide ad blocker
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **Vaultwarden** 🔐 | Lightweight Bitwarden-compatible password manager | 8080 |
+| **Pi-hole** 🛡️ | Network-wide ad blocking DNS server | 8080 / 53 (DNS) |
 
-#### Media
-- **Jellyfin** - Media server
-- **Stirling PDF** - PDF tools
-- **File Browser** - Web file manager
+#### Storage
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **MinIO** 💾 | S3-compatible object storage server | 9000 / 9001 |
+| **File Browser** 📁 | Web-based file manager with sharing | 8080 |
+| **Duplicati** 💿 | Encrypted cloud backup solution | 8200 |
 
-#### Tools
-- **Adminer** - Database manager
-- **phpMyAdmin** - MySQL admin
-- **IT-Tools** - Developer utilities
-- **Homer, Homarr, Heimdall** - Dashboards
-- **Duplicati** - Backup software
-- **MinIO** - Object storage
-- **Eclipse Mosquitto** - MQTT broker
+#### Media & Tools
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **Jellyfin** 🎬 | Free Software Media Server | 8096 |
+| **Stirling PDF** 📄 | Open-source PDF tools | 8080 |
+| **IT-Tools** 🛠️ | Collection of handy tools for developers | 8080 |
+| **Eclipse Mosquitto** 📨 | Lightweight MQTT message broker for IoT | 1883 / 9001 |
+
+#### Dashboards
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **Homer** 🏡 | Simple static homepage for server services | 8080 |
+| **Homarr** 🎯 | Customizable dashboard for your server | 7575 |
+| **Heimdall** 🏠 | Application dashboard and launcher | 8080 |
+
+#### Database Tools
+| App | Description | Default Port |
+|-----|-------------|-------------|
+| **Adminer** 🗄️ | Multi-database management (MySQL, PostgreSQL, SQLite) | 8080 |
+| **phpMyAdmin** 🐬 | Web interface for MySQL/MariaDB administration | 8080 |
 
 ### Template Structure
 
-Templates are defined in `apps/templates.json`:
+Templates are defined in `apps/templates.json`. Each template supports:
 
 ```json
 {
@@ -398,7 +389,7 @@ Templates are defined in `apps/templates.json`:
   "category": "Web",
   "version": "6.x",
   "image": "wordpress:latest",
-  "image_size_mb": 260,
+  "image_size_mb": 600,
   "license_required": null,
   "ports": [
     {"container": 80, "default_host": 8080, "label": "HTTP"}
@@ -407,21 +398,32 @@ Templates are defined in `apps/templates.json`:
     {"name_suffix": "data", "mount": "/var/www/html"}
   ],
   "env": [
-    {"key": "WORDPRESS_DB_HOST", "label": "Database Host", "default": "localhost:3306", "required": true},
-    {"key": "WORDPRESS_DB_USER", "label": "Database User", "default": "wordpress", "required": true},
-    {"key": "WORDPRESS_DB_PASSWORD", "label": "Database Password", "type": "password", "generate": true},
-    {"key": "WORDPRESS_DB_NAME", "label": "Database Name", "default": "wordpress", "required": true}
+    {"key": "WORDPRESS_DB_HOST", "label": "Database Host", "required": true,
+     "role": "db_host", "db_types": ["mysql"]},
+    {"key": "WORDPRESS_DB_USER", "label": "Database User",
+     "db_credential": "user"},
+    {"key": "WORDPRESS_DB_PASSWORD", "label": "Database Password",
+     "type": "password", "generate": true, "db_credential": "password"},
+    {"key": "WORDPRESS_DB_NAME", "label": "Database Name",
+     "db_credential": "database"}
   ],
   "restart": "unless-stopped"
 }
 ```
 
+**Special env field roles:**
+
+| Field | Purpose |
+|-------|---------|
+| `"role": "db_host"` | Marks this field as a database host selector — triggers DB discovery |
+| `"db_types": ["mysql"]` | Limits DB discovery to compatible types (mysql, postgres, redis, mongo, influxdb) |
+| `"db_credential": "user"` | Auto-fills this field from the selected DB container's credentials |
+| `"db_port": true` | Auto-fills this field with the correct port for the detected DB type |
+| `"generate": true` | Auto-generates a secure random value |
+
 ### Custom Templates
 
-To add your own application template, edit `apps/templates.json`:
-
-1. Open `apps/templates.json`
-2. Add your template to the "templates" array:
+To add your own application, add an entry to `apps/templates.json` and restart ORCHIX:
 
 ```json
 {
@@ -447,79 +449,125 @@ To add your own application template, edit `apps/templates.json`:
 }
 ```
 
-3. Restart ORCHIX to see your custom application in the list
+Docker Compose files are generated automatically from the template — no `.yml` file needed.
 
-**Note:** Docker Compose files are generated automatically from the template definition. You don't need to create separate `.yml` files.
+---
+
+## Database Discovery
+
+When installing apps that require a database (WordPress, phpMyAdmin, Adminer, etc.), ORCHIX automatically detects running database containers on the `orchix` network and offers them for selection.
+
+### How It Works
+
+1. **On startup**, ORCHIX creates the global `orchix` Docker network and connects all managed containers to it.
+2. **During app installation**, fields marked with `"role": "db_host"` trigger a database scan.
+3. ORCHIX scans containers on the orchix network, detecting their type by image name:
+   - `mariadb`, `mysql`, `percona` → MySQL-compatible
+   - `postgres` → PostgreSQL
+   - `redis` → Redis
+   - `mongo` → MongoDB
+   - `influxdb` → InfluxDB
+4. Results are filtered by `db_types` so incompatible databases are not shown (e.g. Redis will never appear as a MySQL host).
+
+### What Gets Auto-Filled
+
+When a DB container is detected and selected:
+
+| Field | Source |
+|-------|--------|
+| Database Host | Container name (reachable via orchix network) |
+| Database User | Read from container's compose file environment |
+| Database Password | Read from container's compose file environment |
+| Database Name | Read from container's compose file environment |
+| Database Port | Detected from DB type (3306 MySQL, 5432 PostgreSQL, etc.) |
+
+### Scenarios
+
+**No DB found:**
+- A warning is shown: *"No database containers found. Install MariaDB or MySQL first, or enter the hostname manually."*
+- The text reflects the required DB type (not a generic message)
+- You can still type a hostname manually
+
+**One DB found:**
+- The hostname is pre-filled automatically
+- Credentials are loaded from that DB's compose file
+
+**Multiple DBs found:**
+- A dropdown lets you select which DB to use
+- Switching selection re-loads credentials from the newly chosen DB
+
+### The orchix Network
+
+All containers installed via ORCHIX are automatically added to the `orchix` Docker network. This allows containers to communicate with each other by container name, without needing to expose ports on the host.
+
+**Example:** WordPress connects to MariaDB via `mariadb:3306` (not `localhost:3306`).
+
+```bash
+# Manually inspect the orchix network
+docker network inspect orchix
+
+# Manually connect an existing container
+docker network connect orchix <container_name>
+```
 
 ---
 
 ## Backup & Restore
 
-### Backup Strategy
+> **PRO feature** — requires an active PRO license.
 
-**Automatic Backups (PRO):**
-- Pre-update backups (before container updates)
-- Scheduled backups (via cron/Task Scheduler)
-- Manual backups (on-demand)
+### What Gets Backed Up
 
-**What's Backed Up:**
-- All Docker volumes
-- Environment variables
-- `docker-compose.yml`
-- Container metadata
+- All Docker volumes attached to the container
+- `docker-compose.yml` file
+- Backup metadata (timestamp, size, version)
 
-### Manual Backup (CLI)
+### Create Backup
 
+**CLI:**
 ```bash
 python main.py
-# Select: 3. Backup & Restore
-# Select container > Create Backup
-
-# Backup saved to:
-# Linux: ~/.orchix/backups/<container>/<timestamp>/
-# Windows: %USERPROFILE%\.orchix\backups\<container>\<timestamp>\
+# Select: Backup & Restore > Create Backup > Select container
 ```
 
-### Manual Restore (CLI)
+**Web UI:**
+1. Navigate to **Backups**
+2. Click **Create Backup** for the desired container
+3. Monitor progress
 
+### Restore Backup
+
+**CLI:**
 ```bash
 python main.py
-# Select: 3. Backup & Restore
-# Select backup > Restore
-
-# Stops container > Restores volumes > Restarts container
+# Select: Backup & Restore > Restore > Select backup
 ```
 
-### Backup via API
+**Web UI:**
+1. Navigate to **Backups**
+2. Click **Restore** on a backup
+3. The container is stopped, volumes are restored, container is restarted
 
-```bash
-# Create backup (requires operator or admin role)
-curl -X POST http://localhost:5000/api/backup/<container_name> \
-  -b cookies.txt -H "X-CSRFToken: TOKEN"
-
-# List backups
-curl http://localhost:5000/api/backups/<container_name> \
-  -b cookies.txt
-
-# Restore backup (requires operator or admin role)
-curl -X POST http://localhost:5000/api/restore/<container_name>/<timestamp> \
-  -b cookies.txt -H "X-CSRFToken: TOKEN"
-```
-
-### Backup Format
+### Backup Storage Format
 
 ```
-backup_20260213_143022/
-├── metadata.json         # Backup info (size, timestamp, version)
-├── docker-compose.yml    # Original compose file
+backups/<container_name>/<timestamp>/
+├── metadata.json         # Backup info (timestamp, version, container)
+├── docker-compose.yml    # Compose file at time of backup
 └── volumes/
-    ├── volume1.tar.gz    # Compressed volume data
-    └── volume2.tar.gz
+    ├── v0/               # First volume (tar.gz inside)
+    │   └── data.tar.gz
+    └── v1/               # Second volume (multi-volume apps)
+        └── data.tar.gz
 ```
+
+Single-volume apps use a flat structure inside `volumes/`. Multi-volume apps (Pi-hole, Nginx, InfluxDB, etc.) use numbered `v0/`, `v1/`, ... subdirectories.
 
 ---
 
 ## Server Migration
+
+> **PRO feature** — requires an active PRO license.
 
 ### Migration Workflow
 
@@ -537,66 +585,53 @@ Source Server          Migration Package          Target Server
 **CLI:**
 ```bash
 python main.py
-# Select: 4. Server Migration > Export
-# Select containers > Choose output path
-
-# Creates: migration_20260213.tar.gz
+# Select: Server Migration > Export
+# Select containers > Confirm
+# Creates: migration_<timestamp>.tar.gz
 ```
 
 **Web UI:**
-1. Navigate to **Migration** tab
-2. Select containers
+1. Navigate to **Migration**
+2. Select containers to export
 3. Click **Export Package**
-4. Download file
-
-**API:**
-```bash
-curl -X POST http://localhost:5000/api/migration/export \
-  -H "Content-Type: application/json" \
-  -d '{"containers": ["wordpress", "postgresql"]}' \
-  --output migration.tar.gz
-```
+4. Download the `.tar.gz` file
 
 ### Import (Target Server)
 
 **CLI:**
 ```bash
 python main.py
-# Select: 4. Server Migration > Import
-# Select migration package > Confirm import
-
-# ORCHIX will:
-# 1. Extract package
-# 2. Create containers
-# 3. Restore volumes
-# 4. Start services
+# Select: Server Migration > Import
+# Enter path to migration package
+# ORCHIX extracts, recreates, and restores all containers
 ```
 
 **Web UI:**
-1. Navigate to **Migration** tab
+1. Navigate to **Migration**
 2. Click **Import Package**
-3. Upload migration file
-4. Monitor import progress
-
-**API:**
-```bash
-curl -X POST http://localhost:5000/api/migration/import \
-  -F "file=@migration.tar.gz"
-```
+3. Upload the migration file
+4. Monitor import progress via real-time SSE stream
 
 ### Migration Package Contents
 
 ```
-migration_20260213.tar.gz
-├── manifest.json                    # Migration metadata
+migration_<timestamp>.tar.gz
+├── manifest.json              # Migration metadata (ORCHIX version, containers)
 ├── wordpress/
-│   ├── backup/                      # Volume backups
-│   └── docker-compose.yml
-├── postgresql/
-│   ├── backup/
-│   └── docker-compose.yml
-└── checksums.txt                    # Integrity verification
+│   ├── docker-compose.yml
+│   └── volumes/
+│       └── v0/
+│           └── data.tar.gz
+└── postgresql/
+    ├── docker-compose.yml
+    └── volumes/
+        └── v0/
+            └── data.tar.gz
 ```
+
+### Cross-Platform Migration
+
+Migration packages are compatible between Linux and Windows (WSL2). Volume data is always archived as `.tar.gz` regardless of the host OS.
 
 ---
 
@@ -605,94 +640,95 @@ migration_20260213.tar.gz
 ### License Tiers
 
 | Feature | FREE | PRO (€29/mo) |
-|---------|------|--------------|
+|---------|:----:|:------------:|
 | **Applications** | All 30 | All 30 |
 | **Containers** | Max 3 | Unlimited |
-| **Users** | 1 | Unlimited |
+| **Users** | 1 | Up to 3 |
 | **RBAC Roles** | — | Admin, Operator, Viewer |
 | **Web UI** | ✓ | ✓ |
 | **CLI** | ✓ | ✓ |
 | **Real-time Monitoring** | ✓ | ✓ |
+| **Database Discovery** | ✓ | ✓ |
+| **Global orchix Network** | ✓ | ✓ |
 | **Backup & Restore** | ✗ | ✓ |
 | **Multi-Instance** | ✗ | ✓ |
 | **Server Migration** | ✗ | ✓ |
 | **Audit Logs** | ✗ | ✓ |
-| **Support** | Community | Priority |
+| **Priority Email Support** | ✗ | ✓ |
 
 ### Activate PRO License
 
 **CLI:**
 ```bash
 python main.py
-# Select: 6. License Management > Activate License
+# Select: License Manager > Upgrade to PRO
 # Enter license key: ORCHIX-PRO-XXXXXXXX-XXXXXXXX
-# Enter email: your@email.com
-
-# License validated and activated
 ```
 
 **Web UI:**
-1. Navigate to **License** tab
-2. Enter license key
-3. Enter email
+1. Navigate to **License**
+2. Click **Upgrade to PRO**
+3. Enter your license key
 4. Click **Activate**
 
 **API:**
 ```bash
 curl -X POST http://localhost:5000/api/license/activate \
   -H "Content-Type: application/json" \
-  -d '{
-    "license_key": "ORCHIX-PRO-XXXXXXXX-XXXXXXXX",
-    "email": "your@email.com"
-  }'
+  -H "X-CSRFToken: TOKEN" \
+  -b cookies.txt \
+  -d '{"license_key": "ORCHIX-PRO-XXXXXXXX-XXXXXXXX"}'
 ```
+
+### Deactivate License
+
+**CLI:**
+```bash
+python main.py
+# Select: License Manager > Deactivate License
+```
+
+**Web UI:** License page > **Deactivate License**
+
+After deactivation, if you have more than 3 containers, you will be prompted to select which 3 to keep managing.
 
 ### Purchase License
 
 Visit: [https://orchix.dev/#pricing](https://orchix.dev/#pricing)
 
-1. Click **Get Started - €29/month**
-2. Enter email
-3. Pay via Stripe
-4. Receive license key via email
-5. Activate in ORCHIX
+1. Click **Jetzt kaufen** / **Get Started**
+2. Complete payment via Stripe
+3. Receive your license key by email
+4. Activate in ORCHIX
 
 ### Container Selection (FREE Tier Downgrade)
 
 When a PRO license expires or is deactivated and you have more than 3 containers:
 
-1. **Selection Required**: ORCHIX prompts you to choose which 3 containers to manage
-2. **Unselected containers stay running** on your server but are hidden from ORCHIX (Web UI + CLI)
-3. **Re-activating PRO** makes all containers visible again
-4. **Losing PRO again** requires a new selection (previous selection is discarded)
+1. ORCHIX prompts you to select exactly 3 containers to manage
+2. Unselected containers **stay running** on the server but are hidden from ORCHIX
+3. Re-activating PRO makes all containers visible again automatically
+4. The selection is stored at `~/.orchix_managed_containers.json`
 
-**Web UI:** An unclosable modal appears with checkboxes to select containers.
-
-**CLI:** An interactive prompt lets you choose which containers to keep managing.
-
-**Selection file:** Stored at `~/.orchix_managed_containers.json`
+**Web UI:** An unclosable modal appears with checkboxes.
+**CLI:** An interactive prompt guides you through the selection.
 
 **Important:**
 - Only triggered when you have more than 3 containers
-- Container actions (start/stop/restart/logs) are only available for managed containers
-- Dashboard only shows managed containers
-- Installing new apps counts against the managed container limit
+- Container limit applies to installs — you cannot install a 4th container on FREE
+- Managed container list is cleared when PRO is activated
 
-### License Validation
+### License Format
 
-ORCHIX validates licenses:
-- **Online**: Checks with `orchix.dev` server every 24h
-- **Offline**: Uses cached validation for up to 7 days
-- **HMAC-signed**: License keys are cryptographically signed
-
-License format:
 ```
 ORCHIX-PRO-A3F9K2X7-D4E8C1B5
 │      │   │        └─ HMAC signature
 │      │   └─ Random component
-│      └─ Tier (PRO/PRO_PLUS/ENTERPRISE)
+│      └─ Tier (PRO)
 └─ Prefix
 ```
+
+License keys are HMAC-signed and validated locally — no internet connection required for basic validation.
 
 ---
 
@@ -704,46 +740,42 @@ ORCHIX-PRO-A3F9K2X7-D4E8C1B5
 - 3 roles: **Admin**, **Operator**, **Viewer**
 - Backend permission enforcement on all API endpoints (`@require_permission`)
 - Frontend hides unauthorized actions based on user role
-- User data stored in `~/.orchix_web_users.json` with atomic writes
-
-| Capability | Admin | Operator | Viewer |
-|-----------|-------|----------|--------|
-| View dashboard, containers, logs | ✓ | ✓ | ✓ |
-| Start/stop/restart containers | ✓ | ✓ | ✗ |
-| Install/update/uninstall apps | ✓ | ✓ | ✗ |
-| Edit compose files | ✓ | ✓ | ✗ |
-| Backup & restore (PRO) | ✓ | ✓ | ✗ |
-| Delete backups (PRO) | ✓ | ✗ | ✗ |
-| Migration (PRO) | ✓ | ✓ | ✗ |
-| Manage users | ✓ | ✗ | ✗ |
-| License & system update | ✓ | ✗ | ✗ |
-| Change own password | ✓ | ✓ | ✓ |
+- User data stored in `~/.orchix_web_users.json` with atomic writes and 0600 permissions
 
 **Password Security:**
 - PBKDF2-SHA256 hashing (Werkzeug, 100k+ iterations)
 - Minimum 8 characters, maximum 1024 characters
 - Rate limiting: 5 login attempts per 5 minutes per IP
 - Session timeout: 8 hours
-
-**User Limits:**
-- FREE: 1 user (single admin)
-- PRO: Unlimited users
+- HTTP-only session cookies
 
 **CSRF Protection:**
 - Flask-WTF with double-submit cookie pattern
-- All state-changing API requests require `X-CSRFToken` header
-- CSRF token injected via `<meta>` tag for SPA
+- All state-changing requests require `X-CSRFToken` header
+- Token injected via `<meta name="csrf-token">` for SPA
+
+### Sensitive Data Access
+
+Compose files contain database passwords and other credentials. Access is restricted:
+
+| Role | Read Compose File | Edit Compose File |
+|------|:-----------------:|:-----------------:|
+| Admin | ✓ | ✓ |
+| Operator | ✓ | ✓ |
+| Viewer | ✗ | ✗ |
+
+> **Recommendation:** For production deployments, use HTTPS via a reverse proxy (Nginx, Caddy) to encrypt traffic and prevent credential exposure on the network.
 
 ### Input Validation
 
 All inputs are sanitized against:
-- **Path Traversal**: Blocks `../` sequences in filesystem and tarball extraction
+- **Path Traversal**: Blocks `../` sequences in filesystem operations and tarball extraction
 - **YAML Injection**: Uses `yaml.safe_load()`
-- **Command Injection**: Subprocess with list args (no shell)
-- **Port Validation**: Only allows 1-65535
-- **Container Names**: Regex validation (`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-- **Username Validation**: Regex (`^[a-z0-9][a-z0-9_-]{2,31}$`)
-- **XSS Prevention**: HTML output escaping on all dynamic content
+- **Command Injection**: All subprocess calls use list args (no shell)
+- **Port Validation**: Only 1–65535
+- **Container Names**: Regex `^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`
+- **Usernames**: Regex `^[a-z0-9][a-z0-9_-]{2,31}$`
+- **XSS Prevention**: HTML output escaping on all dynamic content (`esc()`)
 
 ### Security Headers
 
@@ -757,9 +789,13 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains  (when ORCHIX_HTT
 
 ### File Security
 
-- Secret key file (`~/.orchix_web_secret`): 0600 permissions
-- User database (`~/.orchix_web_users.json`): 0600 permissions, atomic writes via temp file + rename
-- Thread-safe file operations with `threading.Lock()`
+| File | Permissions | Description |
+|------|-------------|-------------|
+| `~/.orchix_web_secret` | 0600 | Flask session secret key |
+| `~/.orchix_web_users.json` | 0600 | User database with hashed passwords |
+| `~/.orchix_managed_containers.json` | User default | Container selection (FREE tier) |
+
+All user database writes use atomic temp-file + rename to prevent data corruption.
 
 ### Audit Logging (PRO)
 
@@ -767,25 +803,18 @@ All actions are logged with the authenticated username:
 
 ```json
 {
-  "timestamp": "2026-02-14T14:30:22Z",
+  "timestamp": "2026-02-20T14:30:22Z",
   "user": "admin",
   "action": "container_start",
-  "target": "wordpress-prod",
+  "target": "wordpress",
   "ip": "192.168.1.100",
   "success": true
 }
 ```
 
-Tracked events include: container operations, app installs/updates, backup/restore, user management (create/delete/role change), password changes, system updates, login attempts.
+Tracked events: container start/stop/restart/install/update/uninstall, backup/restore/delete, migration export/import, user create/delete/role-change, password changes, system updates, login attempts.
 
-View logs:
-```bash
-# Web UI: Navigate to Audit tab (PRO)
-
-# API
-curl http://localhost:5000/api/audit/logs \
-  -b cookies.txt
-```
+**View logs — Web UI:** Navigate to **Audit Logs** (PRO)
 
 ### Reporting Security Issues
 
@@ -808,228 +837,135 @@ http://localhost:5000/api
 All API requests require session authentication. State-changing requests (POST/PUT/DELETE) also require a CSRF token.
 
 ```bash
-# Login with username + password to get session cookie
+# 1. Get the CSRF token from the meta tag (after loading the page)
+# or pass it via the login form
+
+# 2. Login to obtain a session cookie
 curl -X POST http://localhost:5000/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d 'username=admin&password=your_password&csrf_token=TOKEN' \
+  -d "username=admin&password=your_password&csrf_token=TOKEN" \
   -c cookies.txt
 
-# Use session cookie for GET requests
+# 3. Use session cookie for GET requests
 curl http://localhost:5000/api/containers \
   -b cookies.txt
 
-# POST/PUT/DELETE requests need X-CSRFToken header
+# 4. POST/PUT/DELETE also need the X-CSRFToken header
 curl -X POST http://localhost:5000/api/containers/myapp/start \
   -b cookies.txt \
   -H "X-CSRFToken: TOKEN"
 ```
 
-**Permission enforcement:** Each endpoint requires specific permissions. Requests without sufficient permissions return `403 Forbidden`.
+### Auth Endpoints
 
-### Endpoints
-
-#### Users (Admin only)
-
-**Get current user info:**
 ```bash
-GET /api/auth/me
-# Returns: { username, role, permissions[] }
+GET  /api/auth/me                     # Current user info (username, role, permissions)
+POST /api/auth/change-password        # Change own password
+     { "current_password": "old", "new_password": "new" }
 ```
 
-**List all users:**
+### User Endpoints (Admin only)
+
 ```bash
-GET /api/users
+GET    /api/users                     # List all users
+POST   /api/users                     # Create user
+       { "username": "op1", "password": "pass", "role": "operator" }
+PUT    /api/users/<username>          # Update role or password
+       { "role": "viewer" }  or  { "password": "newpass" }
+DELETE /api/users/<username>          # Delete user
 ```
 
-**Create user:**
+### Container Endpoints
+
 ```bash
-POST /api/users
-{ "username": "operator1", "password": "securepass", "role": "operator" }
+GET  /api/containers                          # List managed containers
+GET  /api/containers/selection-needed         # Check if FREE tier selection is needed
+     # Returns: { "needed": true, "limit": 3 }
+GET  /api/containers/all-for-selection        # All containers for selection UI (admin)
+POST /api/containers/select                   # Save container selection
+     { "selected": ["wordpress", "mariadb", "n8n"] }
+
+POST /api/containers/<name>/start             # Start container
+POST /api/containers/<name>/stop              # Stop container
+POST /api/containers/<name>/restart           # Restart container
+GET  /api/containers/<name>/logs?tail=100     # Container logs
+GET  /api/containers/<name>/inspect           # Container details
+GET  /api/containers/<name>/compose           # Read compose file (admin/operator)
+POST /api/containers/<name>/compose           # Save compose file (admin/operator)
+POST /api/containers/<name>/uninstall         # Delete container + volumes
 ```
 
-**Update user:**
+### Application Endpoints
+
 ```bash
-PUT /api/users/<username>
-{ "role": "viewer" }  # or { "password": "newpass" }
+GET  /api/apps                                # List available apps
+GET  /api/apps/<name>/config-schema           # Installation form fields
+GET  /api/apps/check-conflicts?name=x&port=y # Check for naming/port conflicts
+GET  /api/apps/db-candidates?db_types=mysql   # Discover compatible DB containers
+GET  /api/apps/db-credentials/<container>     # Get credentials from a DB container
+
+POST /api/apps/install-stream                 # Install app (Server-Sent Events stream)
+     { "app_name": "wordpress", "instance_name": "my-wp",
+       "config": { "port": 8080, "WORDPRESS_DB_HOST": "mariadb" } }
+
+POST /api/apps/update                         # Update app to latest image
+POST /api/apps/update-stream                  # Update with SSE progress
+POST /api/apps/set-password                   # Set post-install password (e.g. Pi-hole)
 ```
 
-**Delete user:**
+### Backup Endpoints (PRO)
+
 ```bash
-DELETE /api/users/<username>
+GET  /api/backups                             # List all backups
+POST /api/backups/create                      # Create backup
+     { "container_name": "wordpress" }
+POST /api/backups/restore                     # Restore from backup
+     { "container_name": "wordpress", "timestamp": "20260220_143022" }
+POST /api/backups/delete                      # Delete a backup (admin only)
 ```
 
-**Change own password (any role):**
+### Migration Endpoints (PRO)
+
 ```bash
-POST /api/auth/change-password
-{ "current_password": "old", "new_password": "new" }
+GET  /api/migrations/containers               # List containers available for export
+POST /api/migrations/export-stream           # Export migration package (SSE stream)
+     { "containers": ["wordpress", "mariadb"] }
+POST /api/migrations/import-stream           # Import migration package (SSE stream)
+     Content-Type: multipart/form-data
+     file=@migration.tar.gz
 ```
 
-#### Containers
+### License Endpoints
 
-**List containers (filtered by tier):**
 ```bash
-GET /api/containers
+GET  /api/license                             # License info and features
+POST /api/license/activate                    # Activate PRO license
+     { "license_key": "ORCHIX-PRO-..." }
+POST /api/license/deactivate                  # Deactivate license
 ```
 
-Response:
-```json
-[
-  {
-    "name": "wordpress-prod",
-    "status": "running",
-    "ports": ["8080:80"],
-    "image": "wordpress:latest",
-    "created": "2026-02-13T10:00:00Z"
-  }
-]
-```
+### System Endpoints
 
-**Check if container selection needed (FREE tier):**
 ```bash
-GET /api/containers/selection-needed
-# Returns: { "needed": true, "limit": 3 }
+GET  /api/system                              # System info (OS, Docker version, uptime)
+GET  /api/system/check-update                # Check for ORCHIX updates (cached 24h)
+POST /api/system/update                       # Update ORCHIX via git pull
 ```
 
-**Get all containers for selection:**
+### Audit Endpoints (PRO)
+
 ```bash
-GET /api/containers/all-for-selection
-# Returns: { "containers": [...], "limit": 3 }
+GET  /api/audit                               # Get audit log entries
+GET  /api/audit/users                         # List users who have taken actions
+GET  /api/audit/user-activity                 # Activity summary per user
+POST /api/audit/clear                         # Clear all audit logs (admin only)
 ```
 
-**Save container selection:**
+### Dashboard Endpoints
+
 ```bash
-POST /api/containers/select
-{ "selected": ["wordpress", "postgresql", "n8n"] }
-```
-
-**Start container:**
-```bash
-POST /api/container/<name>/start
-```
-
-**Stop container:**
-```bash
-POST /api/container/<name>/stop
-```
-
-**View logs:**
-```bash
-GET /api/container/<name>/logs?tail=100
-```
-
-**Delete container:**
-```bash
-DELETE /api/container/<name>
-```
-
-#### Applications
-
-**List available apps:**
-```bash
-GET /api/apps
-# Returns: [{ name, display_name, icon, version, can_install, ... }]
-```
-
-**Get app config schema:**
-```bash
-GET /api/apps/<name>/config-schema
-# Returns: { fields: [{ key, label, type, default, ... }] }
-```
-
-**Check for conflicts:**
-```bash
-GET /api/apps/check-conflicts?name=<container>&port=<port>
-# Returns: { name_exists: bool, port_in_use: bool }
-```
-
-**Install application (with real-time progress):**
-```bash
-POST /api/apps/install-stream
-Content-Type: application/json
-
-{
-  "app_name": "wordpress",
-  "instance_name": "my-wordpress",
-  "config": {
-    "port": 8080,
-    "MYSQL_PASSWORD": "secret123"
-  }
-}
-
-# Returns: Server-Sent Events stream with progress updates
-# Events: { progress: 0-100, status: "...", success: true/false, access_info: {...} }
-```
-
-**Set post-install password:**
-```bash
-POST /api/apps/set-password
-{ "container_name": "pihole", "password": "admin123" }
-```
-
-**Update application:**
-```bash
-POST /api/apps/update
-{ "container_name": "wordpress", "update_type": "version_update" }
-```
-
-#### Backup (PRO)
-
-**Create backup:**
-```bash
-POST /api/backup/<container_name>
-```
-
-**List backups:**
-```bash
-GET /api/backups/<container_name>
-```
-
-**Restore backup:**
-```bash
-POST /api/restore/<container_name>/<timestamp>
-```
-
-#### Migration (PRO)
-
-**Export package:**
-```bash
-POST /api/migration/export
-Content-Type: application/json
-
-{
-  "containers": ["wordpress", "postgresql"]
-}
-```
-
-**Import package:**
-```bash
-POST /api/migration/import
-Content-Type: multipart/form-data
-
-file=@migration.tar.gz
-```
-
-#### System
-
-**System stats:**
-```bash
-GET /api/system/stats
-```
-
-Response:
-```json
-{
-  "cpu": 45.2,
-  "memory": 62.8,
-  "disk": 71.5,
-  "containers_total": 5,
-  "containers_running": 3
-}
-```
-
-**Check for updates:**
-```bash
-GET /api/system/update-check
+GET  /api/dashboard                           # System stats + container list
+GET  /api/dashboard/stream                    # SSE stream for live updates
 ```
 
 ---
@@ -1043,9 +979,7 @@ GET /api/system/update-check
 Docker is not installed or not running
 ```
 
-**Solution:**
-
-Linux:
+**Solution — Linux:**
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo systemctl start docker
@@ -1053,8 +987,8 @@ sudo usermod -aG docker $USER
 # Logout and login again
 ```
 
-Windows:
-1. Install Docker Desktop
+**Solution — Windows:**
+1. Install Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop)
 2. Enable WSL2 integration
 3. Restart ORCHIX
 
@@ -1065,20 +999,15 @@ Windows:
 PermissionError: [Errno 13] Permission denied
 ```
 
-**Solution:**
-
-Linux:
+**Solution — Linux:**
 ```bash
-# Run with sudo
-sudo python3 main.py
-
-# OR add user to docker group
+# Add user to docker group (recommended)
 sudo usermod -aG docker $USER
-# Logout and login
-```
+# Logout and login, then run without sudo
 
-Windows:
-- Run PowerShell as Administrator
+# OR run with sudo
+sudo python3 main.py
+```
 
 ### Port already in use
 
@@ -1088,15 +1017,14 @@ Port 8080 is already in use
 ```
 
 **Solution:**
-1. Choose different port during installation
-2. Or stop conflicting service:
+1. Choose a different port during installation
+2. Or stop the conflicting service:
    ```bash
-   # Find process using port
-   sudo lsof -i :8080  # Linux
-   netstat -ano | findstr :8080  # Windows
-
-   # Kill process
+   sudo lsof -i :8080     # Linux — find process
    sudo kill -9 <PID>
+
+   netstat -ano | findstr :8080  # Windows
+   taskkill /PID <PID> /F
    ```
 
 ### Module not found
@@ -1115,12 +1043,11 @@ pip install -r requirements.txt --upgrade
 
 **Solution:**
 ```bash
-# Delete user database file (a new admin user with random password will be created)
-rm ~/.orchix_web_users.json  # Linux
+# Delete user database — a new admin with a random password is created on restart
+rm ~/.orchix_web_users.json           # Linux
 del %USERPROFILE%\.orchix_web_users.json  # Windows
-
-# Restart ORCHIX - new admin user will be generated
 python main.py --web
+# Check terminal output for the new admin password
 ```
 
 ### Container won't start
@@ -1129,17 +1056,39 @@ python main.py --web
 ```bash
 # CLI
 python main.py
-# Select: Manage Containers > Select container > View Logs
+# Select: Container Management > Select container > View Logs
 
-# OR direct Docker command
+# Direct Docker
 docker logs <container_name>
 ```
 
-**Common issues:**
-- Port conflict → Change port
-- Volume permission → `chmod` or run as root
-- Missing environment variable → Check `.env` file
-- Image not found → Pull manually: `docker pull <image>`
+**Common causes:**
+- Port conflict → Choose a different port
+- Volume permission issue → Run with `sudo` or fix volume permissions
+- Missing environment variable → Edit the compose file
+- Incompatible DB credentials → Re-install with correct DB connection
+
+### WordPress "Error establishing a database connection"
+
+This means WordPress cannot reach its database. Common causes:
+
+1. **MariaDB not on the orchix network** — restart MariaDB after installing, or run:
+   ```bash
+   docker network connect orchix mariadb
+   ```
+2. **Credential mismatch** — the password in `docker-compose-wordpress.yml` differs from MariaDB's. Edit both files to match.
+3. **Wrong DB host** — must be the container name (e.g. `mariadb`), not `localhost`.
+
+**Recommended:** Uninstall WordPress and reinstall using the DB discovery feature, which automatically sets the correct host and credentials.
+
+### "No database containers found" warning
+
+This appears when installing apps that need a database (WordPress, phpMyAdmin) and no compatible DB container is running on the orchix network.
+
+**Solution:**
+1. Install MariaDB (or PostgreSQL) first via ORCHIX
+2. Restart ORCHIX so it connects the new DB to the orchix network
+3. Then install WordPress — it will auto-detect the database
 
 ---
 
@@ -1147,7 +1096,7 @@ docker logs <container_name>
 
 ### Environment Variables
 
-Create `.env` file in ORCHIX root:
+ORCHIX reads from a `.env` file in the ORCHIX root directory:
 
 ```bash
 # Web UI
@@ -1159,33 +1108,33 @@ ORCHIX_HTTPS=true
 
 # License
 LICENSE_SIGNING_SECRET=your-signing-secret
-
-# Paths
-BACKUP_PATH=~/.orchix/backups
-MIGRATION_PATH=~/.orchix/migrations
 ```
 
-### Custom Docker Networks
+### The Global orchix Network
 
-ORCHIX creates isolated networks per app by default. To use custom networks:
+All ORCHIX containers are connected to the `orchix` Docker network on startup. This enables container-to-container communication by name without exposing additional host ports.
 
-1. Edit app's `docker-compose.yml`:
-   ```yaml
-   networks:
-     custom_network:
-       external: true
-   ```
+```bash
+# View all containers on the orchix network
+docker network inspect orchix
 
-2. Create network:
-   ```bash
-   docker network create custom_network
-   ```
+# Manually connect an existing container
+docker network connect orchix <container_name>
 
-3. Reinstall app in ORCHIX
+# Verify connectivity (from inside a container)
+docker exec wordpress ping mariadb
+```
+
+**Compose files** generated by ORCHIX include:
+```yaml
+networks:
+  orchix:
+    external: true
+```
 
 ### Systemd Service (Linux)
 
-Auto-start ORCHIX on boot:
+Auto-start ORCHIX Web UI on boot:
 
 ```bash
 sudo nano /etc/systemd/system/orchix.service
@@ -1199,7 +1148,7 @@ Requires=docker.service
 
 [Service]
 Type=simple
-User=orchix
+User=root
 WorkingDirectory=/opt/orchix
 ExecStart=/usr/bin/python3 /opt/orchix/main.py --web --port 5000
 Restart=always
@@ -1212,13 +1161,14 @@ WantedBy=multi-user.target
 ```bash
 sudo systemctl enable orchix
 sudo systemctl start orchix
+sudo systemctl status orchix
 ```
 
 ### Windows Task Scheduler
 
 Auto-start ORCHIX on boot:
 
-1. Open Task Scheduler
+1. Open **Task Scheduler**
 2. Create Task:
    - **Name**: ORCHIX
    - **Trigger**: At startup
@@ -1226,11 +1176,11 @@ Auto-start ORCHIX on boot:
      - Program: `python`
      - Arguments: `C:\orchix\main.py --web --port 5000`
      - Start in: `C:\orchix`
-   - **Run with highest privileges**
+   - **Run with highest privileges**: ✓
 
 ### Nginx Reverse Proxy
 
-Expose ORCHIX Web UI via domain:
+Expose the ORCHIX Web UI via a domain with HTTPS:
 
 ```nginx
 server {
@@ -1253,23 +1203,19 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # WebSocket support (for real-time updates)
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        # SSE support (for real-time install/backup progress)
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600;
     }
 }
 ```
 
-### Multi-language Support
+Set `ORCHIX_HTTPS=true` in your `.env` file when using HTTPS to enable the Secure cookie flag and HSTS header.
 
-The ORCHIX Web UI is currently English-only. Multi-language support (DE/EN/EL) is available on the [payment website](https://orchix.dev) but not in the ORCHIX application itself.
+### Docker Resource Limits
 
-### Performance Tuning
-
-**Docker Resource Limits:**
-
-Edit container's `docker-compose.yml` to limit resources:
+Edit a container's `docker-compose-<name>.yml` to limit resources:
 
 ```yaml
 services:
@@ -1279,20 +1225,18 @@ services:
         limits:
           cpus: '2.0'
           memory: 4G
-        reservations:
-          memory: 2G
 ```
 
-**Storage Optimization:**
+### Storage Optimization
 
 ```bash
-# Remove unused images
+# Remove unused Docker images
 docker image prune -a
 
-# Remove unused volumes
+# Remove unused Docker volumes
 docker volume prune
 
-# View disk usage
+# View Docker disk usage
 docker system df
 ```
 
@@ -1308,49 +1252,49 @@ docker system df
 ### Priority Support (PRO)
 
 - Email: [support@orchix.dev](mailto:support@orchix.dev)
-- Response time: <24h (weekdays)
-- Direct help with:
-  - Installation issues
-  - Migration assistance
-  - Custom template development
-  - Performance optimization
+- Response time: < 24h on weekdays
+- Help with: installation, migration, custom templates, performance tuning
 
 ### Contact
 
-- General inquiries: [contact@orchix.dev](mailto:contact@orchix.dev)
-- Security issues: [security@orchix.dev](mailto:security@orchix.dev)
-- Support: [support@orchix.dev](mailto:support@orchix.dev)
-
----
-
-## License
-
-ORCHIX is commercial software.
-
-- **FREE Tier**: Free for personal use (max 3 containers, 1 user)
-- **PRO Tier**: €29/month commercial license with unlimited containers and users
-
-Purchase at: [https://orchix.dev](https://orchix.dev)
+| | |
+|--|--|
+| General | [contact@orchix.dev](mailto:contact@orchix.dev) |
+| Support | [support@orchix.dev](mailto:support@orchix.dev) |
+| Security | [security@orchix.dev](mailto:security@orchix.dev) |
 
 ---
 
 ## Changelog
 
+### v1.3 (2026-02-20)
+- **Global orchix Docker network** — all ORCHIX containers can communicate by container name
+- **Dynamic database discovery** — apps that need a DB (WordPress, phpMyAdmin, Adminer) automatically detect running compatible DB containers
+- **Auto-fill credentials** — selecting a DB container fills host, user, password, database name, and port automatically
+- **db_types filter** — incompatible databases are not shown (e.g. Redis is never offered as a MySQL host)
+- **Dynamic placeholder/warning text** — messages reflect the required DB type, not a generic one
+- **Port auto-fill** — DB port auto-filled based on detected type (3306 MySQL, 5432 PostgreSQL, etc.)
+- **Security fix**: Viewer role can no longer read compose files (which contain database passwords)
+- **FREE tier container selection** — when downgrading from PRO, users select which 3 containers to keep managing (Web UI modal + CLI prompt)
+- Full multi-volume backup/restore/migration support (Pi-hole, Nginx, InfluxDB, etc.)
+- Fixed alpine image lingering after backup/restore/migration operations
+- Fixed migration data loss (n8n workflows/accounts preserved across server moves)
+
 ### v1.2 (2026-02-14)
-- Added Web UI with modern lily theme (Inter font, pink/teal design)
-- **Multi-User RBAC** with 3 roles: Admin, Operator, Viewer
-- **CSRF protection** via Flask-WTF
-- **Security hardening**: CSP headers, HSTS, tarball path traversal protection, XSS prevention, thread-safe file ops, file permission hardening
+- Web UI with modern lily theme (Inter font, pink #ec4899 + teal #14b8a6 design)
+- Multi-User RBAC with 3 roles: Admin, Operator, Viewer
+- CSRF protection via Flask-WTF
+- Security hardening: CSP headers, HSTS, path traversal protection, XSS prevention, thread-safe file ops
 - Template system for 30 applications
-- Backup & Restore functionality (PRO)
+- Backup & Restore (PRO)
 - Server Migration (PRO)
 - Audit logging with per-user tracking (PRO)
-- Real-time system monitoring dashboard with SSE
-- One-click update from Web UI
+- Real-time monitoring dashboard with Server-Sent Events (SSE)
+- One-click ORCHIX update from Web UI
 
 ### v1.1 (2026-01-15)
-- Initial release
-- CLI interface
+- Initial public release
+- CLI interface with Rich terminal UI
 - Basic container management
 - 20 application templates
 
@@ -1360,4 +1304,4 @@ Purchase at: [https://orchix.dev](https://orchix.dev)
 **GitHub:** [github.com/Sad-without-you/ORCHIX](https://github.com/Sad-without-you/ORCHIX)
 **Creator:** [Georgios Sevastakis](https://www.linkedin.com/in/georgios-sevastakis-578a02322/)
 
-© 2026 ORCHIX - All Rights Reserved
+© 2026 ORCHIX – All Rights Reserved
