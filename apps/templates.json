@@ -473,6 +473,7 @@
       "image": "jc21/nginx-proxy-manager:latest",
       "image_size_mb": 245,
       "license_required": null,
+      "access_port_label": "Admin UI",
       "ports": [
         {"container": 80, "default_host": 8080, "label": "HTTP"},
         {"container": 81, "default_host": 8081, "label": "Admin UI"},

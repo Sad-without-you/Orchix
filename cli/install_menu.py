@@ -496,10 +496,21 @@ def _build_access_message(manifest, config, instance_name):
         for p in ports
     )
 
+    # Resolve actual host port for access URL (respects access_port_label offset)
+    access_port = port
+    if ports and port:
+        first_default = ports[0].get('default_host', port)
+        access_label = template.get('access_port_label', '').lower()
+        target = next((p for p in ports if p.get('label', '').lower() == access_label), None) if access_label else None
+        if target is None:
+            target = ports[0]
+        offset = target.get('default_host', first_default) - first_default
+        access_port = int(port) + offset
+
     if not ports:
         lines.append('Runs in background (no access needed)')
     elif has_web:
-        lines.append(f'Access at: http://localhost:{port}')
+        lines.append(f'Access at: http://localhost:{access_port}')
     else:
         # CLI service - detect tool from image name
         cli_cmd = _detect_cli_command(image, config, instance_name)

@@ -538,12 +538,27 @@ def _get_access_info(manifest, config, instance_name):
 
     info = {'credentials': []}
 
+    # Resolve the actual host port for the access URL.
+    # If the template specifies access_port_label, find that port entry and
+    # calculate the host port from the offset relative to the first port.
+    access_port = port
+    if ports and port:
+        first_default = ports[0].get('default_host', port)
+        access_label = template.get('access_port_label', '').lower()
+        target = None
+        if access_label:
+            target = next((p for p in ports if p.get('label', '').lower() == access_label), None)
+        if target is None:
+            target = ports[0]
+        offset = target.get('default_host', first_default) - first_default
+        access_port = int(port) + offset
+
     if not ports:
         info['type'] = 'none'
         info['note'] = 'Runs in background (no access needed)'
     elif has_web:
         info['type'] = 'web'
-        info['url'] = f'http://localhost:{port}'
+        info['url'] = f'http://localhost:{access_port}'
     else:
         info['type'] = 'cli'
         info['host'] = f'localhost:{port}'
