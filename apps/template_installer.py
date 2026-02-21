@@ -201,6 +201,10 @@ class TemplateInstaller(BaseInstaller):
                 self._last_error = f"Failed to pull image {image}"
                 return False
 
+        # Ensure orchix network exists before starting container
+        from utils.docker_utils import ensure_orchix_network
+        ensure_orchix_network()
+
         # Start container (image already pulled)
         result = run_docker_with_progress(
             ['docker', 'compose', '-f', compose_file, 'up', '-d', '--no-build'],
@@ -337,6 +341,8 @@ class TemplateInstaller(BaseInstaller):
                 ['docker', 'volume', 'rm', '-f', m['name']],
                 capture_output=True, text=True
             )
+        from utils.docker_utils import ensure_orchix_network
+        ensure_orchix_network()
         safe_docker_run(
             ['docker', 'compose', '-f', compose_file, 'up', '-d'],
             capture_output=True, text=True
