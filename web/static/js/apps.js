@@ -477,11 +477,8 @@ function _showAccessInfo(name, info) {
         html += `</div>`;
     }
 
-    if (info.setup_hint) {
-        html += `<div style="margin-top:12px;padding:12px;background:rgba(236,72,153,0.08);border:1px solid rgba(236,72,153,0.2);border-radius:var(--radius-sm)">`;
-        html += `<div style="font-size:11px;font-weight:700;color:var(--pink);margin-bottom:6px">${esc(info.setup_hint.title)}</div>`;
-        html += `<div style="font-family:monospace;font-size:12px;user-select:all;word-break:break-all;color:var(--text)">${esc(info.setup_hint.command)}</div>`;
-        html += `</div>`;
+    if (info.note && info.type !== 'none') {
+        html += `<div style="margin-top:12px;padding:10px 12px;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2)">${esc(info.note)}</div>`;
     }
 
     showModal(name + ' Ready', html, [{ label: 'OK', cls: 'btn-primary', fn: () => { window._installFlow = null; } }]);
@@ -1190,6 +1187,15 @@ Router.register('#/license', async function(el) {
                 <div class="breadcrumb">System / <span class="current">License</span></div>
                 <h1>License Management</h1>
             </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                ${info.is_pro ? `
+                    <button class="btn btn-danger" data-action="deactivateLicense" style="font-size:12px;padding:6px 14px">Deactivate PRO</button>
+                    <span style="font-size:0.8rem;color:var(--text3)">Reverts to FREE tier</span>
+                ` : `
+                    <input type="text" class="form-input" id="license-key" placeholder="License key" style="width:180px;margin:0;font-size:12px;padding:6px 10px">
+                    <button class="btn btn-primary" data-action="activateLicense" style="font-size:12px;padding:6px 14px">Activate PRO</button>
+                `}
+            </div>
         </div>
 
         <div class="section-card" style="background: linear-gradient(135deg, ${info.is_pro ? 'rgba(234, 179, 8, 0.05)' : 'rgba(236, 72, 153, 0.05)'} 0%, rgba(20, 184, 166, 0.05) 100%)">
@@ -1271,33 +1277,6 @@ Router.register('#/license', async function(el) {
             </div>
         </div>
 
-        ${!info.is_pro ? `
-            <div class="section-card" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(234, 179, 8, 0.02) 100%); border:1px solid var(--yellow);padding:8px 10px">
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
-                    <div style="flex:1;min-width:220px">
-                        <h3 style="color:var(--yellow);margin-bottom:4px;display:flex;align-items:center;gap:6px;font-size:12px">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--yellow)" stroke="none">
-                                <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
-                            </svg>
-                            Upgrade to PRO
-                        </h3>
-                        <p style="font-size:0.82rem;color:var(--text2);margin:0;line-height:1.4">Unlock unlimited containers, backups, migrations, and priority support.</p>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <input type="text" class="form-input" id="license-key" placeholder="License key" style="width:200px;margin:0;font-size:12px;padding:6px 10px">
-                        <button class="btn btn-primary" data-action="activateLicense" style="font-size:12px;padding:6px 14px">Activate</button>
-                    </div>
-                </div>
-            </div>
-        ` : `
-            <div class="section-card" style="padding:8px 10px;max-width:620px">
-                <h3 style="font-size:12px">License Actions</h3>
-                <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
-                    <button class="btn btn-danger" data-action="deactivateLicense" style="font-size:12px;padding:6px 12px">Deactivate PRO</button>
-                    <span style="font-size:0.8rem;color:var(--text3)">Reverts to FREE tier</span>
-                </div>
-            </div>
-        `}
 
     `;
 });

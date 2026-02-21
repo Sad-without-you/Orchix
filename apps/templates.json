@@ -133,8 +133,9 @@
       ],
       "volumes": [],
       "env": [
-        {"key": "ADMINER_DEFAULT_SERVER", "label": "Default DB Server", "default": "", "role": "db_host"}
+        {"key": "ADMINER_DEFAULT_SERVER", "label": "Default DB Server", "default": "", "role": "db_host", "db_types": ["mysql", "postgres", "mongo"]}
       ],
+      "access_note": "Login with your database credentials. The Server field is pre-filled with your DB container name. Username & Password come from your MariaDB/PostgreSQL installation.",
       "restart": "unless-stopped"
     },
     {

@@ -507,13 +507,16 @@ def _build_access_message(manifest, config, instance_name):
             lines.append(f'CLI:  {cli_cmd}')
         lines.append(f'Host: localhost:{port}')
 
-    # Auto-detect credentials from env vars with type=password or generate=true
+    # Auto-detect credentials from env vars
+    _show_suffixes = ('_USER', '_USERNAME', '_DATABASE', '_DB', '_DBNAME')
     creds = []
     for env in envs:
         val = config.get(env['key'])
-        if val and (env.get('type') == 'password' or env.get('generate')):
-            creds.append((env.get('label', env['key']), val))
-        elif val and env.get('key', '').upper().endswith(('_USER', '_USERNAME')):
+        if not val or env.get('role') == 'db_host':
+            continue
+        key_upper = env.get('key', '').upper()
+        if (env.get('type') == 'password' or env.get('generate')
+                or any(key_upper.endswith(s) for s in _show_suffixes)):
             creds.append((env.get('label', env['key']), val))
 
     # Default credentials (built into the image, not from env vars)
