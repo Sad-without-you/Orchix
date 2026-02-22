@@ -1408,14 +1408,14 @@ async function loadUsersTable() {
             <tbody>
                 ${res.users.map(u => `
                     <tr>
-                        <td><strong>${esc(u.username)}</strong>${u.username === currentUser.username ? ' <span style="color:var(--teal);font-size:0.75rem">(you)</span>' : ''}</td>
+                        <td><strong>${esc(u.username)}</strong>${currentUser && u.username === currentUser.username ? ' <span style="color:var(--teal);font-size:0.75rem">(you)</span>' : ''}</td>
                         <td>${roleBadge(u.role)}</td>
                         <td style="font-size:0.85rem;color:var(--text3)">${formatDate(u.created_at)}</td>
                         <td style="font-size:0.85rem;color:var(--text3)">${formatDate(u.last_login)}</td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn-sm" data-action="showEditUserModal" data-p1="${esc(u.username)}" data-p2="${esc(u.role)}">Edit</button>
-                                ${u.username !== currentUser.username ? `<button class="btn-sm btn-danger" data-action="deleteUser" data-p1="${esc(u.username)}">Delete</button>` : ''}
+                                ${hasPermission('users.edit') ? `<button class="btn-sm" data-action="showEditUserModal" data-p1="${esc(u.username)}" data-p2="${esc(u.role)}">Edit</button>` : ''}
+                                ${hasPermission('users.delete') && currentUser && u.username !== currentUser.username ? `<button class="btn-sm btn-danger" data-action="deleteUser" data-p1="${esc(u.username)}">Delete</button>` : ''}
                             </div>
                         </td>
                     </tr>
