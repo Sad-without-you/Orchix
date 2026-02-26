@@ -128,7 +128,7 @@ class LicenseManager:
             with open(LICENSE_FILE, 'w') as f:
                 json.dump(license_data, f, indent=2)
 
-            # Increment activation counter in Supabase
+            # Notify license server of activation (no-op in current implementation)
             if result.get('license_id') is not None:
                 LicenseKeyValidator.increment_activations(
                     result['license_id'],
@@ -166,7 +166,7 @@ class LicenseManager:
     def deactivate(self):
         '''Deactivate license (back to FREE)'''
         try:
-            # Decrement activation counter in Supabase before removing local file
+            # Notify license server of deactivation (no-op in current implementation)
             if self.license_key:
                 from license.secure_license import LicenseKeyValidator
                 LicenseKeyValidator.decrement_activations(self.license_key)

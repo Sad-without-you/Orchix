@@ -226,7 +226,7 @@ All ports are configurable during installation.
 
 ### PRO Tier - €29/month
 - All 30 applications
-- Unlimited containers
+- Up to 999 containers
 - **Multi-User** with RBAC (Max 3: Admin, Operator, Viewer)
 - Automated backup & restore
 - Multi-instance support

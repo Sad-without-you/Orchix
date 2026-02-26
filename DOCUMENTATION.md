@@ -662,7 +662,7 @@ Migration packages are compatible between Linux and Windows (WSL2). Volume data 
 ```bash
 python main.py
 # Select: License Manager > Upgrade to PRO
-# Enter license key: ORCHIX-PRO-XXXXXXXX-XXXXXXXX
+# Enter license key: ORCH-PRO-XXXXXXXXXXXXXXXX-XXXXXXXXXX
 ```
 
 **Web UI:**
@@ -677,7 +677,7 @@ curl -X POST http://localhost:5000/api/license/activate \
   -H "Content-Type: application/json" \
   -H "X-CSRFToken: TOKEN" \
   -b cookies.txt \
-  -d '{"license_key": "ORCHIX-PRO-XXXXXXXX-XXXXXXXX"}'
+  -d '{"license_key": "ORCH-PRO-XXXXXXXXXXXXXXXX-XXXXXXXXXX"}'
 ```
 
 ### Deactivate License
@@ -721,14 +721,14 @@ When a PRO license expires or is deactivated and you have more than 3 containers
 ### License Format
 
 ```
-ORCHIX-PRO-A3F9K2X7-D4E8C1B5
-│      │   │        └─ HMAC signature
-│      │   └─ Random component
-│      └─ Tier (PRO)
+ORCH-PRO-A3F8B2C1D4E9F601-8A2B4C6D1E
+│    │   │                └─ HMAC signature (10 chars)
+│    │   └─ Random component (16 hex chars, 64-bit entropy)
+│    └─ Tier (PRO)
 └─ Prefix
 ```
 
-License keys are HMAC-signed and validated locally — no internet connection required for basic validation.
+License keys are HMAC-signed. Validation requires an internet connection to the ORCHIX license server. A 3-day offline grace period applies when the server is unreachable.
 
 ---
 
@@ -940,7 +940,7 @@ POST /api/migrations/import-stream           # Import migration package (SSE str
 ```bash
 GET  /api/license                             # License info and features
 POST /api/license/activate                    # Activate PRO license
-     { "license_key": "ORCHIX-PRO-..." }
+     { "license_key": "ORCH-PRO-..." }
 POST /api/license/deactivate                  # Deactivate license
 ```
 

@@ -1,429 +1,173 @@
 # ORCHIX v1.3
+"""
+License Validator
+=================
+Validates license keys against the ORCHIX license server.
+Supabase has been removed – all validation goes through /api/v1/validate.
+
+Config (.env or environment):
+    ORCHIX_LICENSE_SERVER=https://orchix.dev   (default)
+
+Offline grace period: 3 days after last successful online validation.
+The last-validated timestamp is saved in ~/.orchix_configs/.orchix_license.
+"""
+
 import hashlib
-import hmac
+import json
 import os
 import requests
 from datetime import datetime, timedelta
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
+
+_SERVER = os.getenv('ORCHIX_LICENSE_SERVER', 'https://orchix.dev').rstrip('/')
+_TIMEOUT = 10
 
 
 class LicenseKeyValidator:
-    """Online license key validator with Supabase backend"""
-
-    # Supabase configuration from environment variables
-    # These must be set in .env file (never commit .env to git!)
-    SUPABASE_URL = os.getenv('SUPABASE_URL')
-    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-
-    # Timeout for online validation (seconds)
-    REQUEST_TIMEOUT = 10
+    """Validates ORCHIX license keys against the license server."""
 
     @classmethod
     def validate_key(cls, key: str) -> dict:
-        """Validate a license key using online verification"""
-        if not key or not isinstance(key, str):
-            return {
-                'valid': False,
-                'message': 'Invalid key format',
-                'tier': None,
-                'expires': None
-            }
+        """
+        Full validation: try online first, fall back to 3-day offline grace.
 
-        # Strip whitespace
+        Returns dict with keys:
+            valid (bool), message (str), tier (str|None),
+            expires (str|None), status (str)
+        """
+        if not key or not isinstance(key, str):
+            return cls._result(False, 'Invalid key format')
+
         key = key.strip()
 
-        # Check if Supabase is configured
-        if not cls.SUPABASE_URL or not cls.SUPABASE_KEY:
-            return {
-                'valid': False,
-                'message': 'License validation not configured. Please contact support.',
-                'tier': None,
-                'expires': None
-            }
-
-        # Try online validation first
         try:
-            online_result = cls._validate_online(key)
-            # Update last_validated timestamp on successful validation
-            if online_result.get('valid'):
-                cls._update_last_validated(key)
-            return online_result
-        except Exception as e:
-            # Connection error - check if we can use offline grace period
-            print(f"⚠️  Online validation failed: {e}")
-            print("   Attempting offline validation with grace period...")
-
-            # Check if license was previously validated (within 7 days)
-            offline_result = cls._validate_offline_grace_period(key)
-            if offline_result['valid']:
-                return offline_result
-
-            # Grace period expired or never validated
-            return {
-                'valid': False,
-                'message': f'Cannot reach license server. Please check your internet connection.',
-                'tier': None,
-                'expires': None
-            }
-
-    @classmethod
-    def _validate_online(cls, key: str) -> dict:
-        """Validate license key against Supabase API"""
-        try:
-            # Query Supabase for license with matching key
-            response = requests.get(
-                f'{cls.SUPABASE_URL}/rest/v1/licenses',
-                params={
-                    'license_key': f'eq.{key}',
-                    'select': '*,customers(email)'
-                },
-                headers={
-                    'apikey': cls.SUPABASE_KEY,
-                    'Authorization': f'Bearer {cls.SUPABASE_KEY}'
-                },
-                timeout=cls.REQUEST_TIMEOUT
+            resp = requests.post(
+                f'{_SERVER}/api/v1/validate',
+                json={'license_key': key, 'orchix_version': '1.3'},
+                timeout=_TIMEOUT,
             )
+            data = resp.json()
+            if data.get('valid'):
+                cls._save_last_validated(key, data)
+                return cls._result(
+                    True,
+                    data.get('message', 'License validated'),
+                    tier=data.get('tier'),
+                    expires=data.get('expires_at'),
+                    status=data.get('status', 'active'),
+                    license_id=data.get('license_id'),
+                )
+            return cls._result(False, data.get('message', 'License invalid or expired'))
 
-            # Check if request was successful
-            if response.status_code != 200:
-                return {
-                    'valid': False,
-                    'message': f'Server error: {response.status_code}',
-                    'tier': None,
-                    'expires': None
-                }
-
-            # Parse response (Supabase always returns an array)
-            data = response.json()
-
-            # Check if license exists
-            if not data or len(data) == 0:
-                return {
-                    'valid': False,
-                    'message': 'License key not found',
-                    'tier': None,
-                    'expires': None
-                }
-
-            license_data = data[0]  # Take first result
-
-            # Check if license is active
-            if not license_data.get('is_active', False):
-                return {
-                    'valid': False,
-                    'message': 'License key is deactivated',
-                    'tier': None,
-                    'expires': None
-                }
-
-            # Check activation limit
-            max_activations = int(license_data.get('max_activations', 1))
-            current_activations = int(license_data.get('current_activations', 0))
-
-            if current_activations >= max_activations:
-                return {
-                    'valid': False,
-                    'message': f'Maximum activations reached ({max_activations})',
-                    'tier': None,
-                    'expires': None
-                }
-
-            # Parse expiry date
-            expires = None
-            expires_at = license_data.get('expires_at')
-            if expires_at:
-                try:
-                    expires = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
-
-                    # Check if expired
-                    if datetime.now(expires.tzinfo) > expires:
-                        return {
-                            'valid': False,
-                            'message': 'License has expired',
-                            'tier': None,
-                            'expires': expires
-                        }
-                except Exception as e:
-                    print(f"Warning: Could not parse expiry date: {e}")
-
-            # Get tier
-            tier = license_data.get('tier', 'FREE').upper()
-
-            # Get customer email from joined data
-            customer_email = None
-            if 'customers' in license_data and license_data['customers']:
-                customer_email = license_data['customers'].get('email')
-
-            return {
-                'valid': True,
-                'message': 'License validated successfully',
-                'tier': tier,
-                'expires': expires,
-                'customer_email': customer_email,
-                'license_id': license_data.get('id'),
-                'current_activations': current_activations
-            }
-
-        except requests.exceptions.Timeout:
-            raise Exception("Connection timeout - please check your internet connection")
-        except requests.exceptions.ConnectionError:
-            raise Exception("Cannot reach license server - please check your internet connection")
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            print('⚠️  License server unreachable – trying offline grace period...')
+            return cls._validate_offline_grace_period(key)
         except Exception as e:
-            raise Exception(f"Validation error: {str(e)}")
+            return cls._result(False, f'Validation error: {e}')
 
-    @classmethod
-    def increment_activations(cls, license_id: int, current_activations: int):
-        """Increment current_activations counter in Supabase after activation"""
-        try:
-            requests.patch(
-                f'{cls.SUPABASE_URL}/rest/v1/licenses',
-                params={'id': f'eq.{license_id}'},
-                headers={
-                    'apikey': cls.SUPABASE_KEY,
-                    'Authorization': f'Bearer {cls.SUPABASE_KEY}',
-                    'Content-Type': 'application/json'
-                },
-                json={'current_activations': current_activations + 1},
-                timeout=cls.REQUEST_TIMEOUT
-            )
-        except Exception as e:
-            print(f"Warning: Could not increment activations: {e}")
-
-    @classmethod
-    def decrement_activations(cls, key: str):
-        """Decrement current_activations counter in Supabase on deactivation"""
-        try:
-            response = requests.get(
-                f'{cls.SUPABASE_URL}/rest/v1/licenses',
-                params={'license_key': f'eq.{key}', 'select': 'id,current_activations'},
-                headers={
-                    'apikey': cls.SUPABASE_KEY,
-                    'Authorization': f'Bearer {cls.SUPABASE_KEY}'
-                },
-                timeout=cls.REQUEST_TIMEOUT
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if data:
-                    license_id = data[0]['id']
-                    current = max(0, int(data[0].get('current_activations', 1)) - 1)
-                    requests.patch(
-                        f'{cls.SUPABASE_URL}/rest/v1/licenses',
-                        params={'id': f'eq.{license_id}'},
-                        headers={
-                            'apikey': cls.SUPABASE_KEY,
-                            'Authorization': f'Bearer {cls.SUPABASE_KEY}',
-                            'Content-Type': 'application/json'
-                        },
-                        json={'current_activations': current},
-                        timeout=cls.REQUEST_TIMEOUT
-                    )
-        except Exception as e:
-            print(f"Warning: Could not decrement activations: {e}")
-
-    @classmethod
-    def _validate_offline(cls, key: str) -> dict:
-        """Offline validation fallback (for development only)
-        In production, this should not allow any keys to validate"""
-
-        # In production/public release, return invalid for all keys
-        # This prevents offline cracking
-        return {
-            'valid': False,
-            'message': 'Online validation required. Please check your internet connection.',
-            'tier': None,
-            'expires': None
-        }
-
-    @classmethod
-    def _update_last_validated(cls, key: str):
-        """
-        Update last_validated timestamp in license file after successful validation
-
-        Args:
-            key: License key string
-        """
-        import json
-        from config import ORCHIX_CONFIG_DIR
-
-        LICENSE_FILE = ORCHIX_CONFIG_DIR / '.orchix_license'
-
-        if LICENSE_FILE.exists():
-            try:
-                with open(LICENSE_FILE, 'r') as f:
-                    data = json.load(f)
-
-                # Only update if this is the same key
-                if data.get('key') == key:
-                    data['last_validated'] = datetime.now().isoformat()
-
-                    with open(LICENSE_FILE, 'w') as f:
-                        json.dump(data, f, indent=2)
-            except Exception as e:
-                print(f"Warning: Could not update last_validated: {e}")
-
-    @classmethod
-    def _validate_offline_grace_period(cls, key: str) -> dict:
-        """Validate using offline grace period (7 days after last successful validation)"""
-        import json
-        from config import ORCHIX_CONFIG_DIR
-
-        LICENSE_FILE = ORCHIX_CONFIG_DIR / '.orchix_license'
-
-        if not LICENSE_FILE.exists():
-            return {
-                'valid': False,
-                'message': 'No license file found. Please activate online first.',
-                'tier': None,
-                'expires': None
-            }
-
-        try:
-            with open(LICENSE_FILE, 'r') as f:
-                data = json.load(f)
-
-            # Check if this is the same key
-            if data.get('key') != key:
-                return {
-                    'valid': False,
-                    'message': 'License key mismatch.',
-                    'tier': None,
-                    'expires': None
-                }
-
-            # Check if license was previously validated
-            last_validated = data.get('last_validated')
-            if not last_validated:
-                return {
-                    'valid': False,
-                    'message': 'License must be validated online at least once.',
-                    'tier': None,
-                    'expires': None
-                }
-
-            # Parse last_validated timestamp
-            try:
-                last_validated_dt = datetime.fromisoformat(last_validated)
-            except:
-                return {
-                    'valid': False,
-                    'message': 'Invalid last_validated timestamp.',
-                    'tier': None,
-                    'expires': None
-                }
-
-            # Check grace period (7 days)
-            grace_period = timedelta(days=7)
-            now = datetime.now()
-
-            if now - last_validated_dt > grace_period:
-                days_ago = (now - last_validated_dt).days
-                return {
-                    'valid': False,
-                    'message': f'Grace period expired ({days_ago} days since last validation). Please connect to internet.',
-                    'tier': None,
-                    'expires': None
-                }
-
-            # Check if license itself is expired
-            expiry = data.get('expiry')
-            if expiry:
-                try:
-                    expiry_dt = datetime.fromisoformat(expiry)
-                    if now > expiry_dt:
-                        return {
-                            'valid': False,
-                            'message': 'License has expired.',
-                            'tier': None,
-                            'expires': expiry_dt
-                        }
-                except:
-                    pass
-
-            # Grace period is valid
-            days_remaining = 7 - (now - last_validated_dt).days
-            return {
-                'valid': True,
-                'message': f'Offline mode - {days_remaining} days remaining in grace period',
-                'tier': data.get('tier', 'PRO'),
-                'expires': datetime.fromisoformat(expiry) if expiry else None
-            }
-
-        except Exception as e:
-            return {
-                'valid': False,
-                'message': f'Error reading license file: {str(e)}',
-                'tier': None,
-                'expires': None
-            }
+    # -------------------------------------------------------------------------
 
     @classmethod
     def check_expiry(cls, key: str) -> bool:
-        """Check if a license key has expired"""
-        validation = cls.validate_key(key)
-
-        if not validation['valid']:
-            return True  # Invalid keys are considered "expired"
-
-        if validation['expires'] is None:
-            return False  # No expiry date
-
-        # Make sure both datetimes have the same timezone info
-        expires = validation['expires']
-        if expires.tzinfo is not None:
-            # expires is timezone-aware, make now aware too
-            from datetime import timezone
-            now = datetime.now(timezone.utc)
-        else:
-            # expires is naive, use naive now
-            now = datetime.now()
-
-        return now > expires
-
+        """Returns True if the key is expired / invalid."""
+        result = cls.validate_key(key)
+        return not result['valid']
 
     @classmethod
-    def get_key_info(cls, key: str) -> dict:
-        """Get detailed information about a license key"""
-        validation = cls.validate_key(key)
+    def increment_activations(cls, license_id, current_activations=0):
+        """No-op: activation tracking is now server-side."""
 
-        info = {
-            'key': key,
-            'valid': validation['valid'],
-            'tier': validation['tier'],
-            'expires': validation['expires'],
-            'expired': cls.check_expiry(key) if validation['valid'] else True,
-            'message': validation['message']
+    @classmethod
+    def decrement_activations(cls, license_key: str):
+        """No-op: deactivation tracking is now server-side."""
+
+    # -------------------------------------------------------------------------
+    # Internal helpers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _result(valid, message, tier=None, expires=None, status='active', license_id=None):
+        return {
+            'valid': valid,
+            'message': message,
+            'tier': tier,
+            'expires': expires,
+            'status': status,
+            'license_id': license_id,
+            'current_activations': 0,
         }
 
-        return info
+    @classmethod
+    def _license_file(cls) -> Path:
+        from config import ORCHIX_CONFIG_DIR
+        return Path(ORCHIX_CONFIG_DIR) / '.orchix_license'
 
+    @classmethod
+    def _save_last_validated(cls, key: str, data: dict):
+        """Write last-validated timestamp + key hash to license file."""
+        lf = cls._license_file()
+        try:
+            existing = {}
+            if lf.exists():
+                try:
+                    existing = json.loads(lf.read_text(encoding='utf-8'))
+                except Exception:
+                    pass
 
-# Example usage and testing
-if __name__ == "__main__":
-    print("ORCHIX License Key Validator Test\n")
+            existing['last_validated'] = datetime.now().isoformat()
+            existing['key_hash'] = hashlib.sha256(key.encode()).hexdigest()
+            existing['tier'] = data.get('tier', existing.get('tier'))
+            existing['expiry'] = data.get('expires_at', existing.get('expiry'))
 
-    # Test a sample key
-    test_key = "Test"
-    print(f"Testing Key: {test_key}")
-    result = LicenseKeyValidator.validate_key(test_key)
-    print(f"Valid: {result['valid']}")
-    print(f"Message: {result['message']}")
-    print(f"Tier: {result['tier']}")
-    print(f"Expires: {result['expires']}")
-    print()
+            lf.write_text(json.dumps(existing, indent=2), encoding='utf-8')
+        except Exception as e:
+            print(f'Warning: could not update last_validated: {e}')
 
-    # Test invalid key
-    invalid_key = "INVALID-KEY-12345"
-    print(f"Testing Invalid Key: {invalid_key}")
-    result = LicenseKeyValidator.validate_key(invalid_key)
-    print(f"Valid: {result['valid']}")
-    print(f"Message: {result['message']}")
-    print()
+    @classmethod
+    def _validate_offline_grace_period(cls, key: str) -> dict:
+        """Allow up to 3 days of operation when server is unreachable."""
+        lf = cls._license_file()
+        if not lf.exists():
+            return cls._result(False, 'Cannot reach license server. Please check your internet connection.')
 
-    # Test key info
-    print(f"Getting detailed info for: {test_key}")
-    info = LicenseKeyValidator.get_key_info(test_key)
-    print(f"Key Info: {info}")
+        try:
+            data = json.loads(lf.read_text(encoding='utf-8'))
+        except Exception:
+            return cls._result(False, 'Cannot reach license server.')
+
+        # Verify this is the same key (compare hashes)
+        key_hash = hashlib.sha256(key.encode()).hexdigest()
+        if data.get('key_hash') != key_hash:
+            # Fallback: also accept plaintext key field (legacy files)
+            if data.get('key') != key:
+                return cls._result(False, 'Cannot reach license server.')
+
+        last_validated_str = data.get('last_validated')
+        if not last_validated_str:
+            return cls._result(False, 'License must be validated online at least once.')
+
+        try:
+            last_validated = datetime.fromisoformat(last_validated_str)
+        except Exception:
+            return cls._result(False, 'Cannot reach license server.')
+
+        elapsed = datetime.now() - last_validated
+        if elapsed > timedelta(days=3):
+            days = elapsed.days
+            return cls._result(
+                False,
+                f'Offline grace period expired ({days} days since last check). '
+                'Please connect to the internet to re-validate your license.',
+            )
+
+        remaining = 3 - elapsed.days
+        return cls._result(
+            True,
+            f'Offline mode – {remaining} day(s) remaining in grace period',
+            tier=data.get('tier', 'PRO'),
+            expires=data.get('expiry'),
+            status='active',
+        )
