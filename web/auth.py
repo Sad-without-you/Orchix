@@ -114,16 +114,28 @@ def _save_users(data):
 
 def _print_credentials(password, title="First Time Setup"):
     C  = '\033[96m'   # cyan
-    W  = '\033[97m'   # white
+    W  = '\033[97m'   # bright white
     NC = '\033[0m'    # reset
-    print(f"\n{C}  ╭─────────────────────────────────────────────╮{NC}")
-    print(f"{C}  │{NC}  🔐  ORCHIX Web UI — {title:<23}{C}│{NC}")
-    print(f"{C}  ├─────────────────────────────────────────────┤{NC}")
-    print(f"{C}  │{NC}  Username : {W}admin{NC:<34}{C}│{NC}")
-    print(f"{C}  │{NC}  Password : {W}{password:<34}{NC}{C}│{NC}")
-    print(f"{C}  ├─────────────────────────────────────────────┤{NC}")
-    print(f"{C}  │{NC}  Change it in Settings › User Management    {C}│{NC}")
-    print(f"{C}  ╰─────────────────────────────────────────────╯{NC}\n")
+    I  = 41           # inner content width (after 2-space indent)
+
+    def row(text=''):
+        pad = ' ' * (I - len(text))
+        return f"{C}  │{NC}  {text}{pad}{C}│{NC}"
+
+    def row_colored(label, value):
+        plain = f"{label}{value}"
+        pad = ' ' * (I - len(plain))
+        return f"{C}  │{NC}  {label}{W}{value}{NC}{pad}{C}│{NC}"
+
+    border = '─' * (I + 2)
+    print(f"\n{C}  ╭{border}╮{NC}")
+    print(row(f"ORCHIX Web UI — {title}"))
+    print(f"{C}  ├{border}┤{NC}")
+    print(row_colored("Username : ", "admin"))
+    print(row_colored("Password : ", password))
+    print(f"{C}  ├{border}┤{NC}")
+    print(row("Change it in Settings › User Management"))
+    print(f"{C}  ╰{border}╯{NC}\n")
 
 
 def ensure_users_exist():
