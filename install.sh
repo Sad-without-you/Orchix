@@ -11,7 +11,13 @@ set -e
 
 ORCHIX_VERSION="v1.4"
 GITHUB_ZIP="https://github.com/Sad-without-you/Orchix/archive/refs/heads/main.zip"
-INSTALL_DIR="$(pwd)/ORCHIX"
+
+# If already inside an ORCHIX directory, use current dir; otherwise create ORCHIX subdir
+if [ -f "$(pwd)/main.py" ]; then
+    INSTALL_DIR="$(pwd)"
+else
+    INSTALL_DIR="$(pwd)/ORCHIX"
+fi
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
