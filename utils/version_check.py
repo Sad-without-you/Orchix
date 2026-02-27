@@ -1,7 +1,7 @@
 import urllib.request
 import json
 
-CURRENT_VERSION = "1.3"
+CURRENT_VERSION = "1.4"
 GITHUB_REPO = "Sad-without-you/ORCHIX"
 
 
