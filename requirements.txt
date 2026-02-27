@@ -1,5 +1,5 @@
 # ========================================
-# ORCHIX v1.4 - Container Management Platform
+# ORCHIX v1.4 - Container Management System
 # Python Dependencies
 # ========================================
 #

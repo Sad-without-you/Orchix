@@ -56,7 +56,7 @@ Write-BoxLine " | | | | |_) | |   | |_| || | \  / "
 Write-BoxLine " | |_| |  _ <| |___|  _  || | /  \ "
 Write-BoxLine "  \___/|_| \_\\____|_| |_|___/_/\_\"
 Write-BoxLine ""
-Write-BoxLine "   $ORCHIX_VERSION  |  Container Management Platform"
+Write-BoxLine "   $ORCHIX_VERSION  |  Container Management System"
 Write-BoxLine ""
 Write-BoxBottom
 Write-Host ""
