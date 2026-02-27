@@ -7,7 +7,7 @@
 $ErrorActionPreference = "Stop"
 $ORCHIX_VERSION = "v1.4"
 $GITHUB_ZIP = "https://github.com/Sad-without-you/Orchix/archive/refs/heads/main.zip"
-$BW = 50  # box inner width
+$BW = 54  # box inner width
 
 $C = "Cyan"; $G = "Green"; $W = "White"; $R = "Red"; $Y = "Yellow"
 
@@ -127,14 +127,21 @@ Write-Step "Installing dependencies..."
 & ".venv\Scripts\python.exe" -m pip install -r requirements.txt -q 2>&1 | Out-Null
 Write-StepOK "All packages installed"
 
-# ── 6. Create launch script ──────────────────────────────────
+# ── 6. Create PowerShell launcher (no CMD layer = no language issues) ──────
 Write-Step "Creating launcher..."
+@'
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+& "$ScriptDir\.venv\Scripts\python.exe" "$ScriptDir\main.py" @args
+'@ | Set-Content -Path "orchix.ps1" -Encoding UTF8
+# Also create .bat for CMD users
 @"
 @echo off
 call "%~dp0.venv\Scripts\activate.bat"
 python "%~dp0main.py" %*
 "@ | Set-Content -Path "orchix.bat" -Encoding ASCII
-Write-StepOK "orchix.bat created"
+# Allow running local PS1 scripts
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force 2>&1 | Out-Null
+Write-StepOK "orchix.ps1 + orchix.bat created"
 
 # ── 7. Add ORCHIX to user PATH ───────────────────────────────
 Write-Step "Adding ORCHIX to PATH..."
@@ -142,7 +149,7 @@ $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$INSTALL_DIR*") {
     [Environment]::SetEnvironmentVariable("Path", "$userPath;$INSTALL_DIR", "User")
     $env:Path += ";$INSTALL_DIR"
-    Write-StepOK "Added to PATH (orchix.bat works from any terminal)"
+    Write-StepOK "Added to PATH"
 } else {
     Write-StepOK "Already in PATH"
 }
@@ -156,13 +163,12 @@ Write-BoxLine "   OK  ORCHIX $ORCHIX_VERSION installed successfully!" "Green"
 Write-BoxLine "" "Green"
 Write-BoxLine "   Location:  $INSTALL_DIR" "Green"
 Write-BoxLine "" "Green"
-Write-BoxLine "   In this terminal (use dot-slash):" "Green"
-Write-BoxLine "   > .\orchix.bat --web    Web UI -> localhost:5000" "Green"
-Write-BoxLine "   > .\orchix.bat          CLI" "Green"
+Write-BoxLine "   Launch (open a new terminal first):" "Green"
+Write-BoxLine "   > orchix.ps1 --web    Web UI  ->  localhost:5000" "Green"
+Write-BoxLine "   > orchix.ps1          CLI" "Green"
 Write-BoxLine "" "Green"
-Write-BoxLine "   In any NEW terminal (orchix added to PATH):" "Green"
-Write-BoxLine "   > orchix.bat --web" "Green"
-Write-BoxLine "   > orchix.bat" "Green"
+Write-BoxLine "   Or in this terminal (dot-slash prefix):" "Green"
+Write-BoxLine "   > .\orchix.ps1 --web" "Green"
 Write-BoxLine "" "Green"
 Write-BoxBottom "Green"
 Write-Host ""
