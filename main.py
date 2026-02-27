@@ -54,7 +54,21 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if '--web' in sys.argv:
-        # Web UI mode
+        # Web UI mode — on Windows, prevent all subprocess calls from opening console windows
+        import platform
+        if platform.system() == 'Windows':
+            _orig_run   = subprocess.run
+            _orig_popen = subprocess.Popen
+            _NO_WINDOW  = subprocess.CREATE_NO_WINDOW
+            def _run_no_window(*a, **kw):
+                kw.setdefault('creationflags', _NO_WINDOW)
+                return _orig_run(*a, **kw)
+            def _popen_no_window(*a, **kw):
+                kw.setdefault('creationflags', _NO_WINDOW)
+                return _orig_popen(*a, **kw)
+            subprocess.run   = _run_no_window
+            subprocess.Popen = _popen_no_window
+
         port = 5000
         for i, arg in enumerate(sys.argv):
             if arg == '--port' and i + 1 < len(sys.argv):
