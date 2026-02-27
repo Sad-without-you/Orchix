@@ -67,35 +67,21 @@ ORCHIX is a container management system that simplifies Docker operations throug
 #### Linux
 
 ```bash
-# Clone repository
-git clone https://github.com/Sad-without-you/ORCHIX.git
-cd ORCHIX
+curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
 
-# Install dependencies
-pip3 install -r requirements.txt
-
-# Run ORCHIX CLI
-sudo python3 main.py
-
-# Run ORCHIX Web UI
-sudo python3 main.py --web
+# Then run:
+./ORCHIX/orchix.sh          # CLI
+./ORCHIX/orchix.sh --web    # Web UI at http://localhost:5000
 ```
 
-#### Windows (PowerShell as Administrator)
+#### Windows (PowerShell)
 
 ```powershell
-# Clone repository
-git clone https://github.com/Sad-without-you/ORCHIX.git
-cd ORCHIX
+irm https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.ps1 | iex
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Run ORCHIX CLI
-python main.py
-
-# Run ORCHIX Web UI
-python main.py --web
+# Then open a new terminal and run:
+orchix.ps1          # CLI
+orchix.ps1 --web    # Web UI at http://localhost:5000
 ```
 
 ### Docker Auto-Installation
@@ -120,8 +106,8 @@ If Docker is not installed, ORCHIX will offer to install it automatically:
 ### Launch CLI
 
 ```bash
-sudo python3 main.py          # Linux
-python main.py                # Windows
+./orchix.sh          # Linux
+orchix.ps1           # Windows (new terminal) or .\orchix.ps1 (current terminal)
 ```
 
 ### Main Menu
@@ -156,7 +142,8 @@ Shows real-time system stats:
 ### Install Application
 
 ```bash
-python main.py
+./orchix.sh          # Linux
+orchix.ps1           # Windows
 # Select: 2. Install Applications
 # Choose application > Configure settings > Deploy
 ```
@@ -179,11 +166,17 @@ Operations available:
 ### Start Web UI
 
 ```bash
-# Default port 5000
-sudo python3 main.py --web
+# Linux – default port 5000
+./orchix.sh --web
 
-# Custom port
-sudo python3 main.py --web --port 8080
+# Linux – custom port
+./orchix.sh --web --port 8080
+
+# Windows – default port 5000
+orchix.ps1 --web
+
+# Windows – custom port
+orchix.ps1 --web --port 8080
 ```
 
 Then open: `http://localhost:5000` (or replace `localhost` with your server IP)

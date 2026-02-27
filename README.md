@@ -117,52 +117,36 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 - **Storage** 20 GB free
 - **OS** Ubuntu 20.04+, Debian 11+, Windows 10/11 with WSL2
 
-### Windows
+### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/Sad-without-you/ORCHIX.git
-cd ORCHIX
-pip install -r requirements.txt
-python main.py --web
+irm https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.ps1 | iex
+```
+
+Then open a new terminal and run:
+```powershell
+orchix.ps1 --web    # Web UI at http://localhost:5000
+orchix.ps1          # CLI
 ```
 
 ### Linux / macOS
 
-On newer Linux systems (Debian 12+, Ubuntu 23.04+) `pip install` may require `--break-system-packages`. Use the installer script instead — it creates an isolated Python environment automatically:
-
 ```bash
 curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
-sudo ./ORCHIX/orchix.sh --web
 ```
 
-Or with git (manual):
+Then run:
 ```bash
-git clone https://github.com/Sad-without-you/ORCHIX.git
-cd ORCHIX
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-sudo python3 main.py --web
-```
-
-### No git installed?
-
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.ps1 | iex
-orchix.bat --web
-```
-
-**Linux:**
-```bash
-curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
-sudo ./ORCHIX/orchix.sh --web
+./ORCHIX/orchix.sh --web    # Web UI at http://localhost:5000
+./ORCHIX/orchix.sh          # CLI
 ```
 
 ### Web UI Mode
 
 ```bash
-python main.py --web              # Default port 5000
-python main.py --web --port 8080  # Custom port
+orchix.ps1 --web              # Windows – default port 5000
+orchix.ps1 --web --port 8080  # Windows – custom port
+./orchix.sh --web             # Linux – default port 5000
 ```
 
 Access at `http://localhost:5000`. An admin user with a random password is created on first run and displayed in the terminal. Log in with username `admin`.
