@@ -113,13 +113,17 @@ def _save_users(data):
 
 
 def _print_credentials(password, title="First Time Setup"):
-    w = 46
-    print(f"  {'=' * w}")
-    print(f"  ORCHIX Web UI - {title}")
-    print(f"  Username: admin")
-    print(f"  Password: {password}")
-    print(f"  Change it in Settings > User Management")
-    print(f"  {'=' * w}")
+    C  = '\033[96m'   # cyan
+    W  = '\033[97m'   # white
+    NC = '\033[0m'    # reset
+    print(f"\n{C}  ╭─────────────────────────────────────────────╮{NC}")
+    print(f"{C}  │{NC}  🔐  ORCHIX Web UI — {title:<23}{C}│{NC}")
+    print(f"{C}  ├─────────────────────────────────────────────┤{NC}")
+    print(f"{C}  │{NC}  Username : {W}admin{NC:<34}{C}│{NC}")
+    print(f"{C}  │{NC}  Password : {W}{password:<34}{NC}{C}│{NC}")
+    print(f"{C}  ├─────────────────────────────────────────────┤{NC}")
+    print(f"{C}  │{NC}  Change it in Settings › User Management    {C}│{NC}")
+    print(f"{C}  ╰─────────────────────────────────────────────╯{NC}\n")
 
 
 def ensure_users_exist():
