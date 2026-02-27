@@ -266,7 +266,7 @@ def _windows_enable_autostart():
 
 
 def _windows_disable_autostart():
-    """Remove autostart registry entry."""
+    """Remove autostart registry entry. Returns True if entry existed and was removed."""
     try:
         import winreg
         key = winreg.OpenKey(
@@ -276,22 +276,30 @@ def _windows_disable_autostart():
         )
         try:
             winreg.DeleteValue(key, 'ORCHIX-WebUI')
+            winreg.CloseKey(key)
+            return True
         except FileNotFoundError:
-            pass
-        winreg.CloseKey(key)
+            winreg.CloseKey(key)
+            return False
     except Exception:
-        pass
+        return False
 
 
 def disable_autostart():
     if _use_systemd():
-        subprocess.run(['systemctl', '--user', 'disable', SERVICE_NAME], capture_output=True)
-        print("  ✅ Autostart disabled")
+        result = subprocess.run(['systemctl', '--user', 'disable', SERVICE_NAME], capture_output=True)
+        if result.returncode == 0 and b'Removed' in result.stdout + result.stderr:
+            print("  ✅ Autostart disabled")
+        else:
+            print("  ℹ️  Autostart was not enabled")
         return True
 
     if platform.system() == 'Windows':
-        _windows_disable_autostart()
-        print("  ✅ Autostart disabled")
+        removed = _windows_disable_autostart()
+        if removed:
+            print("  ✅ Autostart disabled")
+        else:
+            print("  ℹ️  Autostart was not enabled")
         return True
 
     return False
@@ -317,6 +325,8 @@ def uninstall_service():
     stop_service()
     disable_autostart()
 
+    removed_anything = False
+
     # Remove systemd unit file
     if platform.system() != 'Windows':
         unit_file = Path.home() / '.config' / 'systemd' / 'user' / f'{SERVICE_NAME}.service'
@@ -324,15 +334,21 @@ def uninstall_service():
             unit_file.unlink()
             subprocess.run(['systemctl', '--user', 'daemon-reload'], capture_output=True)
             print("  ✅ Systemd unit removed")
+            removed_anything = True
 
     # Remove PID and log files
-    _delete_pid()
-    try:
-        LOG_FILE.unlink(missing_ok=True)
-    except Exception:
-        pass
+    if PID_FILE.exists():
+        _delete_pid()
+        removed_anything = True
+    if LOG_FILE.exists():
+        try:
+            LOG_FILE.unlink()
+            removed_anything = True
+        except Exception:
+            pass
 
-    print("  ✅ ORCHIX service entries removed")
+    if removed_anything:
+        print("  ✅ ORCHIX service entries removed")
     print("  ℹ️  To fully uninstall, also delete the ORCHIX folder and ~/.orchix_configs/")
 
 
