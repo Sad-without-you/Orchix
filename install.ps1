@@ -134,7 +134,19 @@ Write-Step "Creating launcher..."
 call "%~dp0.venv\Scripts\activate.bat"
 python "%~dp0main.py" %*
 "@ | Set-Content -Path "orchix.bat" -Encoding ASCII
-Write-StepFinal "orchix.bat created"
+Write-StepOK "orchix.bat created"
+
+# ── 7. Add ORCHIX to user PATH ───────────────────────────────
+Write-Step "Adding ORCHIX to PATH..."
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($userPath -notlike "*$INSTALL_DIR*") {
+    [Environment]::SetEnvironmentVariable("Path", "$userPath;$INSTALL_DIR", "User")
+    $env:Path += ";$INSTALL_DIR"
+    Write-StepOK "Added to PATH (orchix.bat works from any terminal)"
+} else {
+    Write-StepOK "Already in PATH"
+}
+Write-StepFinal "Done"
 
 # ── Done ─────────────────────────────────────────────────────
 Write-Host ""
@@ -142,12 +154,10 @@ Write-BoxTop "Green"
 Write-BoxLine "" "Green"
 Write-BoxLine "   OK  ORCHIX $ORCHIX_VERSION installed successfully!" "Green"
 Write-BoxLine "" "Green"
-Write-BoxLine "   Location:" "Green"
-Write-BoxLine "   $INSTALL_DIR" "Green"
+Write-BoxLine "   Location:  $INSTALL_DIR" "Green"
 Write-BoxLine "" "Green"
-Write-BoxLine "   To launch ORCHIX:" "Green"
-Write-BoxLine "   > cd `"$INSTALL_DIR`"" "Green"
-Write-BoxLine "   > orchix.bat --web    Web UI  →  localhost:5000" "Green"
+Write-BoxLine "   Open a new terminal, then run:" "Green"
+Write-BoxLine "   > orchix.bat --web    Web UI  ->  localhost:5000" "Green"
 Write-BoxLine "   > orchix.bat          CLI" "Green"
 Write-BoxLine "" "Green"
 Write-BoxBottom "Green"
