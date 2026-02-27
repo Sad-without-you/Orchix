@@ -89,7 +89,11 @@ if (Test-Path "$PWD\main.py") {
 
 # ── 3. Download source ───────────────────────────────────────
 Write-Step "Downloading ORCHIX $ORCHIX_VERSION..."
-if (Test-Path "$INSTALL_DIR\main.py") {
+if (Test-Path "$INSTALL_DIR\.git") {
+    Set-Location $INSTALL_DIR
+    git pull -q 2>&1 | Out-Null
+    Write-StepOK "Updated to latest"
+} elseif (Test-Path "$INSTALL_DIR\main.py") {
     Write-StepOK "Already installed at $INSTALL_DIR"
 } else {
     $git = Get-Command git -ErrorAction SilentlyContinue
