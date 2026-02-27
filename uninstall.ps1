@@ -56,7 +56,8 @@ if (Test-Path $pythonVenv) {
     & $pythonVenv "$ScriptDir\main.py" service uninstall 2>$null
 } else {
     # Fallback: manual cleanup
-    schtasks /delete /tn "ORCHIX-WebUI" /f 2>$null | Out-Null
+    # Remove registry autostart entry (no admin needed)
+    Remove-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "ORCHIX-WebUI" -ErrorAction SilentlyContinue
     $pidFile = "$env:USERPROFILE\.orchix_configs\orchix.pid"
     if (Test-Path $pidFile) {
         $pid = Get-Content $pidFile -ErrorAction SilentlyContinue

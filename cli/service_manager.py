@@ -238,22 +238,49 @@ def enable_autostart():
         return True
 
     if platform.system() == 'Windows':
-        python = _get_python()
-        main = _get_main()
-        result = subprocess.run([
-            'schtasks', '/create', '/f',
-            '/sc', 'ONLOGON',
-            '/tn', 'ORCHIX-WebUI',
-            '/tr', f'"{python}" "{main}" --web'
-        ], capture_output=True, text=True)
-        if result.returncode == 0:
-            print("  ✅ Autostart enabled — ORCHIX Web UI will start on login")
-            return True
-        print(f"  ❌ Failed to enable autostart: {result.stderr.strip()}")
-        return False
+        return _windows_enable_autostart()
 
     print("  ⚠️  Systemd not found. Add 'orchix service start' to your startup scripts manually.")
     return False
+
+
+def _windows_enable_autostart():
+    """Enable autostart via HKCU registry Run key — no admin required."""
+    try:
+        import winreg
+        python = _get_python()
+        main = _get_main()
+        cmd = f'"{python}" "{main}" --web'
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r'SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+            0, winreg.KEY_SET_VALUE
+        )
+        winreg.SetValueEx(key, 'ORCHIX-WebUI', 0, winreg.REG_SZ, cmd)
+        winreg.CloseKey(key)
+        print("  ✅ Autostart enabled — ORCHIX Web UI will start on login")
+        return True
+    except Exception as e:
+        print(f"  ❌ Failed to enable autostart: {e}")
+        return False
+
+
+def _windows_disable_autostart():
+    """Remove autostart registry entry."""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r'SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+            0, winreg.KEY_SET_VALUE
+        )
+        try:
+            winreg.DeleteValue(key, 'ORCHIX-WebUI')
+        except FileNotFoundError:
+            pass
+        winreg.CloseKey(key)
+    except Exception:
+        pass
 
 
 def disable_autostart():
@@ -263,7 +290,7 @@ def disable_autostart():
         return True
 
     if platform.system() == 'Windows':
-        subprocess.run(['schtasks', '/delete', '/tn', 'ORCHIX-WebUI', '/f'], capture_output=True)
+        _windows_disable_autostart()
         print("  ✅ Autostart disabled")
         return True
 
