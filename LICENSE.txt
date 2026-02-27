@@ -13,14 +13,14 @@ Subject to the terms of this Agreement and payment of applicable fees, ORCHIX gr
 
 2.1 FREE TIER
 - Maximum 3 containers
-- Access to all 13+ applications (n8n, PostgreSQL, Redis, Nginx, Vaultwarden, LightRAG, Qdrant, Grafana, Jellyfin, Nextcloud, Stirling-PDF, and more)
+- Access to all 30+ applications (n8n, PostgreSQL, Redis, Nginx, Vaultwarden, LightRAG, Qdrant, Grafana, Jellyfin, Nextcloud, Stirling-PDF, and more)
 - Basic management features (install, update, uninstall)
 - Community support only
 - No commercial support
 
 2.2 PRO TIER (€29/month)
-- Unlimited containers
-- Access to all 13+ applications
+- Up to 999 containers
+- Access to all 30+ applications
 - Automated backup and restore features
 - Health monitoring and performance tracking
 - Audit logging for compliance
@@ -49,7 +49,7 @@ The Software is licensed, not sold. ORCHIX retains all right, title, and interes
 
 THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
 
-IMPORTANT: This is pre-alpha software under active development. Bugs and issues may occur. Users are encouraged to report bugs via GitHub Issues to help improve the software.
+IMPORTANT: This is beta software under active development. Bugs and issues may occur. Users are encouraged to report bugs via GitHub Issues to help improve the software.
 
 6. LIMITATION OF LIABILITY
 
@@ -86,7 +86,7 @@ This Agreement constitutes the entire agreement between you and ORCHIX regarding
 
 For licensing inquiries, support, or other questions:
 Email: support@orchix.dev
-Website: https://github.com/Sad-without-you/ORCHIX
+Website: https://orchix.dev
 
 Creator:
 Georgios Sevastakis
