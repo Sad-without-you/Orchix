@@ -68,21 +68,15 @@ ORCHIX is a container management system that simplifies Docker operations throug
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
-
-# Then run:
-./ORCHIX/orchix.sh          # CLI
-./ORCHIX/orchix.sh --web    # Web UI at http://localhost:5000
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.ps1 | iex
-
-# Then open a new terminal and run:
-orchix.ps1          # CLI
-orchix.ps1 --web    # Web UI at http://localhost:5000
 ```
+
+The installer asks at the end if you want to start the Web UI immediately and enable autostart on login/boot.
 
 ### Docker Auto-Installation
 
@@ -101,13 +95,58 @@ If Docker is not installed, ORCHIX will offer to install it automatically:
 
 ---
 
+## Background Service
+
+The Web UI can run as a background service — no terminal needs to stay open.
+
+### Service Commands
+
+```bash
+# Windows
+orchix.ps1 service start    # Start Web UI in background
+orchix.ps1 service stop     # Stop
+orchix.ps1 service status   # Check if running (shows PID)
+orchix.ps1 service enable   # Enable autostart on login (Task Scheduler)
+orchix.ps1 service disable  # Disable autostart
+orchix.ps1 service uninstall  # Remove service entries only
+
+# Linux
+orchix service start
+orchix service stop
+orchix service status
+orchix service enable       # Enable autostart via systemd user service
+orchix service disable
+orchix service uninstall
+```
+
+Once started, open `http://localhost:5000` — the terminal can be closed.
+
+### Uninstall ORCHIX
+
+```powershell
+# Windows — run in the ORCHIX folder:
+.\uninstall.ps1
+```
+```bash
+# Linux:
+bash ./uninstall.sh
+```
+
+Both uninstallers:
+1. Stop and remove the background service
+2. Remove PATH entry / global symlink
+3. Ask whether to delete config/data (`~/.orchix_configs/`)
+4. Ask whether to delete the ORCHIX installation folder
+
+---
+
 ## CLI Usage
 
 ### Launch CLI
 
 ```bash
 ./orchix.sh          # Linux
-orchix.ps1           # Windows (new terminal) or .\orchix.ps1 (current terminal)
+orchix.ps1           # Windows
 ```
 
 ### Main Menu
@@ -165,18 +204,18 @@ Operations available:
 
 ### Start Web UI
 
+**Background (recommended) — terminal can be closed:**
 ```bash
-# Linux – default port 5000
-./orchix.sh --web
+orchix.ps1 service start    # Windows
+orchix service start        # Linux
+```
 
-# Linux – custom port
-./orchix.sh --web --port 8080
-
-# Windows – default port 5000
-orchix.ps1 --web
-
-# Windows – custom port
-orchix.ps1 --web --port 8080
+**Foreground — terminal must stay open:**
+```bash
+./orchix.sh --web             # Linux – port 5000
+./orchix.sh --web --port 8080 # Linux – custom port
+orchix.ps1 --web              # Windows – port 5000
+orchix.ps1 --web --port 8080  # Windows – custom port
 ```
 
 Then open: `http://localhost:5000` (or replace `localhost` with your server IP)

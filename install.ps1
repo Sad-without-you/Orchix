@@ -179,11 +179,9 @@ Write-Host "  │" -ForegroundColor $C
 $startNow = Read-Host "  ├─ Start ORCHIX Web UI now (background)? [Y/n]"
 if ($startNow -notmatch '^[Nn]') {
     & ".venv\Scripts\python.exe" "main.py" service start
-    Write-Host "  │" -ForegroundColor $C
-    $autostart = Read-Host "  ├─ Enable autostart on boot? [Y/n]"
-    if ($autostart -notmatch '^[Nn]') {
-        & ".venv\Scripts\python.exe" "main.py" service enable
-    }
+    & ".venv\Scripts\python.exe" "main.py" service enable
+    Write-Host "  │  " -NoNewline -ForegroundColor $C
+    Write-Host "i  Autostart on login enabled — ORCHIX Web UI starts automatically" -ForegroundColor DarkCyan
 }
 Write-Host ""
 Read-Host "  Press Enter to exit"

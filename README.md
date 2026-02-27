@@ -123,11 +123,7 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 irm https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.ps1 | iex
 ```
 
-Then open a new terminal and run:
-```powershell
-orchix.ps1 --web    # Web UI at http://localhost:5000
-orchix.ps1          # CLI
-```
+The installer asks at the end if you want to start the Web UI immediately and enable autostart on boot.
 
 ### Linux / macOS
 
@@ -135,18 +131,45 @@ orchix.ps1          # CLI
 curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
 ```
 
-Then run:
+### Background Service (no terminal needed)
+
 ```bash
-./ORCHIX/orchix.sh --web    # Web UI at http://localhost:5000
-./ORCHIX/orchix.sh          # CLI
+# Windows
+orchix.ps1 service start    # Start Web UI in background
+orchix.ps1 service stop     # Stop
+orchix.ps1 service status   # Check if running
+orchix.ps1 service enable   # Enable autostart on login
+orchix.ps1 service disable  # Disable autostart
+
+# Linux
+orchix service start
+orchix service stop
+orchix service status
+orchix service enable       # Autostart via systemd
+orchix service disable
 ```
 
-### Web UI Mode
+Access at `http://localhost:5000` — terminal can be closed.
 
-```bash
-orchix.ps1 --web              # Windows – default port 5000
+### Run directly (terminal stays open)
+
+```powershell
+orchix.ps1 --web              # Windows – Web UI port 5000
 orchix.ps1 --web --port 8080  # Windows – custom port
-./orchix.sh --web             # Linux – default port 5000
+./orchix.sh --web             # Linux – Web UI port 5000
+orchix.ps1                    # Windows – CLI
+./orchix.sh                   # Linux – CLI
+```
+
+### Uninstall
+
+```powershell
+# Windows — run in the ORCHIX folder:
+.\uninstall.ps1
+```
+```bash
+# Linux:
+bash ./uninstall.sh
 ```
 
 Access at `http://localhost:5000`. An admin user with a random password is created on first run and displayed in the terminal. Log in with username `admin`.

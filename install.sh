@@ -181,11 +181,7 @@ printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
 read -r start_now
 if [[ ! "$start_now" =~ ^[Nn] ]]; then
     "$PYTHON" "$INSTALL_DIR/main.py" service start
-    printf "  ${CYN}│${NC}\n"
-    printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
-    read -r autostart
-    if [[ ! "$autostart" =~ ^[Nn] ]]; then
-        "$PYTHON" "$INSTALL_DIR/main.py" service enable
-    fi
+    "$PYTHON" "$INSTALL_DIR/main.py" service enable
+    echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
 fi
 echo ""

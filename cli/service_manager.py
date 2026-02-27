@@ -244,8 +244,7 @@ def enable_autostart():
             'schtasks', '/create', '/f',
             '/sc', 'ONLOGON',
             '/tn', 'ORCHIX-WebUI',
-            '/tr', f'"{python}" "{main}" --web',
-            '/rl', 'HIGHEST'
+            '/tr', f'"{python}" "{main}" --web'
         ], capture_output=True, text=True)
         if result.returncode == 0:
             print("  ✅ Autostart enabled — ORCHIX Web UI will start on login")
