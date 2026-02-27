@@ -9,8 +9,8 @@ set -e
 
 ORCHIX_VERSION="v1.4"
 GITHUB_ZIP="https://github.com/Sad-without-you/Orchix/archive/refs/heads/main.zip"
+BW=50  # box inner width
 
-# If already inside an ORCHIX directory, use current dir; otherwise create ORCHIX subdir
 if [ -f "$(pwd)/main.py" ]; then
     INSTALL_DIR="$(pwd)"
 else
@@ -19,27 +19,36 @@ fi
 
 # ── Colors ───────────────────────────────────────────────────
 CYN='\033[0;36m'; GRN='\033[0;32m'; YEL='\033[1;33m'
-RED='\033[0;31m'; DGR='\033[2m';    BLD='\033[1m'; NC='\033[0m'
+RED='\033[0;31m'; BLD='\033[1m'; NC='\033[0m'
 
-step()     { echo -e "  ${CYN}│${NC}"; echo -e "  ${CYN}├──${NC} $1"; }
-step_ok()  { echo -e "  ${CYN}│   ${GRN}OK${NC}  $1"; }
-step_end() { echo -e "  ${CYN}│${NC}"; echo -e "  ${CYN}└──${NC} ${GRN}OK${NC}  $1"; }
-fail()     { echo -e "\n  ${CYN}└──${NC} ${RED}ERROR:${NC} $1\n"; exit 1; }
+box_line() {
+    local text="${1:-}"
+    local color="${2:-$CYN}"
+    local pad=$(( BW - ${#text} ))
+    printf "  ${color}║${NC}%s%${pad}s${color}║${NC}\n" "$text" ""
+}
+box_top()    { local c="${1:-$CYN}"; printf "  ${c}╔%0.s═%.0s${NC}\n" $(seq 1 $BW) | head -c $((BW+4)); echo -e "  ${c}╔$(printf '═%.0s' $(seq 1 $BW))╗${NC}"; }
+box_bottom() { local c="${1:-$CYN}"; echo -e "  ${c}╚$(printf '═%.0s' $(seq 1 $BW))╝${NC}"; }
+
+step()      { echo -e "  ${CYN}│${NC}"; echo -e "  ${CYN}├─${NC} $1"; }
+step_ok()   { echo -e "  ${CYN}│  ${GRN}OK${NC} $1"; }
+step_end()  { echo -e "  ${CYN}│${NC}"; echo -e "  ${CYN}└─${NC} ${GRN}OK${NC} $1"; }
+fail()      { echo -e "  ${CYN}│${NC}"; echo -e "  ${CYN}└─${NC} ${RED}ERROR:${NC} $1\n"; exit 1; }
 
 # ── Banner ───────────────────────────────────────────────────
 clear 2>/dev/null || true
 echo ""
-echo -e "  ${CYN}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "  ${CYN}║                                                  ║${NC}"
-echo -e "  ${CYN}║    ___  ____   ____ _   _ _____  __             ║${NC}"
-echo -e "  ${CYN}║   / _ \\|  _ \\ / ___| | | |_ _\\ \\/ /            ║${NC}"
-echo -e "  ${CYN}║  | | | | |_) | |   | |_| || | \\  /             ║${NC}"
-echo -e "  ${CYN}║  | |_| |  _ <| |___|  _  || | /  \\             ║${NC}"
-echo -e "  ${CYN}║   \\___/|_| \\_\\\\____|_| |_|___/_/\\_\\             ║${NC}"
-echo -e "  ${CYN}║                                                  ║${NC}"
-echo -e "  ${CYN}║   ${BLD}$ORCHIX_VERSION${NC}${CYN}  |  Container Management Platform       ║${NC}"
-echo -e "  ${CYN}║                                                  ║${NC}"
-echo -e "  ${CYN}╚══════════════════════════════════════════════════╝${NC}"
+box_top "$CYN"
+box_line ""
+box_line "    ___  ____   ____ _   _ _____  __"
+box_line "   / _ \|  _ \ / ___| | | |_ _\ \/ /"
+box_line "  | | | | |_) | |   | |_| || | \  /  "
+box_line "  | |_| |  _ <| |___|  _  || | /  \  "
+box_line "   \___/|_| \_\\\____|_| |_|___/_/\_\  "
+box_line ""
+box_line "   $ORCHIX_VERSION  |  Container Management Platform"
+box_line ""
+box_bottom "$CYN"
 echo ""
 
 # ── 1. Check Python ──────────────────────────────────────────
@@ -56,7 +65,18 @@ for cmd in python3 python; do
         fi
     fi
 done
-[ -z "$PYTHON" ] && fail "Python 3.8+ required. Install:  sudo apt install python3"
+
+if [ -z "$PYTHON" ]; then
+    echo -e "  ${CYN}│  ${YEL}Python 3.8+ not found – trying to install...${NC}"
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get install -y python3 python3-venv -q && PYTHON="python3"
+    elif command -v brew &>/dev/null; then
+        brew install python3 && PYTHON="python3"
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y python3 -q && PYTHON="python3"
+    fi
+    [ -z "$PYTHON" ] && fail "Python not found. Install with:  sudo apt install python3"
+fi
 PYVER=$($PYTHON --version 2>&1)
 step_ok "$PYVER"
 
@@ -70,7 +90,6 @@ elif [ -d "$INSTALL_DIR/.git" ]; then
     command -v git &>/dev/null && git pull -q 2>/dev/null || true
     step_ok "Updated to latest"
 else
-    # Try git first, fall back to ZIP
     if command -v git &>/dev/null; then
         git clone -q https://github.com/Sad-without-you/Orchix.git "$INSTALL_DIR" 2>/dev/null || true
     fi
@@ -118,10 +137,10 @@ python "$SCRIPT_DIR/main.py" "$@"
 LAUNCH
 chmod +x orchix.sh
 
-GLOBAL_CMD="./orchix.sh"
+LAUNCH_CMD="./orchix.sh"
 if [ -w /usr/local/bin ]; then
     ln -sf "$(pwd)/orchix.sh" /usr/local/bin/orchix
-    GLOBAL_CMD="orchix"
+    LAUNCH_CMD="orchix"
     step_end "orchix.sh created  (global: orchix)"
 else
     step_end "orchix.sh created"
@@ -129,21 +148,21 @@ fi
 
 # ── Done ─────────────────────────────────────────────────────
 echo ""
-echo -e "  ${GRN}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "  ${GRN}║                                                  ║${NC}"
-echo -e "  ${GRN}║   ${BLD}OK  ORCHIX $ORCHIX_VERSION installed successfully!${NC}${GRN}      ║${NC}"
-echo -e "  ${GRN}║                                                  ║${NC}"
-echo -e "  ${GRN}║   Location:  ${YEL}$INSTALL_DIR${GRN}"
-echo -e "  ${GRN}║                                                  ║${NC}"
-echo -e "  ${GRN}║   To launch ORCHIX:                             ║${NC}"
-if [ "$GLOBAL_CMD" = "orchix" ]; then
-echo -e "  ${GRN}║   ${CYN}$ orchix --web${GRN}   Web UI → localhost:5000      ║${NC}"
-echo -e "  ${GRN}║   ${CYN}$ orchix      ${GRN}   CLI                          ║${NC}"
+box_top "$GRN"
+box_line "" "$GRN"
+box_line "   OK  ORCHIX $ORCHIX_VERSION installed successfully!" "$GRN"
+box_line "" "$GRN"
+box_line "   Location:  $INSTALL_DIR" "$GRN"
+box_line "" "$GRN"
+box_line "   To launch ORCHIX:" "$GRN"
+if [ "$LAUNCH_CMD" = "orchix" ]; then
+box_line "   \$ orchix --web    Web UI  →  localhost:5000" "$GRN"
+box_line "   \$ orchix          CLI" "$GRN"
 else
-echo -e "  ${GRN}║   ${YEL}$ cd \"$INSTALL_DIR\"${GRN}"
-echo -e "  ${GRN}║   ${CYN}$ ./orchix.sh --web${GRN}   Web UI → localhost:5000  ║${NC}"
-echo -e "  ${GRN}║   ${CYN}$ ./orchix.sh      ${GRN}   CLI                      ║${NC}"
+box_line "   \$ cd \"$INSTALL_DIR\"" "$GRN"
+box_line "   \$ ./orchix.sh --web    Web UI  →  localhost:5000" "$GRN"
+box_line "   \$ ./orchix.sh          CLI" "$GRN"
 fi
-echo -e "  ${GRN}║                                                  ║${NC}"
-echo -e "  ${GRN}╚══════════════════════════════════════════════════╝${NC}"
+box_line "" "$GRN"
+box_bottom "$GRN"
 echo ""

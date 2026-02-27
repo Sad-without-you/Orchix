@@ -7,52 +7,77 @@
 $ErrorActionPreference = "Stop"
 $ORCHIX_VERSION = "v1.4"
 $GITHUB_ZIP = "https://github.com/Sad-without-you/Orchix/archive/refs/heads/main.zip"
-$C = "Cyan"; $G = "Green"; $DG = "DarkGray"; $W = "White"; $R = "Red"; $Y = "Yellow"
+$BW = 50  # box inner width
 
+$C = "Cyan"; $G = "Green"; $W = "White"; $R = "Red"; $Y = "Yellow"
+
+function Write-BoxLine($text, $color = "Cyan") {
+    Write-Host ("  ║" + $text.PadRight($BW) + "║") -ForegroundColor $color
+}
+function Write-BoxTop($color = "Cyan") {
+    Write-Host ("  ╔" + ("═" * $BW) + "╗") -ForegroundColor $color
+}
+function Write-BoxBottom($color = "Cyan") {
+    Write-Host ("  ╚" + ("═" * $BW) + "╝") -ForegroundColor $color
+}
+function Write-Step($msg) {
+    Write-Host "  │" -ForegroundColor $C
+    Write-Host "  ├─ " -NoNewline -ForegroundColor $C
+    Write-Host $msg -ForegroundColor $W
+}
+function Write-StepOK($msg) {
+    Write-Host "  │  " -NoNewline -ForegroundColor $C
+    Write-Host "OK " -NoNewline -ForegroundColor $G
+    Write-Host $msg -ForegroundColor DarkGreen
+}
+function Write-StepFinal($msg) {
+    Write-Host "  │" -ForegroundColor $C
+    Write-Host "  └─ " -NoNewline -ForegroundColor $C
+    Write-Host "OK " -NoNewline -ForegroundColor $G
+    Write-Host $msg -ForegroundColor DarkGreen
+}
 function Write-Fail($msg) {
-    Write-Host "`n  └── " -NoNewline -ForegroundColor $C
+    Write-Host "  │" -ForegroundColor $C
+    Write-Host "  └─ " -NoNewline -ForegroundColor $C
     Write-Host "ERROR: $msg" -ForegroundColor $R
     Write-Host ""
     Read-Host "  Press Enter to exit"
     exit 1
 }
-function Write-Step($msg) {
-    Write-Host "  │" -ForegroundColor $C
-    Write-Host "  ├── " -NoNewline -ForegroundColor $C
-    Write-Host $msg -ForegroundColor $W
-}
-function Write-StepOK($msg) {
-    Write-Host "  │   " -NoNewline -ForegroundColor $C
-    Write-Host "OK  " -NoNewline -ForegroundColor $G
-    Write-Host $msg -ForegroundColor DarkGreen
-}
-function Write-StepFinal($msg) {
-    Write-Host "  │" -ForegroundColor $C
-    Write-Host "  └── " -NoNewline -ForegroundColor $C
-    Write-Host "OK  " -NoNewline -ForegroundColor $G
-    Write-Host $msg -ForegroundColor DarkGreen
-}
 
 # ── Banner ───────────────────────────────────────────────────
 Clear-Host
 Write-Host ""
-Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor $C
-Write-Host "  ║                                                  ║" -ForegroundColor $C
-Write-Host "  ║    ___  ____   ____ _   _ _____  __             ║" -ForegroundColor $C
-Write-Host "  ║   / _ \|  _ \ / ___| | | |_ _\ \/ /            ║" -ForegroundColor $C
-Write-Host "  ║  | | | | |_) | |   | |_| || | \  /             ║" -ForegroundColor $C
-Write-Host "  ║  | |_| |  _ <| |___|  _  || | /  \             ║" -ForegroundColor $C
-Write-Host "  ║   \___/|_| \_\\____|_| |_|___/_/\_\             ║" -ForegroundColor $C
-Write-Host "  ║                                                  ║" -ForegroundColor $C
-Write-Host "  ║   $ORCHIX_VERSION  |  Container Management Platform       ║" -ForegroundColor $C
-Write-Host "  ║                                                  ║" -ForegroundColor $C
-Write-Host "  ╚══════════════════════════════════════════════════╝" -ForegroundColor $C
+Write-BoxTop
+Write-BoxLine ""
+Write-BoxLine "    ___  ____   ____ _   _ _____  __"
+Write-BoxLine "   / _ \|  _ \ / ___| | | |_ _\ \/ /"
+Write-BoxLine "  | | | | |_) | |   | |_| || | \  /  "
+Write-BoxLine "  | |_| |  _ <| |___|  _  || | /  \  "
+Write-BoxLine "   \___/|_| \_\____|_| |_|___/_/\_\  "
+Write-BoxLine ""
+Write-BoxLine "   $ORCHIX_VERSION  |  Container Management Platform"
+Write-BoxLine ""
+Write-BoxBottom
 Write-Host ""
 
 # ── 1. Check Python ──────────────────────────────────────────
 Write-Step "Checking Python..."
 $pyver = python --version 2>&1
-if (-not "$pyver") { Write-Fail "Python not found. Download from https://python.org" }
+if (-not "$pyver" -or "$pyver" -notmatch "Python") {
+    # Try via winget
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if ($winget) {
+        Write-Host "  │  " -NoNewline -ForegroundColor $C
+        Write-Host "Python not found – installing via winget..." -ForegroundColor $Y
+        winget install Python.Python.3 --silent --accept-source-agreements 2>&1 | Out-Null
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $pyver = python --version 2>&1
+    }
+    if (-not "$pyver" -or "$pyver" -notmatch "Python") {
+        Write-Fail "Python not found.`n  Install from https://python.org then re-run."
+    }
+}
 Write-StepOK "$pyver"
 
 # ── 2. Determine install directory ───────────────────────────
@@ -113,27 +138,18 @@ Write-StepFinal "orchix.bat created"
 
 # ── Done ─────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor $G
-Write-Host "  ║                                                  ║" -ForegroundColor $G
-Write-Host "  ║   OK  ORCHIX $ORCHIX_VERSION installed successfully!      ║" -ForegroundColor $G
-Write-Host "  ║                                                  ║" -ForegroundColor $G
-Write-Host "  ║   Location:                                      ║" -ForegroundColor $G
-Write-Host "  ║   $INSTALL_DIR" -NoNewline -ForegroundColor $Y
-$pad = " " * [Math]::Max(0, 50 - $INSTALL_DIR.Length)
-Write-Host "$pad║" -ForegroundColor $G
-Write-Host "  ║                                                  ║" -ForegroundColor $G
-Write-Host "  ║   To launch ORCHIX:                             ║" -ForegroundColor $G
-Write-Host "  ║   > " -NoNewline -ForegroundColor $G
-Write-Host "cd `"$INSTALL_DIR`"" -NoNewline -ForegroundColor $Y
-$pad2 = " " * [Math]::Max(0, 45 - $INSTALL_DIR.Length)
-Write-Host "$pad2║" -ForegroundColor $G
-Write-Host "  ║   > " -NoNewline -ForegroundColor $G
-Write-Host "orchix.bat --web" -NoNewline -ForegroundColor $C
-Write-Host "   Web UI  →  localhost:5000    ║" -ForegroundColor $G
-Write-Host "  ║   > " -NoNewline -ForegroundColor $G
-Write-Host "orchix.bat      " -NoNewline -ForegroundColor $C
-Write-Host "   CLI                          ║" -ForegroundColor $G
-Write-Host "  ║                                                  ║" -ForegroundColor $G
-Write-Host "  ╚══════════════════════════════════════════════════╝" -ForegroundColor $G
+Write-BoxTop "Green"
+Write-BoxLine "" "Green"
+Write-BoxLine "   OK  ORCHIX $ORCHIX_VERSION installed successfully!" "Green"
+Write-BoxLine "" "Green"
+Write-BoxLine "   Location:" "Green"
+Write-BoxLine "   $INSTALL_DIR" "Green"
+Write-BoxLine "" "Green"
+Write-BoxLine "   To launch ORCHIX:" "Green"
+Write-BoxLine "   > cd `"$INSTALL_DIR`"" "Green"
+Write-BoxLine "   > orchix.bat --web    Web UI  →  localhost:5000" "Green"
+Write-BoxLine "   > orchix.bat          CLI" "Green"
+Write-BoxLine "" "Green"
+Write-BoxBottom "Green"
 Write-Host ""
 Read-Host "  Press Enter to exit"
