@@ -3,7 +3,9 @@ import subprocess
 import os
 import sys
 import platform
-from cli.ui import show_info, show_success, show_error, show_warning
+def _ui():
+    from cli.ui import show_info, show_success, show_error, show_warning
+    return show_info, show_success, show_error, show_warning
 
 
 def get_platform():
@@ -230,7 +232,7 @@ def check_dependencies():
 
 def install_docker_linux(os_type, pkg_manager):
     '''Install Docker on Linux using official script'''
-    
+    show_info, show_success, show_error, show_warning = _ui()
     show_info("Installing Docker using official script...")
     print()
     
@@ -282,7 +284,7 @@ def install_docker_linux(os_type, pkg_manager):
 
 def install_docker_windows():
     '''Install Docker Desktop on Windows'''
-    
+    show_info, show_success, show_error, show_warning = _ui()
     show_info("Installing Docker Desktop for Windows...")
     print()
     
@@ -338,6 +340,7 @@ def install_docker_windows():
 
 def install_wsl2():
     '''Install WSL2 on Windows'''
+    show_info, show_success, show_error, show_warning = _ui()
     from utils.docker_progress import run_command_with_progress
 
     show_info("Installing WSL2...")
@@ -361,7 +364,7 @@ def install_wsl2():
 
 def start_docker():
     '''Start Docker service (cross-platform)'''
-    
+    show_info, show_success, show_error, show_warning = _ui()
     show_info("Starting Docker...")
     
     if is_windows():
@@ -392,7 +395,7 @@ def start_docker():
 
 def install_basic_tools(pkg_manager):
     '''Install curl, wget (Linux only)'''
-    
+    show_info, show_success, show_error, show_warning = _ui()
     if is_windows():
         show_info("Basic tools (curl) are included in Windows 10+")
         return True

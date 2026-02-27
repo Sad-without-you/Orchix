@@ -1,7 +1,6 @@
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-import inquirer
 import os
 
 console = Console()
@@ -99,6 +98,7 @@ def show_result_panel(content, title="Success"):
 
 def select_from_list(message, choices):
     '''Interactive list selection (for menus without step line)'''
+    import inquirer
     questions = [
         inquirer.List(
             'selection',
