@@ -1,4 +1,4 @@
-// ORCHIX v1.3 - SPA Hash Router
+// ORCHIX v1.4 - SPA Hash Router
 
 const Router = {
     routes: {},

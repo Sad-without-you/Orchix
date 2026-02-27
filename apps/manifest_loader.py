@@ -1,4 +1,4 @@
-# ORCHIX v1.3 - Template-only manifest loader
+# ORCHIX v1.4 - Template-only manifest loader
 import json
 from pathlib import Path
 

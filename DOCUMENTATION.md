@@ -1267,6 +1267,16 @@ docker system df
 
 ## Changelog
 
+### v1.4 (2026-02-27)
+- **Self-hosted license server** — Supabase replaced with own secure license server (`/api/v1/validate`)
+- **Stripe Checkout + Webhook** — full purchase flow on website: Checkout → Webhook → License generation → n8n email
+- **Secure license keys** — HMAC-SHA256 signed (`ORCH-PRO-{16HEX}-{10HMAC}`), only key hash stored in DB, never plaintext
+- **Telegram error alerts** — all critical errors (failed payment, email failure, webhook issues) alert owner via n8n → Telegram
+- **3-day grace periods** — payment failure grace (server-side) and offline grace (client-side) both set to 3 days
+- **Users page security fix** — null-safe `currentUser` check + proper `users.edit` / `users.delete` permission guards on action buttons
+- **Nginx Proxy Manager** — access URL now correctly points to Admin UI port (8081) instead of HTTP port (8080)
+- **Multi-language website** — DE / EN / GR with automatic browser language detection
+
 ### v1.3 (2026-02-20)
 - **Global orchix Docker network** — all ORCHIX containers can communicate by container name
 - **Dynamic database discovery** — apps that need a DB (WordPress, phpMyAdmin, Adminer) automatically detect running compatible DB containers

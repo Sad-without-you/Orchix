@@ -6,7 +6,7 @@
 <p align="center"><strong>DevOps Container Management System</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/ORCHIX-v1.3-14b8a6" alt="Version">
+  <img src="https://img.shields.io/badge/ORCHIX-v1.4-14b8a6" alt="Version">
   <img src="https://img.shields.io/badge/License-Commercial-brightgreen" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.8%2B-blue" alt="Python">
@@ -117,22 +117,45 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 - **Storage** 20 GB free
 - **OS** Ubuntu 20.04+, Debian 11+, Windows 10/11 with WSL2
 
-### Quick Start
+### Windows
 
-**Linux:**
-```bash
-git clone https://github.com/Sad-without-you/ORCHIX.git
-cd ORCHIX
-pip3 install -r requirements.txt
-sudo python3 main.py
-```
-
-**Windows (PowerShell as Administrator):**
 ```powershell
 git clone https://github.com/Sad-without-you/ORCHIX.git
 cd ORCHIX
 pip install -r requirements.txt
-python main.py
+python main.py --web
+```
+
+### Linux / macOS
+
+On newer Linux systems (Debian 12+, Ubuntu 23.04+) `pip install` may require `--break-system-packages`. Use the installer script instead — it creates an isolated Python environment automatically:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
+sudo ./ORCHIX/orchix.sh --web
+```
+
+Or with git (manual):
+```bash
+git clone https://github.com/Sad-without-you/ORCHIX.git
+cd ORCHIX
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+sudo python3 main.py --web
+```
+
+### No git installed?
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.ps1 | iex
+orchix.bat --web
+```
+
+**Linux:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
+sudo ./ORCHIX/orchix.sh --web
 ```
 
 ### Web UI Mode

@@ -35,7 +35,7 @@ def _print_orchix_header():
     logo.append(" | | | | |_) | |   | |_| || | \\  / \n", style="cyan")
     logo.append(" | |_| |  _ <| |___|  _  || | /  \\ \n", style="cyan")
     logo.append("  \\___/|_| \\_\\\\____|_| |_|___/_/\\_\\\n\n", style="dim cyan")
-    logo.append("  v1.3", style="bold white")
+    logo.append("  v1.4", style="bold white")
     logo.append("  |  Container Management System", style="dim")
     console.print(Panel(logo, border_style="cyan", padding=(1, 2)))
 
