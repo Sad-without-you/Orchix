@@ -163,14 +163,27 @@ Write-BoxLine "   OK  ORCHIX $ORCHIX_VERSION installed successfully!" "Green"
 Write-BoxLine "" "Green"
 Write-BoxLine "   Location:  $INSTALL_DIR" "Green"
 Write-BoxLine "" "Green"
-Write-BoxLine "   Launch (open a new terminal first):" "Green"
+Write-BoxLine "   Background Web UI (no terminal needed):" "Green"
+Write-BoxLine "   > orchix.ps1 service start   # Start in background" "Green"
+Write-BoxLine "   > orchix.ps1 service stop    # Stop" "Green"
+Write-BoxLine "" "Green"
+Write-BoxLine "   Or run directly:" "Green"
 Write-BoxLine "   > orchix.ps1 --web    # Web UI: localhost:5000" "Green"
 Write-BoxLine "   > orchix.ps1          # CLI" "Green"
 Write-BoxLine "" "Green"
-Write-BoxLine "   Or in this terminal:" "Green"
-Write-BoxLine "   > .\orchix.ps1 --web  # Web UI: localhost:5000" "Green"
-Write-BoxLine "   > .\orchix.ps1        # CLI" "Green"
-Write-BoxLine "" "Green"
 Write-BoxBottom "Green"
+Write-Host ""
+
+# ── Optional: Start Web UI as background service ──────────────────────────────
+Write-Host "  │" -ForegroundColor $C
+$startNow = Read-Host "  ├─ Start ORCHIX Web UI now (background)? [Y/n]"
+if ($startNow -notmatch '^[Nn]') {
+    & ".venv\Scripts\python.exe" "main.py" service start
+    Write-Host "  │" -ForegroundColor $C
+    $autostart = Read-Host "  ├─ Enable autostart on boot? [Y/n]"
+    if ($autostart -notmatch '^[Nn]') {
+        & ".venv\Scripts\python.exe" "main.py" service enable
+    }
+}
 Write-Host ""
 Read-Host "  Press Enter to exit"

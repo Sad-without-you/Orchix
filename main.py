@@ -47,6 +47,12 @@ def print_header():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) >= 2 and sys.argv[1] == 'service':
+        action = sys.argv[2] if len(sys.argv) > 2 else 'status'
+        from cli.service_manager import handle_service_command
+        handle_service_command(action)
+        sys.exit(0)
+
     if '--web' in sys.argv:
         # Web UI mode
         port = 5000

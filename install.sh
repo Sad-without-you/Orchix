@@ -154,15 +154,38 @@ box_line "   OK  ORCHIX $ORCHIX_VERSION installed successfully!" "$GRN"
 box_line "" "$GRN"
 box_line "   Location:  $INSTALL_DIR" "$GRN"
 box_line "" "$GRN"
-box_line "   To launch ORCHIX:" "$GRN"
+box_line "   Background Web UI (no terminal needed):" "$GRN"
 if [ "$LAUNCH_CMD" = "orchix" ]; then
+box_line "   \$ orchix service start   # Start in background" "$GRN"
+box_line "   \$ orchix service stop    # Stop" "$GRN"
+box_line "" "$GRN"
+box_line "   Or run directly:" "$GRN"
 box_line "   \$ orchix --web    Web UI  →  localhost:5000" "$GRN"
 box_line "   \$ orchix          CLI" "$GRN"
 else
 box_line "   \$ cd \"$INSTALL_DIR\"" "$GRN"
+box_line "   \$ ./orchix.sh service start    # Start in background" "$GRN"
+box_line "   \$ ./orchix.sh service stop     # Stop" "$GRN"
+box_line "" "$GRN"
+box_line "   Or run directly:" "$GRN"
 box_line "   \$ ./orchix.sh --web    Web UI  →  localhost:5000" "$GRN"
 box_line "   \$ ./orchix.sh          CLI" "$GRN"
 fi
 box_line "" "$GRN"
 box_bottom "$GRN"
+echo ""
+
+# ── Optional: Start Web UI as background service ──────────────────────────────
+printf "  ${CYN}│${NC}\n"
+printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
+read -r start_now
+if [[ ! "$start_now" =~ ^[Nn] ]]; then
+    "$PYTHON" "$INSTALL_DIR/main.py" service start
+    printf "  ${CYN}│${NC}\n"
+    printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
+    read -r autostart
+    if [[ ! "$autostart" =~ ^[Nn] ]]; then
+        "$PYTHON" "$INSTALL_DIR/main.py" service enable
+    fi
+fi
 echo ""
