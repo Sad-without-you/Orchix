@@ -112,12 +112,31 @@ def _save_users(data):
         _secure_file(str(USERS_FILE))
 
 
+def _print_credentials(password, title="First Time Setup"):
+    w = 46
+    print(f"  {'=' * w}")
+    print(f"  ORCHIX Web UI - {title}")
+    print(f"  Username: admin")
+    print(f"  Password: {password}")
+    print(f"  Change it in Settings > User Management")
+    print(f"  {'=' * w}")
+
+
 def ensure_users_exist():
-    """Migrate from single-password to multi-user, or create first admin."""
+    """Migrate from single-password to multi-user, or create first admin.
+    If admin has never logged in, regenerate and display credentials on every start."""
     if USERS_FILE.exists():
         data = _load_users()
-        if data.get('users'):
-            return  # Users already exist
+        users = data.get('users', {})
+        if users:
+            # Regenerate password if admin has never logged in
+            admin = users.get('admin')
+            if admin and admin.get('last_login') is None:
+                new_pw = secrets.token_urlsafe(12)
+                admin['password_hash'] = generate_password_hash(new_pw, method='pbkdf2:sha256', salt_length=16)
+                _save_users(data)
+                _print_credentials(new_pw, "Login Credentials")
+            return
 
     # Migrate from single-password file
     if PASSWORD_FILE.exists():
@@ -127,12 +146,7 @@ def ensure_users_exist():
             # Legacy SHA256 - we can't reverse it, generate new password
             default_pw = secrets.token_urlsafe(12)
             password_hash = generate_password_hash(default_pw, method='pbkdf2:sha256', salt_length=16)
-            print(f"  {'=' * 46}")
-            print(f"  ORCHIX Web UI - Migrated to Multi-User")
-            print(f"  Username: admin")
-            print(f"  New Password: {default_pw}")
-            print(f"  (Legacy password format could not be migrated)")
-            print(f"  {'=' * 46}")
+            _print_credentials(default_pw, "Migrated to Multi-User")
         else:
             print(f"  Migrated single password to admin user")
 
@@ -164,12 +178,7 @@ def ensure_users_exist():
         }
     }
     _save_users(users_data)
-    print(f"  {'=' * 46}")
-    print(f"  ORCHIX Web UI - First Time Setup")
-    print(f"  Username: admin")
-    print(f"  Password: {default_pw}")
-    print(f"  Change it in Settings > User Management")
-    print(f"  {'=' * 46}")
+    _print_credentials(default_pw)
 
 
 # ============ Decorators ============
