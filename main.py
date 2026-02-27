@@ -53,6 +53,11 @@ if __name__ == "__main__":
         handle_service_command(action)
         sys.exit(0)
 
+    if len(sys.argv) >= 2 and sys.argv[1] == 'init-users':
+        from web.auth import ensure_users_exist
+        ensure_users_exist()
+        sys.exit(0)
+
     if '--web' in sys.argv:
         # Web UI mode — on Windows, prevent all subprocess calls from opening console windows
         import platform

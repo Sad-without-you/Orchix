@@ -123,19 +123,10 @@ def _print_credentials(password, title="First Time Setup"):
 
 
 def ensure_users_exist():
-    """Migrate from single-password to multi-user, or create first admin.
-    If admin has never logged in, regenerate and display credentials on every start."""
+    """Migrate from single-password to multi-user, or create first admin."""
     if USERS_FILE.exists():
         data = _load_users()
-        users = data.get('users', {})
-        if users:
-            # Regenerate password if admin has never logged in
-            admin = users.get('admin')
-            if admin and admin.get('last_login') is None:
-                new_pw = secrets.token_urlsafe(12)
-                admin['password_hash'] = generate_password_hash(new_pw, method='pbkdf2:sha256', salt_length=16)
-                _save_users(data)
-                _print_credentials(new_pw, "Login Credentials")
+        if data.get('users'):
             return
 
     # Migrate from single-password file
