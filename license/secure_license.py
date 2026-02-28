@@ -15,6 +15,8 @@ The last-validated timestamp is saved in ~/.orchix_configs/.orchix_license.
 import hashlib
 import json
 import os
+import platform
+import uuid
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,6 +26,12 @@ load_dotenv()
 
 _SERVER = os.getenv('ORCHIX_LICENSE_SERVER', 'https://orchix.dev').rstrip('/')
 _TIMEOUT = 10
+
+
+def _get_device_id() -> str:
+    """Generate a stable, anonymous device fingerprint."""
+    raw = f"{uuid.getnode()}-{platform.node()}-{platform.machine()}-{platform.system()}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
 class LicenseKeyValidator:
@@ -46,7 +54,7 @@ class LicenseKeyValidator:
         try:
             resp = requests.post(
                 f'{_SERVER}/api/v1/validate',
-                json={'license_key': key, 'orchix_version': '1.4'},
+                json={'license_key': key, 'orchix_version': '1.4', 'device_id': _get_device_id()},
                 timeout=_TIMEOUT,
             )
             data = resp.json()
