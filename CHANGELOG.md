@@ -1,5 +1,25 @@
 # ORCHIX Changelog
 
+## v1.5 (in progress)
+
+### Bug Fixes
+- **Config directory inconsistency fixed** — `orchix_configs` (no dot) and `.orchix_configs` (with dot) were used inconsistently across components; now unified to `~/.orchix_configs/` everywhere
+- **Uninstaller: folder now fully deleted** — fixed CWD lock issue on Windows (`Set-Location $env:TEMP` before `rd /s /q`); switched from PS temp-script to `cmd.exe` approach (no execution policy issues)
+- **Uninstaller: reliable script dir detection** — added `$PSScriptRoot`, `$PSCommandPath`, `$MyInvocation`, and `$PWD` fallbacks so `$ScriptDir` is never empty
+- **Uninstaller: path display** — fixed blank path in prompts by using `Write-Host` for path display instead of embedding in `Read-Host` string
+- **Uninstaller: `$pid` reserved variable** — replaced with `$orchixPid` + `Stop-Process` to avoid shadowing PowerShell's built-in `$pid`
+- **install.ps1: UTF-8 BOM removed** — BOM broke `irm | iex` with `Die Benennung "﻿#" wurde nicht erkannt`; `uninstall.ps1` keeps BOM (run from disk only)
+- **License URL** — fixed `orchix.dev/pricing` → `orchix.dev/#pricing` in CLI menus
+- **License expiry parsing** — hardened `datetime.fromisoformat()` with try/except to prevent crash on unexpected server response format
+- **Credentials box alignment** — padding now calculated from plain text length (not ANSI-escaped string)
+
+### Documentation
+- **README.md**: fixed 6 wrong default ports, added `service uninstall` command, simplified run commands to plain `orchix` / `orchix --web`, fixed password reset path
+- **DOCUMENTATION.md**: full overhaul — fixed platform info, CLI launch commands, Web UI commands, password reset paths, removed outdated `pip install` troubleshooting, replaced wrong Systemd/Task Scheduler sections with correct `orchix service enable/disable`, corrected Environment Variables section (removed non-existent `WEB_PORT`/`WEB_HOST`/`LICENSE_SIGNING_SECRET`)
+- **CHANGELOG.md**: extracted from `DOCUMENTATION.md` into its own file
+
+---
+
 ## v1.4 (2026-02-27)
 - **Self-hosted license server** — Supabase replaced with own secure license server (`/api/v1/validate`)
 - **Stripe Checkout + Webhook** — full purchase flow on website: Checkout → Webhook → License generation → n8n email
