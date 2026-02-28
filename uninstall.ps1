@@ -4,7 +4,7 @@
 
 $ErrorActionPreference = "SilentlyContinue"
 $BW = 54
-$C = "Cyan"; $G = "Green"; $R = "Red"; $W = "White"
+$C = "Cyan"; $G = "Green"; $W = "White"
 
 function Write-BoxLine($text, $color = "Cyan") {
     Write-Host ("  ║" + $text.PadRight($BW) + "║") -ForegroundColor $color
@@ -32,7 +32,9 @@ function Write-StepFinal($msg) {
     Write-Host $msg -ForegroundColor DarkGreen
 }
 
-$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ScriptDir = $PSScriptRoot
+if (-not $ScriptDir -and $MyInvocation.MyCommand.Path) { $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
 
 Clear-Host
 Write-Host ""
@@ -60,8 +62,8 @@ if (Test-Path $pythonVenv) {
     Remove-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "ORCHIX-WebUI" -ErrorAction SilentlyContinue
     $pidFile = "$env:USERPROFILE\.orchix_configs\orchix.pid"
     if (Test-Path $pidFile) {
-        $pid = Get-Content $pidFile -ErrorAction SilentlyContinue
-        if ($pid) { taskkill /PID $pid /F 2>$null | Out-Null }
+        $orchixPid = Get-Content $pidFile -ErrorAction SilentlyContinue
+        if ($orchixPid) { Stop-Process -Id ([int]$orchixPid) -Force -ErrorAction SilentlyContinue }
         Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
     }
 }

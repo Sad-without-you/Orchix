@@ -6,7 +6,7 @@
 
 **Version:** 1.4
 **License:** Commercial (€29/month)
-**Platform:** Linux, Windows (WSL2 / native)
+**Platform:** Linux, Windows
 
 ---
 
@@ -145,9 +145,10 @@ Both uninstallers:
 ### Launch CLI
 
 ```bash
-./orchix.sh          # Linux
-orchix.ps1           # Windows
+orchix               # CLI
 ```
+
+> On Linux, if `/usr/local/bin` is not writable, use `./orchix.sh` instead of `orchix`.
 
 ### Main Menu
 
@@ -181,8 +182,7 @@ Shows real-time system stats:
 ### Install Application
 
 ```bash
-./orchix.sh          # Linux
-orchix.ps1           # Windows
+orchix
 # Select: 2. Install Applications
 # Choose application > Configure settings > Deploy
 ```
@@ -212,11 +212,11 @@ orchix service start        # Linux
 
 **Foreground — terminal must stay open:**
 ```bash
-./orchix.sh --web             # Linux – port 5000
-./orchix.sh --web --port 8080 # Linux – custom port
-orchix.ps1 --web              # Windows – port 5000
-orchix.ps1 --web --port 8080  # Windows – custom port
+orchix --web              # port 5000
+orchix --web --port 8080  # custom port
 ```
+
+> On Linux, if `/usr/local/bin` is not writable, use `./orchix.sh` instead of `orchix`.
 
 Then open: `http://localhost:5000` (or replace `localhost` with your server IP)
 
@@ -331,9 +331,9 @@ If you had more than 3 containers when PRO expires, ORCHIX prompts you to select
 
 ```bash
 # Delete the user database — a new admin with a random password is created on restart
-rm ~/.orchix_web_users.json           # Linux
-del %USERPROFILE%\.orchix_web_users.json  # Windows
-python main.py --web
+rm ~/.orchix_configs/.orchix_web_users.json           # Linux
+del %USERPROFILE%\.orchix_configs\.orchix_web_users.json  # Windows
+orchix --web
 ```
 
 ---
@@ -1059,26 +1059,14 @@ Port 8080 is already in use
    taskkill /PID <PID> /F
    ```
 
-### Module not found
-
-**Error:**
-```
-ModuleNotFoundError: No module named 'flask'
-```
-
-**Solution:**
-```bash
-pip install -r requirements.txt --upgrade
-```
-
 ### Web UI password forgotten
 
 **Solution:**
 ```bash
 # Delete user database — a new admin with a random password is created on restart
-rm ~/.orchix_web_users.json           # Linux
-del %USERPROFILE%\.orchix_web_users.json  # Windows
-python main.py --web
+rm ~/.orchix_configs/.orchix_web_users.json           # Linux
+del %USERPROFILE%\.orchix_configs\.orchix_web_users.json  # Windows
+orchix --web
 # Check terminal output for the new admin password
 ```
 
@@ -1164,51 +1152,25 @@ networks:
     external: true
 ```
 
-### Systemd Service (Linux)
+### Autostart (Linux)
 
-Auto-start ORCHIX Web UI on boot:
-
-```bash
-sudo nano /etc/systemd/system/orchix.service
-```
-
-```ini
-[Unit]
-Description=ORCHIX Container Management
-After=docker.service
-Requires=docker.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/orchix
-ExecStart=/usr/bin/python3 /opt/orchix/main.py --web --port 5000
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
+ORCHIX uses a systemd **user** service — no root required:
 
 ```bash
-sudo systemctl enable orchix
-sudo systemctl start orchix
-sudo systemctl status orchix
+orchix service enable   # Enable autostart on boot
+orchix service disable  # Disable autostart
+orchix service status   # Check if running
 ```
 
-### Windows Task Scheduler
+### Autostart (Windows)
 
-Auto-start ORCHIX on boot:
+ORCHIX registers itself in the Windows Registry Run key — no Task Scheduler or admin rights needed:
 
-1. Open **Task Scheduler**
-2. Create Task:
-   - **Name**: ORCHIX
-   - **Trigger**: At startup
-   - **Action**: Start program
-     - Program: `python`
-     - Arguments: `C:\orchix\main.py --web --port 5000`
-     - Start in: `C:\orchix`
-   - **Run with highest privileges**: ✓
+```powershell
+orchix.ps1 service enable   # Enable autostart on login
+orchix.ps1 service disable  # Disable autostart
+orchix.ps1 service status   # Check if running
+```
 
 ### Nginx Reverse Proxy
 
