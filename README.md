@@ -312,8 +312,11 @@ For security issues: security@orchix.dev
 - Linux: `sudo python3 main.py` or add user to docker group
 - Windows: Run PowerShell as Administrator
 
-**Web UI password reset:**
-- Delete `~/.orchix_configs/.orchix_web_users.json` and restart (a new admin user with random password will be created)
+**Web UI password reset (before first login):**
+- Run `orchix reset-password` — generates a new admin password and prints it in the terminal (only works if no one has logged in yet)
+
+**Web UI password reset (after first login):**
+- Use Settings > User Management in the Web UI, or delete `~/.orchix_configs/.orchix_web_users.json` and restart
 
 ---
 

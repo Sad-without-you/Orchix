@@ -355,3 +355,33 @@ def change_password():
     )
     _save_users(users_data)
     return jsonify({'success': True, 'message': 'Password changed'})
+
+
+def reset_admin_password():
+    """Reset admin password — only allowed if no user has ever logged in."""
+    data = _load_users()
+    users = data.get('users', {})
+
+    # Check if anyone has logged in before
+    any_logged_in = any(u.get('last_login') is not None for u in users.values())
+    if any_logged_in:
+        print("  ERROR: An admin has already logged in.")
+        print("  Use Settings > User Management in the Web UI to change passwords.")
+        return False
+
+    # No one has ever logged in — safe to reset
+    new_pw = secrets.token_urlsafe(12)
+    if 'admin' not in users:
+        # No admin at all — create one
+        users['admin'] = {
+            'role': 'admin',
+            'created_at': datetime.now().isoformat(),
+            'last_login': None,
+        }
+    users['admin']['password_hash'] = generate_password_hash(
+        new_pw, method='pbkdf2:sha256', salt_length=16
+    )
+    data['users'] = users
+    _save_users(data)
+    _print_credentials(new_pw, "Password Reset")
+    return True

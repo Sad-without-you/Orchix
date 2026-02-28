@@ -329,11 +329,17 @@ If you had more than 3 containers when PRO expires, ORCHIX prompts you to select
 
 ### Password Reset (Emergency)
 
+**If no one has logged in yet** (e.g. you lost the terminal output from the first run):
 ```bash
-# Delete the user database — a new admin with a random password is created on restart
+orchix reset-password
+```
+ORCHIX generates a new random admin password and prints it in the credentials box. Safe to run because no one has authenticated yet.
+
+**If someone has already logged in**, use Settings > User Management in the Web UI, or as a last resort wipe the user database entirely:
+```bash
 rm ~/.orchix_configs/.orchix_web_users.json           # Linux
 del %USERPROFILE%\.orchix_configs\.orchix_web_users.json  # Windows
-orchix --web
+orchix --web    # a new admin with a random password is printed on startup
 ```
 
 ---
@@ -1061,7 +1067,13 @@ Port 8080 is already in use
 
 ### Web UI password forgotten
 
-**Solution:**
+**Before first login** (lost the terminal output from the initial setup):
+```bash
+orchix reset-password
+# New password is printed in the terminal
+```
+
+**After first login** — use Settings > User Management, or as a last resort:
 ```bash
 # Delete user database — a new admin with a random password is created on restart
 rm ~/.orchix_configs/.orchix_web_users.json           # Linux

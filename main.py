@@ -58,6 +58,11 @@ if __name__ == "__main__":
         ensure_users_exist()
         sys.exit(0)
 
+    if len(sys.argv) >= 2 and sys.argv[1] == 'reset-password':
+        from web.auth import reset_admin_password
+        reset_admin_password()
+        sys.exit(0)
+
     if '--web' in sys.argv:
         # Web UI mode — on Windows, prevent all subprocess calls from opening console windows
         import platform

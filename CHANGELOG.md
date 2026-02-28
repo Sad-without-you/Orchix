@@ -2,6 +2,9 @@
 
 ## v1.5 (in progress)
 
+### New Commands
+- **`orchix reset-password`** — resets the admin password when no user has ever logged in; safely refuses (with a clear message) if anyone has already authenticated; generates and displays a new random password in the credentials box
+
 ### Bug Fixes
 - **Config directory inconsistency fixed** — `orchix_configs` (no dot) and `.orchix_configs` (with dot) were used inconsistently across components; now unified to `~/.orchix_configs/` everywhere
 - **Uninstaller: folder now fully deleted** — fixed CWD lock issue on Windows (`Set-Location $env:TEMP` before `rd /s /q`); switched from PS temp-script to `cmd.exe` approach (no execution policy issues)
@@ -12,11 +15,20 @@
 - **License URL** — fixed `orchix.dev/pricing` → `orchix.dev/#pricing` in CLI menus
 - **License expiry parsing** — hardened `datetime.fromisoformat()` with try/except to prevent crash on unexpected server response format
 - **Credentials box alignment** — padding now calculated from plain text length (not ANSI-escaped string)
-- **install.sh: `curl | bash` stdin fix** — replaced `exec </dev/tty` (unreliable on some systems) with `read -r var </dev/tty` per-prompt redirect; added `</dev/null` to all Python subprocesses so they cannot consume pipe bytes — fixes syntax error at `fi` and skipped prompts
+- **install.sh: `curl | bash` stdin fix** — replaced unreliable `exec </dev/tty` approach with a full self-re-exec guard: the script saves itself to a temp file and re-execs with `/dev/tty` as stdin, making all interactive prompts work reliably on all Linux distros including Raspberry Pi; all Python subprocess calls also receive `</dev/null` to prevent pipe-byte consumption
+- **install.sh: Docker daemon auto-start** — if Docker is installed but the daemon is not running, the installer now automatically runs `sudo systemctl start docker` (falls back to `sudo service docker start`) before prompting to start the service
+- **install.sh: docker group auto-add** — if the current user is not in the `docker` group, the installer runs `sudo usermod -aG docker $USER` and uses `sg docker` when starting the ORCHIX service, so no logout/login is required
+- **install.sh: global symlink with sudo fallback** — when `/usr/local/bin` is not directly writable, the installer now retries with `sudo ln -sf`, so `orchix` becomes available globally without manual steps
+- **install.sh: absolute path in orchix.sh launcher** — `$INSTALL_DIR` is now embedded at install time into the heredoc rather than resolved at runtime, fixing `No such file or directory` when `orchix` is symlinked to `/usr/local/bin`
+- **install.sh: input buffer flush** — added `read -r -t 0.1 -n 10000 _flush` between the two interactive prompts to prevent a leftover Enter keypress from auto-answering the second prompt
+- **apps/manifest_loader.py: relative path fix** — changed `Path('apps') / 'templates.json'` to `Path(__file__).parent / 'templates.json'`; fixes the empty Applications page when systemd starts the service with a working directory other than the ORCHIX root
+- **cli/service_manager.py: systemd WorkingDirectory** — added `WorkingDirectory=<INSTALL_DIR>` to the generated systemd unit file; ensures all relative paths inside the service resolve correctly
+- **cli/service_manager.py: sg docker wrapper** — the systemd service now executes through a `.orchix_launcher.sh` wrapper that applies `sg docker` so the web process always has Docker socket access even when the user was just added to the docker group
+- **utils/system.py: docker info with timeout** — changed `docker version` to `docker info` with `timeout=5`; fixes Docker Engine showing as "Stopped" in the dashboard when the daemon is running but slow to respond
 
 ### Documentation
-- **README.md**: fixed 6 wrong default ports, added `service uninstall` command, simplified run commands to plain `orchix` / `orchix --web`, fixed password reset path
-- **DOCUMENTATION.md**: full overhaul — fixed platform info, CLI launch commands, Web UI commands, password reset paths, removed outdated `pip install` troubleshooting, replaced wrong Systemd/Task Scheduler sections with correct `orchix service enable/disable`, corrected Environment Variables section (removed non-existent `WEB_PORT`/`WEB_HOST`/`LICENSE_SIGNING_SECRET`)
+- **README.md**: fixed 6 wrong default ports, added `service uninstall` command, simplified run commands to plain `orchix` / `orchix --web`, fixed password reset path, added `orchix reset-password` command
+- **DOCUMENTATION.md**: full overhaul — fixed platform info, CLI launch commands, Web UI commands, password reset paths, removed outdated `pip install` troubleshooting, replaced wrong Systemd/Task Scheduler sections with correct `orchix service enable/disable`, corrected Environment Variables section (removed non-existent `WEB_PORT`/`WEB_HOST`/`LICENSE_SIGNING_SECRET`), added `orchix reset-password` command
 - **CHANGELOG.md**: extracted from `DOCUMENTATION.md` into its own file
 
 ---
