@@ -115,7 +115,7 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 - **Docker** (auto-installed via setup menu if missing)
 - **RAM** 4 GB minimum (8 GB recommended)
 - **Storage** 20 GB free
-- **OS** Ubuntu 20.04+, Debian 11+, Windows 10/11 with WSL2
+- **OS** Ubuntu 20.04+, Debian 11+, Windows 10/11
 
 ### Windows (PowerShell)
 
@@ -155,13 +155,13 @@ Access at `http://localhost:5000` — terminal can be closed.
 
 ### Run directly (terminal stays open)
 
-```powershell
-orchix.ps1 --web              # Windows – Web UI port 5000
-orchix.ps1 --web --port 8080  # Windows – custom port
-./orchix.sh --web             # Linux – Web UI port 5000
-orchix.ps1                    # Windows – CLI
-./orchix.sh                   # Linux – CLI
+```bash
+orchix                    # CLI
+orchix --web              # Web UI on port 5000
+orchix --web --port 8080  # Web UI on custom port
 ```
+
+> On Linux, if `/usr/local/bin` is not writable, use `./orchix.sh` instead of `orchix`.
 
 ### Uninstall
 
@@ -231,15 +231,15 @@ ORCHIX/
 | n8n | 5678 |
 | PostgreSQL | 5432 |
 | Redis | 6379 |
-| Nginx Proxy Manager | 8080, 8443, 81 |
-| Vaultwarden | 8001 |
+| Nginx Proxy Manager | 8080, 8081, 8443 |
+| Vaultwarden | 8080 |
 | Grafana | 3000 |
 | Jellyfin | 8096 |
-| Nextcloud | 8090 |
+| Nextcloud | 8085 |
 | WordPress | 8080 |
-| Gitea | 3001 |
-| Uptime Kuma | 3002 |
-| Stirling PDF | 8082 |
+| Gitea | 3000, 2222 (SSH) |
+| Uptime Kuma | 3001 |
+| Stirling PDF | 8080 |
 
 All ports are configurable during installation.
 
