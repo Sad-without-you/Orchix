@@ -1,8 +1,9 @@
 # ORCHIX Changelog
 
-## v1.6 (2026-03-01)
+## v1.5 (in progress)
 
-### New Features
+### New Commands
+- **`orchix reset-password`** — resets the admin password when no user has ever logged in; safely refuses (with a clear message) if anyone has already authenticated; generates and displays a new random password in the credentials box
 - **`orchix service restart`** — restarts the ORCHIX Web UI background service (CLI + Windows/Linux)
 
 ### Backup & Restore
@@ -19,17 +20,8 @@
 - **Stop/start in generic backup** — `_generic_volume_backup()` stops the container before archiving and restarts via `docker compose up -d` after
 - **Compose-aware restore** — `_restore_container_volumes()` uses `_start_container()` (prefers `docker compose up -d`) instead of plain `docker start`
 - **Always restore existing containers** — import no longer skips containers that already exist; if the container is present, only the creation step is skipped and data is still restored
-
-### Bug Fixes
-- **`docker-compose -f` path in import** — `docker compose -f` now receives the full absolute path to the compose file
+- **`docker compose -f` path in import** — `docker compose -f` now receives the full absolute path to the compose file
 - **`compose_dst` path in import** — compose file is now copied to `_ORCHIX_ROOT / compose_file` instead of a relative `Path(compose_file)`
-
----
-
-## v1.5 (in progress)
-
-### New Commands
-- **`orchix reset-password`** — resets the admin password when no user has ever logged in; safely refuses (with a clear message) if anyone has already authenticated; generates and displays a new random password in the credentials box
 
 ### Bug Fixes
 - **Config directory inconsistency fixed** — `orchix_configs` (no dot) and `.orchix_configs` (with dot) were used inconsistently across components; now unified to `~/.orchix_configs/` everywhere
