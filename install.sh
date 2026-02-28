@@ -186,21 +186,23 @@ box_bottom "$GRN"
 echo ""
 
 # ── Optional: Start Web UI as background service ──────────────────────────────
-# When run via `curl | bash`, bash's stdin is the pipe — we must redirect each
-# `read` from /dev/tty so the terminal answers the prompts, not the script text.
-# All Python subprocesses get </dev/null so they cannot consume pipe bytes.
+# curl | bash: bash's stdin is the pipe, so `read` must use /dev/tty.
+# `if read ...` is exempt from `set -e` even on EOF — safest pattern.
+# All Python subprocesses get </dev/null + || true so they can't kill the script.
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
-read -r start_now </dev/tty 2>/dev/null || start_now=""
-if [[ ! "$start_now" =~ ^[Nn] ]]; then
-    "$PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null
-    "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null
+if read -r start_now </dev/tty 2>/dev/null; then
+    if [[ ! "$start_now" =~ ^[Nn] ]]; then
+        "$PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
+        "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
+    fi
 fi
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
-read -r auto_start </dev/tty 2>/dev/null || auto_start=""
-if [[ ! "$auto_start" =~ ^[Nn] ]]; then
-    "$PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null
-    echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
+if read -r auto_start </dev/tty 2>/dev/null; then
+    if [[ ! "$auto_start" =~ ^[Nn] ]]; then
+        "$PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null || true
+        echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
+    fi
 fi
 echo ""
