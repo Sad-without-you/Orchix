@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/static/favicon.svg?v=1.3" width="80" height="80" alt="ORCHIX">
+  <img src="web/static/favicon.svg?v=1.4" width="80" height="80" alt="ORCHIX">
 </p>
 
 <h1 align="center">ORCHIX</h1>
@@ -135,18 +135,20 @@ curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.
 
 ```bash
 # Windows
-orchix.ps1 service start    # Start Web UI in background
-orchix.ps1 service stop     # Stop
-orchix.ps1 service status   # Check if running
-orchix.ps1 service enable   # Enable autostart on login
-orchix.ps1 service disable  # Disable autostart
+orchix.ps1 service start      # Start Web UI in background
+orchix.ps1 service stop       # Stop
+orchix.ps1 service status     # Check if running
+orchix.ps1 service enable     # Enable autostart on login (Registry)
+orchix.ps1 service disable    # Disable autostart
+orchix.ps1 service uninstall  # Remove service entries (not the ORCHIX folder)
 
 # Linux
 orchix service start
 orchix service stop
 orchix service status
-orchix service enable       # Autostart via systemd
+orchix service enable         # Enable autostart via systemd user service
 orchix service disable
+orchix service uninstall      # Remove service entries (not the ORCHIX folder)
 ```
 
 Access at `http://localhost:5000` — terminal can be closed.

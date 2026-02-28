@@ -5,6 +5,9 @@
 # CRITICAL - Private Website (runs on server, not open source)
 website-orchix/
 
+# CRITICAL - Private deployment notes (contain server IPs, paths)
+VPS_DEPLOYMENT.md
+
 # CRITICAL - Private Installers & Planning
 installers/
 docs/

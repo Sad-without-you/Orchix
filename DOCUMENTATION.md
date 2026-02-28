@@ -1,10 +1,10 @@
 # ORCHIX - Complete Documentation
 
 <p align="center">
-  <img src="web/static/favicon.svg?v=1.3" width="100" height="100" alt="ORCHIX Logo">
+  <img src="web/static/favicon.svg?v=1.4" width="100" height="100" alt="ORCHIX Logo">
 </p>
 
-**Version:** 1.3
+**Version:** 1.4
 **License:** Commercial (€29/month)
 **Platform:** Linux, Windows (WSL2 / native)
 
@@ -106,7 +106,7 @@ The Web UI can run as a background service — no terminal needs to stay open.
 orchix.ps1 service start    # Start Web UI in background
 orchix.ps1 service stop     # Stop
 orchix.ps1 service status   # Check if running (shows PID)
-orchix.ps1 service enable   # Enable autostart on login (Task Scheduler)
+orchix.ps1 service enable   # Enable autostart on login (Registry)
 orchix.ps1 service disable  # Disable autostart
 orchix.ps1 service uninstall  # Remove service entries only
 
