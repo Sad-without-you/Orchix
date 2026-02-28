@@ -46,7 +46,7 @@ class LicenseKeyValidator:
         try:
             resp = requests.post(
                 f'{_SERVER}/api/v1/validate',
-                json={'license_key': key, 'orchix_version': '1.4''},
+                json={'license_key': key, 'orchix_version': '1.4'},
                 timeout=_TIMEOUT,
             )
             data = resp.json()
