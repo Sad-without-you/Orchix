@@ -1,4 +1,4 @@
- ============================================================
+# ============================================================
 # ORCHIX v1.4 - Windows PowerShell Installer
 # ============================================================
 # Run with: irm https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.ps1 | iex
