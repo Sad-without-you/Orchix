@@ -32,7 +32,7 @@ function Write-StepFinal($msg) {
     Write-Host $msg -ForegroundColor DarkGreen
 }
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 
 Clear-Host
 Write-Host ""
@@ -99,9 +99,11 @@ Write-Step "Removing ORCHIX installation..."
 Write-Host "  │" -ForegroundColor $C
 $removeDir = Read-Host "  │     Delete $ScriptDir? [y/N]"
 if ($removeDir -match '^[Yy]') {
-    # Schedule deletion after this process exits
-    $cmd = "Start-Sleep 2; Remove-Item -Recurse -Force '$ScriptDir'"
-    Start-Process powershell -ArgumentList "-WindowStyle Hidden -Command $cmd" -WindowStyle Hidden
+    # Write a temp script and run it after this process exits (reliable for paths with spaces)
+    $tmp = [System.IO.Path]::Combine($env:TEMP, "orchix_rm_$(Get-Random).ps1")
+    $escaped = $ScriptDir -replace "'", "''"
+    "Start-Sleep 3`nRemove-Item -LiteralPath '$escaped' -Recurse -Force -ErrorAction SilentlyContinue`nRemove-Item -LiteralPath `$MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue" | Set-Content $tmp -Encoding UTF8
+    Start-Process powershell -ArgumentList "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$tmp`"" -WindowStyle Hidden
     Write-StepFinal "ORCHIX will be removed in a moment"
 } else {
     Write-StepFinal "Skipped (directory kept)"

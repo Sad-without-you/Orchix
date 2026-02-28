@@ -312,9 +312,6 @@ For security issues: security@orchix.dev
 - Linux: `sudo python3 main.py` or add user to docker group
 - Windows: Run PowerShell as Administrator
 
-**Module not found:**
-- `pip install -r requirements.txt --upgrade`
-
 **Web UI password reset:**
 - Delete `~/.orchix_web_users.json` and restart (a new admin user with random password will be created)
 
