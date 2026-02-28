@@ -164,7 +164,7 @@ def _activate_pro_license():
     show_panel("Activate PRO License", "Enter your license key")
     
     print()
-    show_info("Purchase a license key at: https://orchix.dev/pricing")
+    show_info("Purchase a license key at: https://www.orchix.dev/#pricing")
     print()
     
     license_key = input("Enter license key (or 'cancel' to abort): ").strip()

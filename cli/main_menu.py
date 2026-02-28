@@ -204,7 +204,7 @@ def _show_upgrade_prompt(feature_name):
 
     # Add pricing
     table.add_row(f"[bold cyan]{PRICING['currency']}{PRICING['monthly']}/{PRICING['billing']}[/bold cyan]")
-    table.add_row("[dim]https://orchix.dev/pricing[/dim]")
+    table.add_row("[dim]https://www.orchix.dev/#pricing[/dim]")
     
     console.print(table)
     print()

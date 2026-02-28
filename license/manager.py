@@ -52,7 +52,10 @@ class LicenseManager:
                                 return 'FREE', None, None
                             # Update expiry from server response if available
                             if result.get('expires'):
-                                expiry_date = result['expires']
+                                try:
+                                    expiry_date = datetime.fromisoformat(result['expires'])
+                                except Exception:
+                                    pass
 
                         # Check local expiry as fallback
                         if tier == 'PRO' and expiry_date:
@@ -119,7 +122,7 @@ class LicenseManager:
             license_data = {
                 'tier': 'PRO',
                 'key': license_key,
-                'expiry': result['expires'].isoformat() if result.get('expires') else None,
+                'expiry': result['expires'] if result.get('expires') else None,
                 'activated': datetime.now().isoformat(),
                 'last_validated': datetime.now().isoformat()
             }
@@ -137,7 +140,10 @@ class LicenseManager:
 
             self.tier = 'PRO'
             self.license_key = license_key
-            self.expiry_date = result.get('expires')
+            try:
+                self.expiry_date = datetime.fromisoformat(result['expires']) if result.get('expires') else None
+            except Exception:
+                self.expiry_date = None
             self.clear_managed_containers()
             return True
         except Exception as e:
