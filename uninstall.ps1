@@ -33,8 +33,9 @@ function Write-StepFinal($msg) {
 }
 
 $ScriptDir = $PSScriptRoot
+if (-not $ScriptDir) { $ScriptDir = Split-Path -Parent $PSCommandPath }
 if (-not $ScriptDir -and $MyInvocation.MyCommand.Path) { $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
-if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
+if (-not $ScriptDir) { $ScriptDir = $PWD.Path }
 
 Clear-Host
 Write-Host ""
@@ -85,7 +86,8 @@ Write-Step "Config & data files..."
 $configDir = "$env:USERPROFILE\.orchix_configs"
 if (Test-Path $configDir) {
     Write-Host "  │" -ForegroundColor $C
-    $removeConfig = Read-Host "  │     Remove config/data at $configDir? [y/N]"
+    Write-Host "  │     Remove config/data at '$configDir'? [y/N] " -NoNewline -ForegroundColor $W
+    $removeConfig = Read-Host
     if ($removeConfig -match '^[Yy]') {
         Remove-Item $configDir -Recurse -Force -ErrorAction SilentlyContinue
         Write-StepOK "Config directory removed"
@@ -99,13 +101,11 @@ if (Test-Path $configDir) {
 # ── 4. Remove ORCHIX directory ────────────────────────────────────────────────
 Write-Step "Removing ORCHIX installation..."
 Write-Host "  │" -ForegroundColor $C
-$removeDir = Read-Host "  │     Delete $ScriptDir? [y/N]"
+Write-Host "  │     Delete '$ScriptDir'? [y/N] " -NoNewline -ForegroundColor $W
+$removeDir = Read-Host
 if ($removeDir -match '^[Yy]') {
-    # Write a temp script and run it after this process exits (reliable for paths with spaces)
-    $tmp = [System.IO.Path]::Combine($env:TEMP, "orchix_rm_$(Get-Random).ps1")
-    $escaped = $ScriptDir -replace "'", "''"
-    "Start-Sleep 3`nRemove-Item -LiteralPath '$escaped' -Recurse -Force -ErrorAction SilentlyContinue`nRemove-Item -LiteralPath `$MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue" | Set-Content $tmp -Encoding UTF8
-    Start-Process powershell -ArgumentList "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$tmp`"" -WindowStyle Hidden
+    # Use cmd.exe for deletion — runs after this process exits, no PS execution policy issues
+    Start-Process cmd -ArgumentList "/c timeout /t 3 /nobreak >NUL & rd /s /q `"$ScriptDir`"" -WindowStyle Hidden
     Write-StepFinal "ORCHIX will be removed in a moment"
 } else {
     Write-StepFinal "Skipped (directory kept)"
