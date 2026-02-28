@@ -151,11 +151,12 @@ def check_docker():
     # Check if running
     try:
         result = subprocess.run(
-            ['docker', 'version'],
+            ['docker', 'info'],
             capture_output=True,
             text=True,
             encoding='utf-8',
-            errors='ignore'
+            errors='ignore',
+            timeout=5
         )
         running = result.returncode == 0
     except Exception:

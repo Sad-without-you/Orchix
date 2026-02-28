@@ -5,7 +5,7 @@ from pathlib import Path
 
 def _load_templates():
     '''Load all apps from templates.json and build synthetic manifests.'''
-    templates_file = Path('apps') / 'templates.json'
+    templates_file = Path(__file__).parent / 'templates.json'
     if not templates_file.exists():
         return {}
 

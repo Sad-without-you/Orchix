@@ -94,13 +94,25 @@ def _ensure_systemd_unit():
     main = _get_main()
     log = str(LOG_FILE)
 
+    # Wrapper script: activates docker group via `sg` so the web process can
+    # reach the Docker socket even when the systemd user session was started
+    # before the user was added to the docker group.
+    wrapper = INSTALL_DIR / '.orchix_launcher.sh'
+    wrapper.write_text(
+        f'#!/bin/bash\n'
+        f'exec sg docker -c \'"{python}" "{main}" --web\' 2>/dev/null || '
+        f'exec "{python}" "{main}" --web\n'
+    )
+    wrapper.chmod(0o755)
+
     content = f"""[Unit]
 Description=ORCHIX Web UI
 After=network.target
 
 [Service]
 Type=simple
-ExecStart={python} {main} --web
+ExecStart=/bin/bash {wrapper}
+WorkingDirectory={INSTALL_DIR}
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:{log}
