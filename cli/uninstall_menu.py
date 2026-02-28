@@ -134,13 +134,7 @@ def uninstall_container(container_name):
         for config_file in config_dir.glob(f"{container_name}*"):
             files_to_delete.append(str(config_file))
     
-    # 3. Backup files related to container
-    backup_dir = Path(__file__).parent.parent / 'backups'
-    if backup_dir.exists():
-        for backup_file in backup_dir.glob(f"*{container_name}*"):
-            files_to_delete.append(str(backup_file))
-    
-    # 4. Temp files in various locations
+    # 3. Temp files in various locations
     temp_patterns = [
         Path("tmp") / f"{container_name}*",
         Path(".temp") / f"{container_name}*",
@@ -287,21 +281,7 @@ def uninstall_container(container_name):
                 except Exception as e:
                     removal_details['errors'].append(f"Config removal {config_file.name}: {str(e)}")
 
-        # 4. Remove backup files
-        backup_dir = Path(__file__).parent.parent / 'backups'
-        if backup_dir.exists():
-            for backup_file in backup_dir.glob(f"*{container_name}*"):
-                try:
-                    if backup_file.is_file():
-                        backup_file.unlink()
-                        removal_details['files_removed'].append(str(backup_file))
-                    elif backup_file.is_dir():
-                        shutil.rmtree(backup_file)
-                        removal_details['files_removed'].append(str(backup_file))
-                except Exception as e:
-                    removal_details['errors'].append(f"Backup removal {backup_file.name}: {str(e)}")
-
-        # 5. Remove temp files
+        # 4. Remove temp files
         temp_patterns = [
             (Path("tmp"), f"{container_name}*"),
             (Path(".temp"), f"{container_name}*"),

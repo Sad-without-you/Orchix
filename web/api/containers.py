@@ -380,7 +380,7 @@ def uninstall_container(name):
                 if r and r.returncode == 0:
                     removal_details['volumes_removed'].append(vol)
 
-    # 3. Remove compose file, Dockerfile, config, backup files
+    # 3. Remove compose file, Dockerfile, config files (backups are kept intentionally)
     for path in [compose_file, f"Dockerfile-{name}"]:
         if os.path.exists(path):
             try:
@@ -389,7 +389,7 @@ def uninstall_container(name):
             except Exception:
                 pass
 
-    for dir_path, pattern in [("config", f"{name}*"), ("backups", f"*{name}*")]:
+    for dir_path, pattern in [("config", f"{name}*")]:
         d = Path(dir_path)
         if d.exists():
             for f in d.glob(pattern):
@@ -512,7 +512,7 @@ def uninstall_container_stream(name):
                     except Exception:
                         pass
 
-            for dir_path, pattern in [("config", f"{validated_name}*"), ("backups", f"*{validated_name}*")]:
+            for dir_path, pattern in [("config", f"{validated_name}*")]:
                 d = Path(dir_path)
                 if d.exists():
                     for f in d.glob(pattern):
