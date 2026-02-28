@@ -27,7 +27,7 @@ box_line() {
     local pad=$(( BW - ${#text} ))
     printf "  ${color}║${NC}%s%${pad}s${color}║${NC}\n" "$text" ""
 }
-box_top()    { local c="${1:-$CYN}"; printf "  ${c}╔%0.s═%.0s${NC}\n" $(seq 1 $BW) | head -c $((BW+4)); echo -e "  ${c}╔$(printf '═%.0s' $(seq 1 $BW))╗${NC}"; }
+box_top()    { local c="${1:-$CYN}"; echo -e "  ${c}╔$(printf '═%.0s' $(seq 1 $BW))╗${NC}"; }
 box_bottom() { local c="${1:-$CYN}"; echo -e "  ${c}╚$(printf '═%.0s' $(seq 1 $BW))╝${NC}"; }
 
 step()      { echo -e "  ${CYN}│${NC}"; echo -e "  ${CYN}├─${NC} $1"; }
@@ -116,7 +116,19 @@ fi
 # ── 3. Virtual environment ───────────────────────────────────
 step "Creating Python virtual environment..."
 if [ ! -d ".venv" ]; then
-    $PYTHON -m venv .venv
+    if ! $PYTHON -m venv .venv 2>/dev/null; then
+        echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
+        PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
+        if command -v apt-get &>/dev/null; then
+            sudo apt-get install -y "python3.${PYMINOR}-venv" -q 2>/dev/null || \
+            sudo apt-get install -y python3-venv -q 2>/dev/null || true
+        elif command -v dnf &>/dev/null; then
+            sudo dnf install -y python3-venv -q 2>/dev/null || true
+        elif command -v pacman &>/dev/null; then
+            sudo pacman -S --noconfirm python-virtualenv 2>/dev/null || true
+        fi
+        $PYTHON -m venv .venv || fail "Failed to create virtual environment. Run: sudo apt install python3.${PYMINOR}-venv"
+    fi
 fi
 step_ok ".venv ready"
 
