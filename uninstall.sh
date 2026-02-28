@@ -87,8 +87,9 @@ printf "  ${CYN}│${NC}     Delete $SCRIPT_DIR? [y/N]: "
 read -r remove_dir
 if [[ "$remove_dir" =~ ^[Yy] ]]; then
     # Can't delete the running script's dir directly — schedule removal
+    # Use sudo fallback for files owned by root (__pycache__ from service runs)
     echo -e "  ${CYN}│${NC}     Scheduling removal..."
-    (sleep 1 && rm -rf "$SCRIPT_DIR") &
+    (sleep 1 && rm -rf "$SCRIPT_DIR" 2>/dev/null || sudo rm -rf "$SCRIPT_DIR") &
     step_end "ORCHIX will be removed in a moment"
 else
     step_end "Skipped (directory kept)"
