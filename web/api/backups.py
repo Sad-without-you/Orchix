@@ -7,6 +7,9 @@ from utils.validation import validate_filename, validate_container_name
 
 bp = Blueprint('api_backups', __name__, url_prefix='/api')
 BACKUP_DIR = Path(__file__).parent.parent.parent / 'backups'
+# Create the directory now (as the web-server user) so Docker never creates it as root,
+# which would prevent Python from writing .meta files alongside the .tar.gz archives.
+BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _get_meta_path(backup_path: Path) -> Path:
@@ -265,26 +268,37 @@ def restore_backup():
 
     # Read metadata
     meta_file = _get_meta_path(backup_file)
-    if not meta_file.exists():
-        return jsonify({'success': False, 'message': 'Metadata file not found'}), 404
-
     container_name = None
     app_type = None
-    try:
-        lines = meta_file.read_text().splitlines()
-        for line in lines:
-            if ':' in line:
-                key, val = line.split(':', 1)
-                key = key.strip().lower()
-                if key == 'container':
-                    container_name = val.strip()
-                elif key in ('type', 'app_type'):
-                    app_type = val.strip()
-    except Exception:
-        return jsonify({'success': False, 'message': 'Cannot read metadata'}), 500
+    if meta_file.exists():
+        try:
+            lines = meta_file.read_text().splitlines()
+            for line in lines:
+                if ':' in line:
+                    key, val = line.split(':', 1)
+                    key = key.strip().lower()
+                    if key == 'container':
+                        container_name = val.strip()
+                    elif key in ('type', 'app_type'):
+                        app_type = val.strip()
+        except Exception:
+            pass
 
     if not container_name:
-        return jsonify({'success': False, 'message': 'No container info in metadata'}), 400
+        # Fallback: infer container name from filename pattern: {name}_{YYYYMMDD}_{HHMMSS}.ext
+        name = backup_file.name
+        for ext in ('.tar.gz', '.zip', '.sql', '.rdb'):
+            if name.endswith(ext):
+                stem = name[:-len(ext)]
+                break
+        else:
+            stem = backup_file.stem
+        parts = stem.rsplit('_', 2)
+        if len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
+            container_name = parts[0]
+
+    if not container_name:
+        return jsonify({'success': False, 'message': 'Cannot determine container — metadata file missing and filename does not match expected pattern'}), 400
 
     from apps.manifest_loader import load_all_manifests
     from apps.hook_loader import get_hook_loader

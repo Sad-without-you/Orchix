@@ -135,7 +135,7 @@ def uninstall_container(container_name):
             files_to_delete.append(str(config_file))
     
     # 3. Backup files related to container
-    backup_dir = Path("backups")
+    backup_dir = Path(__file__).parent.parent / 'backups'
     if backup_dir.exists():
         for backup_file in backup_dir.glob(f"*{container_name}*"):
             files_to_delete.append(str(backup_file))
@@ -288,7 +288,7 @@ def uninstall_container(container_name):
                     removal_details['errors'].append(f"Config removal {config_file.name}: {str(e)}")
 
         # 4. Remove backup files
-        backup_dir = Path("backups")
+        backup_dir = Path(__file__).parent.parent / 'backups'
         if backup_dir.exists():
             for backup_file in backup_dir.glob(f"*{container_name}*"):
                 try:

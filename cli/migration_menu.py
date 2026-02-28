@@ -13,11 +13,12 @@ from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 
 console = Console()
 
-# Migration directory
-MIGRATION_DIR = Path('migrations')
+# Migration/backup directories — absolute paths so CLI and Web UI share the same folders
+_ORCHIX_ROOT = Path(__file__).parent.parent
+MIGRATION_DIR = _ORCHIX_ROOT / 'migrations'
 MIGRATION_DIR.mkdir(exist_ok=True)
 
-BACKUP_DIR = Path('backups')
+BACKUP_DIR = _ORCHIX_ROOT / 'backups'
 
 
 def show_migration_menu():

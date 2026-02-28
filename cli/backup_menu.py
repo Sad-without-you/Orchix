@@ -9,8 +9,8 @@ from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 
 console = Console()
 
-# Backup directory
-BACKUP_DIR = Path('backups')
+# Backup directory — absolute path so CLI and Web UI always share the same folder
+BACKUP_DIR = Path(__file__).parent.parent / 'backups'
 BACKUP_DIR.mkdir(exist_ok=True)
 
 
