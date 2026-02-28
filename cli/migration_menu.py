@@ -86,31 +86,13 @@ def show_migration_menu():
 
 
 def get_all_orchix_containers():
-    '''Get all running ORCHIX-managed containers'''
-
-    try:
-        result = subprocess.run(
-            ['docker', 'ps', '-a', '--format', '{{.Names}}'],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            errors='ignore'
-        )
-    except FileNotFoundError:
-        return []
-
-    if result.returncode != 0:
-        return []
-    
-    containers = [c for c in result.stdout.split('\n') if c]
-    
-    # Filter ORCHIX containers (those with compose files)
+    '''Get all ORCHIX-managed containers by scanning compose files in ORCHIX root'''
     orchix_containers = []
-    for container in containers:
-        compose_file = Path(f'docker-compose-{container}.yml')
-        if compose_file.exists():
-            orchix_containers.append(container)
-    
+    for compose_file in sorted(_ORCHIX_ROOT.glob('docker-compose-*.yml')):
+        # docker-compose-n8n.yml → n8n
+        name = compose_file.name[len('docker-compose-'):-len('.yml')]
+        if name:
+            orchix_containers.append(name)
     return orchix_containers
 
 
@@ -296,7 +278,7 @@ def export_migration_package():
 
             # Copy compose file
             progress.update(main_task, completed=idx * 100 + 30, description=f"Copying {container} files...")
-            compose_src = Path(f'docker-compose-{container}.yml')
+            compose_src = _ORCHIX_ROOT / f'docker-compose-{container}.yml'
             if compose_src.exists():
                 compose_dst = package_dir / compose_src.name
                 shutil.copy2(compose_src, compose_dst)
@@ -483,9 +465,23 @@ def _create_container_backup(container_name, output_dir, force_windows=None):
     return latest_backup.name
 
 
+def _start_container(container_name: str):
+    """Start container via compose if available, else via docker start."""
+    compose_file = _ORCHIX_ROOT / f'docker-compose-{container_name}.yml'
+    if compose_file.exists():
+        subprocess.run(
+            ['docker', 'compose', '-f', str(compose_file), 'up', '-d'],
+            capture_output=True
+        )
+    else:
+        subprocess.run(['docker', 'start', container_name], capture_output=True)
+
+
 def _generic_volume_backup(container_name, output_dir):
     """Generic backup: export all Docker volumes of a container."""
     from utils.docker_utils import safe_docker_run
+
+    subprocess.run(['docker', 'stop', container_name], capture_output=True)
 
     # Get volumes mounted on the container
     result = safe_docker_run(
@@ -535,7 +531,9 @@ def _generic_volume_backup(container_name, output_dir):
     if not alpine_existed:
         subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
 
-    return result is not None and result.returncode == 0
+    success = result is not None and result.returncode == 0
+    _start_container(container_name)
+    return success
 
 
 def _restore_container_volumes(container_name, backup_path):
@@ -607,7 +605,7 @@ def _restore_container_volumes(container_name, backup_path):
     if not alpine_existed:
         subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
 
-    subprocess.run(['docker', 'start', container_name], capture_output=True)
+    _start_container(container_name)
     return success
 
 
@@ -804,37 +802,35 @@ def import_migration_package():
                 errors='ignore'
             )
 
-            if container_name in result.stdout:
-                progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} already exists - skipped")
-                continue
+            container_exists = container_name in result.stdout
 
-            # Copy compose file
-            progress.update(main_task, completed=idx * 100 + 20, description=f"Installing {container_name}...")
             compose_file = container_data.get('compose_file')
-            if compose_file:
-                compose_src = extract_dir / compose_file
-                compose_dst = Path(compose_file)
 
-                if compose_src.exists():
-                    shutil.copy2(compose_src, compose_dst)
+            if not container_exists:
+                # Copy compose file and create container from scratch
+                progress.update(main_task, completed=idx * 100 + 20, description=f"Installing {container_name}...")
+                if compose_file:
+                    compose_src = extract_dir / compose_file
+                    compose_dst = _ORCHIX_ROOT / compose_file
+                    if compose_src.exists():
+                        shutil.copy2(compose_src, compose_dst)
 
-            # Deploy container
-            progress.update(main_task, completed=idx * 100 + 40, description=f"Starting {container_name}...")
-            result = subprocess.run(
-                ['docker', 'compose', '-f', compose_file, 'up', '-d'],
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                errors='ignore'
-            )
+                progress.update(main_task, completed=idx * 100 + 40, description=f"Starting {container_name}...")
+                start_result = subprocess.run(
+                    ['docker', 'compose', '-f', str(_ORCHIX_ROOT / compose_file), 'up', '-d'],
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='ignore'
+                )
 
-            if result.returncode != 0:
-                progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} failed to start")
-                continue
+                if start_result.returncode != 0:
+                    progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} failed to start")
+                    continue
 
-            # Wait for container to be ready
-            progress.update(main_task, completed=idx * 100 + 60, description=f"Initializing {container_name}...")
-            _wait_for_container_ready(container_name)
+                # Wait for container to be ready before restoring
+                progress.update(main_task, completed=idx * 100 + 60, description=f"Initializing {container_name}...")
+                _wait_for_container_ready(container_name)
 
             # Restore backup using hooks
             progress.update(main_task, completed=idx * 100 + 80, description=f"Restoring {container_name}...")
