@@ -104,8 +104,9 @@ Write-Host "  │" -ForegroundColor $C
 Write-Host "  │     Delete '$ScriptDir'? [y/N] " -NoNewline -ForegroundColor $W
 $removeDir = Read-Host
 if ($removeDir -match '^[Yy]') {
-    # Use cmd.exe for deletion — runs after this process exits, no PS execution policy issues
-    Start-Process cmd -ArgumentList "/c timeout /t 3 /nobreak >NUL & rd /s /q `"$ScriptDir`"" -WindowStyle Hidden
+    # Move out of the ORCHIX folder first — otherwise Windows locks the root dir (CWD)
+    Set-Location $env:TEMP
+    Start-Process cmd -ArgumentList "/c timeout /t 2 /nobreak >NUL & rd /s /q `"$ScriptDir`"" -WindowStyle Hidden
     Write-StepFinal "ORCHIX will be removed in a moment"
 } else {
     Write-StepFinal "Skipped (directory kept)"
