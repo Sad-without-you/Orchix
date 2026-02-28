@@ -313,7 +313,7 @@ For security issues: security@orchix.dev
 - Windows: Run PowerShell as Administrator
 
 **Web UI password reset:**
-- Delete `~/.orchix_web_users.json` and restart (a new admin user with random password will be created)
+- Delete `~/.orchix_configs/.orchix_web_users.json` and restart (a new admin user with random password will be created)
 
 ---
 
