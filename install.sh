@@ -5,6 +5,12 @@
 # Run with: curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.sh | bash
 # ============================================================
 
+# ── curl|bash guard ──────────────────────────────────────────────────────────
+# When piped (curl | bash), bash reads the script from stdin, so `read`
+# commands have no terminal to read from. Fix: save the rest of the script to
+# a temp file and re-exec it with /dev/tty as stdin.
+[ -t 0 ] || { _T=$(mktemp /tmp/orchix_XXXXXX.sh); cat > "$_T"; exec bash "$_T" </dev/tty 2>/dev/null || exec bash "$_T"; exit; }
+
 set -e
 
 ORCHIX_VERSION="v1.4"
@@ -186,23 +192,18 @@ box_bottom "$GRN"
 echo ""
 
 # ── Optional: Start Web UI as background service ──────────────────────────────
-# curl | bash: bash's stdin is the pipe, so `read` must use /dev/tty.
-# `if read ...` is exempt from `set -e` even on EOF — safest pattern.
-# All Python subprocesses get </dev/null + || true so they can't kill the script.
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
-if read -r start_now </dev/tty 2>/dev/null; then
-    if [[ ! "$start_now" =~ ^[Nn] ]]; then
-        "$PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
-        "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
-    fi
+read -r start_now || start_now=""
+if [[ ! "$start_now" =~ ^[Nn] ]]; then
+    "$PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
+    "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
 fi
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
-if read -r auto_start </dev/tty 2>/dev/null; then
-    if [[ ! "$auto_start" =~ ^[Nn] ]]; then
-        "$PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null || true
-        echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
-    fi
+read -r auto_start || auto_start=""
+if [[ ! "$auto_start" =~ ^[Nn] ]]; then
+    "$PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null || true
+    echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
 fi
 echo ""
