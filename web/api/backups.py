@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -5,8 +6,9 @@ from flask import Blueprint, jsonify, request
 from web.auth import require_permission
 from utils.validation import validate_filename, validate_container_name
 
+_ORCHIX_ROOT = Path(__file__).parent.parent.parent
 bp = Blueprint('api_backups', __name__, url_prefix='/api')
-BACKUP_DIR = Path(__file__).parent.parent.parent / 'backups'
+BACKUP_DIR = _ORCHIX_ROOT / 'backups'
 # Create the directory now (as the web-server user) so Docker never creates it as root,
 # which would prevent Python from writing .meta files alongside the .tar.gz archives.
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -21,9 +23,30 @@ def _get_meta_path(backup_path: Path) -> Path:
     return backup_path.with_suffix('.meta')
 
 
+def _get_compose_sidecar_path(backup_path: Path) -> Path:
+    """Return the path for the backed-up compose file: {backup_stem}.compose.yml"""
+    name = backup_path.name
+    for ext in ('.tar.gz', '.zip', '.sql', '.rdb'):
+        if name.endswith(ext):
+            stem = name[:-len(ext)]
+            return backup_path.parent / f"{stem}.compose.yml"
+    return backup_path.with_suffix('.compose.yml')
+
+
 def _alpine_image_exists() -> bool:
     return subprocess.run(['docker', 'image', 'inspect', 'alpine'],
                          capture_output=True).returncode == 0
+
+
+def _start_container(container_name: str, compose_file: Path):
+    """Start container via compose if available (preserves env vars), else via docker start."""
+    if compose_file.exists():
+        subprocess.run(
+            ['docker', 'compose', '-f', str(compose_file), 'up', '-d'],
+            capture_output=True
+        )
+    else:
+        subprocess.run(['docker', 'start', container_name], capture_output=True)
 
 
 def _generic_volume_backup(container_name: str) -> bool:
@@ -71,12 +94,19 @@ def _generic_volume_backup(container_name: str) -> bool:
         if br.returncode != 0:
             return False
 
+        # Write meta file
         meta_path = _get_meta_path(BACKUP_DIR / backup_name)
         with open(meta_path, 'w') as f:
             f.write(f"container: {container_name}\n")
             f.write(f"app_type: generic\n")
             f.write(f"created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"volume: {volume_name}\n")
+
+        # Also back up the compose file so restore can recreate the container exactly
+        compose_src = _ORCHIX_ROOT / f"docker-compose-{container_name}.yml"
+        if compose_src.exists():
+            shutil.copy2(compose_src, _get_compose_sidecar_path(BACKUP_DIR / backup_name))
+
         return True
     except Exception:
         return False
@@ -109,8 +139,17 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
         backup_dir_abs = str(BACKUP_DIR.resolve())
         backup_name = backup_file.name
         alpine_existed = _alpine_image_exists()
+
+        # Stop container before modifying its volume
         subprocess.run(['docker', 'stop', container_name], capture_output=True)
 
+        # Restore compose file from sidecar so the container config (env vars, ports) matches
+        compose_sidecar = _get_compose_sidecar_path(backup_file)
+        compose_dest = _ORCHIX_ROOT / f"docker-compose-{container_name}.yml"
+        if compose_sidecar.exists():
+            shutil.copy2(compose_sidecar, compose_dest)
+
+        # Restore volume data
         if backup_name.endswith('.zip'):
             rr = subprocess.run(
                 ['docker', 'run', '--rm',
@@ -130,14 +169,18 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
                 capture_output=True, text=True
             )
         else:
-            subprocess.run(['docker', 'start', container_name], capture_output=True)
+            _start_container(container_name, compose_dest)
             return False
 
         if not alpine_existed:
             subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
 
-        subprocess.run(['docker', 'start', container_name], capture_output=True)
-        return rr.returncode == 0
+        if rr.returncode != 0:
+            return False
+
+        # Start container — via compose to pick up the correct env vars (e.g. encryption keys)
+        _start_container(container_name, compose_dest)
+        return True
     except Exception:
         return False
 
@@ -316,7 +359,7 @@ def restore_backup():
         except Exception as e:
             return jsonify({'success': False, 'message': f'Restore error: {str(e)}'}), 500
     else:
-        # Generic volume restore fallback
+        # Generic volume + compose restore
         success = _generic_volume_restore(container_name, backup_file)
 
     if success:
@@ -378,6 +421,9 @@ def delete_backup():
         meta_file = _get_meta_path(backup_file)
         if meta_file.exists():
             meta_file.unlink()
+        compose_sidecar = _get_compose_sidecar_path(backup_file)
+        if compose_sidecar.exists():
+            compose_sidecar.unlink()
         return jsonify({'success': True, 'message': f'Backup {filename} deleted'})
     except Exception as e:
         return jsonify({'success': False, 'message': f'Delete error: {str(e)}'}), 500

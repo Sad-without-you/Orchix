@@ -145,7 +145,7 @@ def install_stream():
             }
 
             if manifest.get('_is_template') and hasattr(installer, 'get_web_configuration'):
-                env_config = installer.get_web_configuration(user_config)
+                env_config = installer.get_web_configuration(user_config, instance_name_final)
                 config.update(env_config)
 
             config.update(user_config)

@@ -2,6 +2,7 @@ import json
 import os
 import re
 import secrets
+import subprocess
 from apps.installer_base import BaseInstaller
 from utils.docker_progress import run_docker_with_progress
 from utils.docker_utils import ORCHIX_NETWORK
@@ -42,6 +43,22 @@ def _parse_docker_error(stderr):
             return line[:200] if len(line) > 200 else line
 
     return 'Unknown error. Check Docker logs for details.'
+
+
+def _read_key_from_volume(volume_name, key_file, json_field):
+    """Read a JSON field from a file inside a Docker named volume. Returns None if not found."""
+    try:
+        result = subprocess.run(
+            ['docker', 'run', '--rm', '-v', f'{volume_name}:/data:ro',
+             'alpine', 'cat', f'/data/{key_file}'],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        data = json.loads(result.stdout.strip())
+        return data.get(json_field)
+    except Exception:
+        return None
 
 
 class TemplateInstaller(BaseInstaller):
@@ -146,9 +163,19 @@ class TemplateInstaller(BaseInstaller):
                     val = step_input(f"{env['label']} [{default}]: ").strip()
                     config[env['key']] = val or default
             elif env.get('generate'):
-                val = secrets.token_urlsafe(16)
-                show_step_detail(f"{env['label']}: [auto-generated]")
-                config[env['key']] = val
+                # If volume already exists (e.g. after restore), reuse its persisted key
+                vol_key = None
+                if env.get('volume_suffix') and env.get('volume_key_file') and env.get('volume_json_field'):
+                    vol_name = f"{instance_name}_{env['volume_suffix']}" if instance_name else None
+                    if vol_name:
+                        vol_key = _read_key_from_volume(vol_name, env['volume_key_file'], env['volume_json_field'])
+                if vol_key:
+                    show_step_detail(f"{env['label']}: [restored from existing volume]")
+                    config[env['key']] = vol_key
+                else:
+                    val = secrets.token_urlsafe(16)
+                    show_step_detail(f"{env['label']}: [auto-generated]")
+                    config[env['key']] = val
             elif env.get('type') == 'select':
                 options = env.get('options', [])
                 default = env.get('default', options[0] if options else '')
@@ -167,12 +194,17 @@ class TemplateInstaller(BaseInstaller):
 
         return config
 
-    def get_web_configuration(self, user_config):
+    def get_web_configuration(self, user_config, instance_name=None):
         """Web UI: Build config from request body, auto-generate passwords."""
         config = {}
         for env in self.template.get('env', []):
             if env.get('generate'):
-                config[env['key']] = secrets.token_urlsafe(16)
+                # If volume already exists (e.g. after restore), reuse its persisted key
+                vol_key = None
+                if instance_name and env.get('volume_suffix') and env.get('volume_key_file') and env.get('volume_json_field'):
+                    vol_name = f"{instance_name}_{env['volume_suffix']}"
+                    vol_key = _read_key_from_volume(vol_name, env['volume_key_file'], env['volume_json_field'])
+                config[env['key']] = vol_key if vol_key else secrets.token_urlsafe(16)
             else:
                 config[env['key']] = user_config.get(env['key'], env.get('default', ''))
         return config

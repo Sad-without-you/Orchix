@@ -456,7 +456,7 @@
       "env": [
         {"key": "N8N_PROTOCOL", "label": "Protocol", "default": "http"},
         {"key": "N8N_SECURE_COOKIE", "label": "Secure Cookie", "default": "false"},
-        {"key": "N8N_ENCRYPTION_KEY", "label": "Encryption Key", "type": "password", "generate": true},
+        {"key": "N8N_ENCRYPTION_KEY", "label": "Encryption Key", "type": "password", "generate": true, "volume_suffix": "data", "volume_key_file": "config", "volume_json_field": "encryptionKey"},
         {"key": "N8N_HOST", "label": "Host", "default": "0.0.0.0"},
         {"key": "GENERIC_TIMEZONE", "label": "Timezone", "default": "Europe/Berlin"},
         {"key": "WEBHOOK_URL", "label": "Webhook URL", "default": ""}
