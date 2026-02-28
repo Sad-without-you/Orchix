@@ -1,5 +1,31 @@
 # ORCHIX Changelog
 
+## v1.6 (2026-03-01)
+
+### New Features
+- **`orchix service restart`** — restarts the ORCHIX Web UI background service (CLI + Windows/Linux)
+
+### Backup & Restore
+- **Compose file sidecar** — backup now saves `docker-compose-{name}.yml` alongside the archive as `{stem}.compose.yml`; restore recreates the container with the exact same configuration (env vars, ports, volumes)
+- **`docker compose up -d` on restore** — containers are now started via `docker compose` instead of `docker start`, ensuring env vars (e.g. `N8N_ENCRYPTION_KEY`) always match the volume data
+- **Stop before backup** — container is stopped before volume backup for data consistency, then restarted automatically
+- **n8n encryption key mismatch fixed** — after backup → restore, n8n no longer crashes with `Mismatching encryption keys`; the compose sidecar preserves the original key
+- **Volume key fallback** — when reinstalling over an existing volume (old backups without sidecar), ORCHIX reads `encryptionKey` from the n8n volume and reuses it instead of generating a new random key
+- **Sidecar cleanup** — deleting a backup also deletes the associated `.compose.yml` sidecar
+
+### Migration
+- **Absolute paths fixed** — compose file paths in export and import now use `_ORCHIX_ROOT`-based absolute paths; previously broke when CLI was run from a different working directory
+- **Container detection by compose files** — `get_all_orchix_containers()` now scans `docker-compose-*.yml` files in the ORCHIX root instead of `docker ps`; finds containers even when stopped or deleted
+- **Stop/start in generic backup** — `_generic_volume_backup()` stops the container before archiving and restarts via `docker compose up -d` after
+- **Compose-aware restore** — `_restore_container_volumes()` uses `_start_container()` (prefers `docker compose up -d`) instead of plain `docker start`
+- **Always restore existing containers** — import no longer skips containers that already exist; if the container is present, only the creation step is skipped and data is still restored
+
+### Bug Fixes
+- **`docker-compose -f` path in import** — `docker compose -f` now receives the full absolute path to the compose file
+- **`compose_dst` path in import** — compose file is now copied to `_ORCHIX_ROOT / compose_file` instead of a relative `Path(compose_file)`
+
+---
+
 ## v1.5 (in progress)
 
 ### New Commands
