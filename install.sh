@@ -148,14 +148,11 @@ step_ok "All packages installed"
 
 # ── 5. Create launch script ──────────────────────────────────
 step "Creating launcher..."
-cat > orchix.sh <<'LAUNCH'
+# Write absolute INSTALL_DIR into the launcher — works even when symlinked
+cat > orchix.sh <<LAUNCH
 #!/bin/bash
-# Resolve symlinks so this script works when called via /usr/local/bin/orchix
-_src="${BASH_SOURCE[0]}"
-while [ -L "$_src" ]; do _src="$(readlink "$_src")"; done
-SCRIPT_DIR="$(cd "$(dirname "$_src")" && pwd)"
-source "$SCRIPT_DIR/.venv/bin/activate"
-python "$SCRIPT_DIR/main.py" "$@"
+source "$INSTALL_DIR/.venv/bin/activate"
+python "$INSTALL_DIR/main.py" "\$@"
 LAUNCH
 chmod +x orchix.sh
 
