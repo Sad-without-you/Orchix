@@ -137,6 +137,7 @@ curl -sSL https://raw.githubusercontent.com/Sad-without-you/Orchix/main/install.
 # Windows
 orchix.ps1 service start      # Start Web UI in background
 orchix.ps1 service stop       # Stop
+orchix.ps1 service restart    # Stop + Start
 orchix.ps1 service status     # Check if running
 orchix.ps1 service enable     # Enable autostart on login (Registry)
 orchix.ps1 service disable    # Disable autostart
@@ -145,6 +146,7 @@ orchix.ps1 service uninstall  # Remove service entries (not the ORCHIX folder)
 # Linux
 orchix service start
 orchix service stop
+orchix service restart        # Stop + Start
 orchix service status
 orchix service enable         # Enable autostart via systemd user service
 orchix service disable

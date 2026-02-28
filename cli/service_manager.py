@@ -237,6 +237,14 @@ def stop_service():
         return False
 
 
+# ── Restart ───────────────────────────────────────────────────────────────────
+
+def restart_service():
+    print("  Restarting ORCHIX Web UI...")
+    stop_service()
+    start_service()
+
+
 # ── Enable / Disable autostart ────────────────────────────────────────────────
 
 def enable_autostart():
@@ -370,6 +378,7 @@ def handle_service_command(action: str):
     actions = {
         'start':     start_service,
         'stop':      stop_service,
+        'restart':   restart_service,
         'status':    _print_status,
         'enable':    enable_autostart,
         'disable':   disable_autostart,
@@ -378,7 +387,7 @@ def handle_service_command(action: str):
 
     if action not in actions:
         print(f"  ❌ Unknown action: '{action}'")
-        print("  Usage: orchix service [start|stop|status|enable|disable|uninstall]")
+        print("  Usage: orchix service [start|stop|restart|status|enable|disable|uninstall]")
         return
 
     actions[action]()
