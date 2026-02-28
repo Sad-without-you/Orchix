@@ -191,13 +191,33 @@ box_line "" "$GRN"
 box_bottom "$GRN"
 echo ""
 
+# ── Docker group ──────────────────────────────────────────────────────────────
+# If Docker is installed but the user isn't in the docker group yet, add them.
+# We track this so we can use `sg docker` when starting the service, which
+# activates the new group membership without requiring a logout/login.
+DOCKER_GROUP_ADDED=false
+if command -v docker &>/dev/null; then
+    if ! groups 2>/dev/null | grep -qw docker; then
+        step "Adding $USER to docker group..."
+        if sudo usermod -aG docker "$USER" 2>/dev/null; then
+            DOCKER_GROUP_ADDED=true
+            step_ok "Added — no re-login needed (using sg docker)"
+        fi
+    fi
+fi
+
 # ── Optional: Start Web UI as background service ──────────────────────────────
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
 read -r start_now || start_now=""
 if [[ ! "$start_now" =~ ^[Nn] ]]; then
     "$PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
-    "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
+    if $DOCKER_GROUP_ADDED; then
+        sg docker -c "\"$PYTHON\" \"$INSTALL_DIR/main.py\" service start" </dev/null 2>/dev/null || \
+        "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
+    else
+        "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
+    fi
 fi
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
