@@ -115,10 +115,11 @@ fi
 
 # ── 3. Virtual environment ───────────────────────────────────
 step "Creating Python virtual environment..."
-if [ ! -d ".venv" ]; then
+if [ ! -f ".venv/bin/activate" ]; then
+    rm -rf .venv 2>/dev/null || true
+    PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
     if ! $PYTHON -m venv .venv 2>/dev/null; then
         echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
-        PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
         if command -v apt-get &>/dev/null; then
             sudo apt-get install -y "python3.${PYMINOR}-venv" -q 2>/dev/null || \
             sudo apt-get install -y python3-venv -q 2>/dev/null || true
