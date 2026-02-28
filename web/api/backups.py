@@ -103,7 +103,8 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
                 if vols:
                     volume_name = vols[0]
         if not volume_name:
-            return False
+            # Last resort: assume conventional name {container_name}_data
+            volume_name = f"{container_name}_data"
 
         backup_dir_abs = str(BACKUP_DIR.resolve())
         backup_name = backup_file.name
@@ -329,6 +330,22 @@ def restore_backup():
             })
         except Exception:
             pass
+
+        # Check whether the container actually exists and is running
+        c_check = subprocess.run(
+            ['docker', 'ps', '-a', '--filter', f'name=^/{container_name}$', '--format', '{{.Names}}'],
+            capture_output=True, text=True, encoding='utf-8', errors='ignore'
+        )
+        container_exists = container_name in (c_check.stdout or '')
+        if not container_exists:
+            return jsonify({
+                'success': True,
+                'warning': True,
+                'message': (
+                    f'Volume data restored for "{container_name}", but the container no longer exists. '
+                    f'Go to Applications and reinstall "{container_name}" — your data will already be there.'
+                )
+            })
         return jsonify({'success': True, 'message': f'Backup restored for {container_name}'})
     return jsonify({'success': False, 'message': 'Restore failed'}), 500
 

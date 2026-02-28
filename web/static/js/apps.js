@@ -608,13 +608,13 @@ async function doRestore(filename) {
     const res = await API.post('/api/backups/restore', { filename: filename });
 
     if (res && res.success) {
-        updateProgressBar(90, 'Starting container...');
+        updateProgressBar(90, res.warning ? 'Container not found...' : 'Starting container...');
         await new Promise(r => setTimeout(r, 600));
-        updateProgressBar(100, 'Restore complete!');
+        updateProgressBar(100, res.warning ? 'Volume restored!' : 'Restore complete!');
         await new Promise(r => setTimeout(r, 900));
         hideModal();
         window._restoreFlow = false;
-        showToast('success', res.message || 'Restore complete');
+        showToast(res.warning ? 'warning' : 'success', res.message || 'Restore complete');
     } else {
         hideModal();
         window._restoreFlow = false;
