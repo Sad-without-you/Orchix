@@ -12,6 +12,7 @@
 - **License URL** — fixed `orchix.dev/pricing` → `orchix.dev/#pricing` in CLI menus
 - **License expiry parsing** — hardened `datetime.fromisoformat()` with try/except to prevent crash on unexpected server response format
 - **Credentials box alignment** — padding now calculated from plain text length (not ANSI-escaped string)
+- **install.sh: `curl | bash` stdin fix** — replaced `exec </dev/tty` (unreliable on some systems) with `read -r var </dev/tty` per-prompt redirect; added `</dev/null` to all Python subprocesses so they cannot consume pipe bytes — fixes syntax error at `fi` and skipped prompts
 
 ### Documentation
 - **README.md**: fixed 6 wrong default ports, added `service uninstall` command, simplified run commands to plain `orchix` / `orchix --web`, fixed password reset path
