@@ -374,21 +374,6 @@ def restore_backup():
         except Exception:
             pass
 
-        # Check whether the container actually exists and is running
-        c_check = subprocess.run(
-            ['docker', 'ps', '-a', '--filter', f'name=^/{container_name}$', '--format', '{{.Names}}'],
-            capture_output=True, text=True, encoding='utf-8', errors='ignore'
-        )
-        container_exists = container_name in (c_check.stdout or '')
-        if not container_exists:
-            return jsonify({
-                'success': True,
-                'warning': True,
-                'message': (
-                    f'Volume data restored for "{container_name}", but the container no longer exists. '
-                    f'Go to Applications and reinstall "{container_name}" — your data will already be there.'
-                )
-            })
         return jsonify({'success': True, 'message': f'Backup restored for {container_name}'})
     return jsonify({'success': False, 'message': 'Restore failed'}), 500
 
