@@ -186,18 +186,22 @@ box_bottom "$GRN"
 echo ""
 
 # ── Optional: Start Web UI as background service ──────────────────────────────
+# Redirect stdin to /dev/tty so read works correctly when piped via curl | bash
+# (otherwise bash reads script lines as user input, causing syntax errors)
+exec </dev/tty 2>/dev/null || true
+
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
 read -r start_now
 if [[ ! "$start_now" =~ ^[Nn] ]]; then
     "$PYTHON" "$INSTALL_DIR/main.py" init-users
-    "$PYTHON" "$INSTALL_DIR/main.py" service start
+    "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null
 fi
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
 read -r auto_start
 if [[ ! "$auto_start" =~ ^[Nn] ]]; then
-    "$PYTHON" "$INSTALL_DIR/main.py" service enable
+    "$PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null
     echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
 fi
 echo ""
