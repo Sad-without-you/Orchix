@@ -191,12 +191,21 @@ box_line "" "$GRN"
 box_bottom "$GRN"
 echo ""
 
-# ── Docker group ──────────────────────────────────────────────────────────────
-# If Docker is installed but the user isn't in the docker group yet, add them.
-# We track this so we can use `sg docker` when starting the service, which
-# activates the new group membership without requiring a logout/login.
+# ── Docker daemon + group ─────────────────────────────────────────────────────
 DOCKER_GROUP_ADDED=false
 if command -v docker &>/dev/null; then
+    # Start Docker daemon if not running
+    if ! docker info &>/dev/null 2>&1; then
+        step "Starting Docker daemon..."
+        sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
+        sleep 2
+        if docker info &>/dev/null 2>&1; then
+            step_ok "Docker daemon started"
+        else
+            echo -e "  ${CYN}│  ${YEL}⚠  Docker not responding — run: sudo systemctl start docker${NC}"
+        fi
+    fi
+    # Add user to docker group if missing
     if ! groups 2>/dev/null | grep -qw docker; then
         step "Adding $USER to docker group..."
         if sudo usermod -aG docker "$USER" 2>/dev/null; then
@@ -219,6 +228,8 @@ if [[ ! "$start_now" =~ ^[Nn] ]]; then
         "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
     fi
 fi
+# Flush any buffered input (e.g. Enter pressed during service start) before next prompt
+read -r -t 0.1 -n 10000 _flush </dev/tty 2>/dev/null || true
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
 read -r auto_start || auto_start=""
