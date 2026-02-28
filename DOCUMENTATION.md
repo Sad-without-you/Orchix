@@ -1116,18 +1116,18 @@ This appears when installing apps that need a database (WordPress, phpMyAdmin) a
 
 ### Environment Variables
 
-ORCHIX reads from a `.env` file in the ORCHIX root directory:
+Place a `.env` file in the ORCHIX root directory to configure optional settings:
 
 ```bash
-# Web UI
-WEB_PORT=5000
-WEB_HOST=0.0.0.0
-
-# HTTPS mode (enables Secure cookie flag + HSTS header)
+# Enable HTTPS mode (sets Secure cookie flag + HSTS header)
+# Use this when ORCHIX is behind a reverse proxy with SSL
 ORCHIX_HTTPS=true
+```
 
-# License
-LICENSE_SIGNING_SECRET=your-signing-secret
+Port and host are set via command-line arguments, not `.env`:
+
+```bash
+orchix --web --port 8080
 ```
 
 ### The Global orchix Network
