@@ -161,6 +161,9 @@ if [ -w /usr/local/bin ]; then
     ln -sf "$(pwd)/orchix.sh" /usr/local/bin/orchix
     LAUNCH_CMD="orchix"
     step_end "orchix.sh created  (global: orchix)"
+elif sudo ln -sf "$(pwd)/orchix.sh" /usr/local/bin/orchix 2>/dev/null; then
+    LAUNCH_CMD="orchix"
+    step_end "orchix.sh created  (global: orchix)"
 else
     step_end "orchix.sh created"
 fi
