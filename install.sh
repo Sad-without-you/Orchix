@@ -73,13 +73,17 @@ for cmd in python3 python; do
 done
 
 if [ -z "$PYTHON" ]; then
-    echo -e "  ${CYN}│  ${YEL}Python 3.8+ not found – trying to install...${NC}"
+    echo -e "  ${CYN}│  ${YEL}Python 3.8+ not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
-        sudo apt-get install -y python3 python3-venv -q && PYTHON="python3"
-    elif command -v brew &>/dev/null; then
-        brew install python3 && PYTHON="python3"
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3 python3-venv -qq >/dev/null 2>&1 && PYTHON="python3"
     elif command -v dnf &>/dev/null; then
-        sudo dnf install -y python3 -q && PYTHON="python3"
+        sudo dnf install -y python3 -q >/dev/null 2>&1 && PYTHON="python3"
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --noconfirm python >/dev/null 2>&1 && PYTHON="python3"
+    elif command -v zypper &>/dev/null; then
+        sudo zypper install -y python3 >/dev/null 2>&1 && PYTHON="python3"
+    elif command -v brew &>/dev/null; then
+        brew install python3 >/dev/null 2>&1 && PYTHON="python3"
     fi
     [ -z "$PYTHON" ] && fail "Python not found. Install with:  sudo apt install python3"
 fi
@@ -127,12 +131,14 @@ if [ ! -f ".venv/bin/activate" ]; then
     if ! $PYTHON -m venv .venv 2>/dev/null; then
         echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
         if command -v apt-get &>/dev/null; then
-            sudo apt-get install -y "python3.${PYMINOR}-venv" -q 2>/dev/null || \
-            sudo apt-get install -y python3-venv -q 2>/dev/null || true
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python3.${PYMINOR}-venv" -qq >/dev/null 2>&1 || \
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq >/dev/null 2>&1 || true
         elif command -v dnf &>/dev/null; then
-            sudo dnf install -y python3-venv -q 2>/dev/null || true
+            sudo dnf install -y "python3-venv" -q >/dev/null 2>&1 || true
         elif command -v pacman &>/dev/null; then
-            sudo pacman -S --noconfirm python-virtualenv 2>/dev/null || true
+            sudo pacman -S --noconfirm python-virtualenv >/dev/null 2>&1 || true
+        elif command -v zypper &>/dev/null; then
+            sudo zypper install -y python3-venv >/dev/null 2>&1 || true
         fi
         $PYTHON -m venv .venv || fail "Failed to create virtual environment. Run: sudo apt install python3.${PYMINOR}-venv"
     fi
