@@ -158,6 +158,18 @@ if ! PIP_OUT=$(.venv/bin/pip install -r requirements.txt -q 2>&1); then
     done
     fail "Dependency install failed – run:  .venv/bin/pip install -r requirements.txt"
 fi
+
+# Verify imports work — catches corrupt/partial venv from previous installs
+if ! .venv/bin/python -c "import inquirer, rich, flask, requests" >/dev/null 2>&1; then
+    echo -e "  ${CYN}│  ${YEL}Import check failed – reinstalling packages...${NC}"
+    if ! PIP_OUT=$(.venv/bin/pip install -r requirements.txt --force-reinstall -q 2>&1); then
+        echo -e "  ${CYN}│  ${RED}Reinstall failed:${NC}"
+        echo "$PIP_OUT" | while IFS= read -r line; do
+            [ -n "$line" ] && echo -e "  ${CYN}│    ${YEL}${line}${NC}"
+        done
+        fail "Dependency reinstall failed – run:  .venv/bin/pip install -r requirements.txt --force-reinstall"
+    fi
+fi
 step_ok "All packages installed"
 
 # ── 5. Create launch script ──────────────────────────────────
