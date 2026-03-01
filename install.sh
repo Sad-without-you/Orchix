@@ -235,13 +235,14 @@ fi
 printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
 read -r start_now || start_now=""
+VENV_PYTHON="$INSTALL_DIR/.venv/bin/python"
 if [[ ! "$start_now" =~ ^[Nn] ]]; then
-    "$PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
+    "$VENV_PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
     if $DOCKER_GROUP_ADDED; then
-        sg docker -c "\"$PYTHON\" \"$INSTALL_DIR/main.py\" service start" </dev/null 2>/dev/null || \
-        "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
+        sg docker -c "\"$VENV_PYTHON\" \"$INSTALL_DIR/main.py\" service start" </dev/null 2>/dev/null || \
+        "$VENV_PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
     else
-        "$PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
+        "$VENV_PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
     fi
 fi
 # Flush any buffered input (e.g. Enter pressed during service start) before next prompt
@@ -250,7 +251,7 @@ printf "  ${CYN}│${NC}\n"
 printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
 read -r auto_start || auto_start=""
 if [[ ! "$auto_start" =~ ^[Nn] ]]; then
-    "$PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null || true
+    "$VENV_PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null || true
     echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
 fi
 echo ""
