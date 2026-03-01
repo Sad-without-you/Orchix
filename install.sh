@@ -148,8 +148,16 @@ step_ok ".venv ready"
 # ── 4. Install dependencies ───────────────────────────────────
 step "Installing dependencies..."
 source .venv/bin/activate
-pip install --upgrade pip -q 2>/dev/null || true
-pip install -r requirements.txt -q
+.venv/bin/pip install --upgrade pip -q >/dev/null 2>&1 || \
+    echo -e "  ${CYN}│  ${YEL}⚠  pip upgrade skipped (non-critical)${NC}"
+
+if ! PIP_OUT=$(.venv/bin/pip install -r requirements.txt -q 2>&1); then
+    echo -e "  ${CYN}│  ${RED}Package install failed:${NC}"
+    echo "$PIP_OUT" | while IFS= read -r line; do
+        [ -n "$line" ] && echo -e "  ${CYN}│    ${YEL}${line}${NC}"
+    done
+    fail "Dependency install failed – run:  .venv/bin/pip install -r requirements.txt"
+fi
 step_ok "All packages installed"
 
 # ── 5. Create launch script ──────────────────────────────────
@@ -157,8 +165,7 @@ step "Creating launcher..."
 # Write absolute INSTALL_DIR into the launcher — works even when symlinked
 cat > orchix.sh <<LAUNCH
 #!/bin/bash
-source "$INSTALL_DIR/.venv/bin/activate"
-python "$INSTALL_DIR/main.py" "\$@"
+"$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/main.py" "\$@"
 LAUNCH
 chmod +x orchix.sh
 
