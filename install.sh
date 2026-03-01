@@ -125,23 +125,21 @@ fi
 
 # ── 3. Virtual environment ───────────────────────────────────
 step "Creating Python virtual environment..."
-if [ ! -f ".venv/bin/activate" ]; then
-    rm -rf .venv 2>/dev/null || true
-    PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
-    if ! $PYTHON -m venv .venv 2>/dev/null; then
-        echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
-        if command -v apt-get &>/dev/null; then
-            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python3.${PYMINOR}-venv" -qq >/dev/null 2>&1 || \
-            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq >/dev/null 2>&1 || true
-        elif command -v dnf &>/dev/null; then
-            sudo dnf install -y "python3-venv" -q >/dev/null 2>&1 || true
-        elif command -v pacman &>/dev/null; then
-            sudo pacman -S --noconfirm python-virtualenv >/dev/null 2>&1 || true
-        elif command -v zypper &>/dev/null; then
-            sudo zypper install -y python3-venv >/dev/null 2>&1 || true
-        fi
-        $PYTHON -m venv .venv || fail "Failed to create virtual environment. Run: sudo apt install python3.${PYMINOR}-venv"
+rm -rf .venv 2>/dev/null || true
+PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
+if ! $PYTHON -m venv .venv 2>/dev/null; then
+    echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
+    if command -v apt-get &>/dev/null; then
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python3.${PYMINOR}-venv" -qq >/dev/null 2>&1 || \
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq >/dev/null 2>&1 || true
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y "python3-venv" -q >/dev/null 2>&1 || true
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --noconfirm python-virtualenv >/dev/null 2>&1 || true
+    elif command -v zypper &>/dev/null; then
+        sudo zypper install -y python3-venv >/dev/null 2>&1 || true
     fi
+    $PYTHON -m venv .venv || fail "Failed to create virtual environment. Run: sudo apt install python3.${PYMINOR}-venv"
 fi
 step_ok ".venv ready"
 
@@ -157,18 +155,6 @@ if ! PIP_OUT=$(.venv/bin/pip install -r requirements.txt -q 2>&1); then
         [ -n "$line" ] && echo -e "  ${CYN}│    ${YEL}${line}${NC}"
     done
     fail "Dependency install failed – run:  .venv/bin/pip install -r requirements.txt"
-fi
-
-# Verify imports work — catches corrupt/partial venv from previous installs
-if ! .venv/bin/python -c "import inquirer, rich, flask, requests" >/dev/null 2>&1; then
-    echo -e "  ${CYN}│  ${YEL}Import check failed – reinstalling packages...${NC}"
-    if ! PIP_OUT=$(.venv/bin/pip install -r requirements.txt --force-reinstall -q 2>&1); then
-        echo -e "  ${CYN}│  ${RED}Reinstall failed:${NC}"
-        echo "$PIP_OUT" | while IFS= read -r line; do
-            [ -n "$line" ] && echo -e "  ${CYN}│    ${YEL}${line}${NC}"
-        done
-        fail "Dependency reinstall failed – run:  .venv/bin/pip install -r requirements.txt --force-reinstall"
-    fi
 fi
 step_ok "All packages installed"
 
