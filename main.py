@@ -1,6 +1,31 @@
 import os
 import sys
 import subprocess
+
+# ── Package check ─────────────────────────────────────────────
+# Must run before any third-party imports so a broken venv gives
+# a readable error instead of a raw traceback.
+try:
+    import inquirer  # noqa: F401
+    import rich      # noqa: F401
+    import flask     # noqa: F401
+except ImportError as _e:
+    _pkg = str(_e).replace("No module named '", "").rstrip("'")
+    _C = '\033[0;36m'; _R = '\033[0;31m'; _Y = '\033[1;33m'; _N = '\033[0m'
+    _W = 54
+    def _box(txt='', col=_C):
+        pad = _W - len(txt)
+        print(f"  {col}\u2551{_N}{txt}{' ' * pad}{col}\u2551{_N}")
+    print(f"\n  {_C}\u2554{'=' * _W}\u2557{_N}")
+    _box()
+    _box(f"  ERROR: missing package '{_pkg}'", _R)
+    _box()
+    _box("  Fix:  cd <ORCHIX dir> && bash install.sh", _Y)
+    _box("  or:   git pull && bash install.sh", _Y)
+    _box()
+    print(f"  {_C}\u255a{'=' * _W}\u255d{_N}\n")
+    sys.exit(1)
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
