@@ -11,6 +11,13 @@
 # a temp file and re-exec it with /dev/tty as stdin.
 [ -t 0 ] || { _T=$(mktemp /tmp/orchix_XXXXXX.sh); cat > "$_T"; exec bash "$_T" </dev/tty 2>/dev/null || exec bash "$_T"; exit; }
 
+# ── Pre-authenticate sudo once ───────────────────────────────
+if [ "$(id -u)" -ne 0 ] && command -v sudo &>/dev/null; then
+    echo "  → Some steps require root privileges."
+    echo "  → Please enter your sudo password once:"
+    sudo -v || true
+fi
+
 set -e
 
 ORCHIX_VERSION="v1.4"
