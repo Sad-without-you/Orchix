@@ -75,14 +75,19 @@ done
 if [ -z "$PYTHON" ]; then
     echo -e "  ${CYN}│  ${YEL}Python 3.8+ not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
+        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
         DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3 python3-venv -qq >/dev/null 2>&1 && PYTHON="python3"
     elif command -v dnf &>/dev/null; then
+        sudo dnf makecache -q >/dev/null 2>&1
         sudo dnf install -y python3 -q >/dev/null 2>&1 && PYTHON="python3"
     elif command -v pacman &>/dev/null; then
+        sudo pacman -Sy --noconfirm >/dev/null 2>&1
         sudo pacman -S --noconfirm python >/dev/null 2>&1 && PYTHON="python3"
     elif command -v zypper &>/dev/null; then
+        sudo zypper refresh >/dev/null 2>&1
         sudo zypper install -y python3 >/dev/null 2>&1 && PYTHON="python3"
     elif command -v brew &>/dev/null; then
+        brew update >/dev/null 2>&1
         brew install python3 >/dev/null 2>&1 && PYTHON="python3"
     fi
     [ -z "$PYTHON" ] && fail "Python not found. Install with:  sudo apt install python3"
@@ -130,13 +135,17 @@ PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
 if ! $PYTHON -m venv .venv 2>/dev/null; then
     echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
+        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
         DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python3.${PYMINOR}-venv" -qq >/dev/null 2>&1 || \
         DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq >/dev/null 2>&1 || true
     elif command -v dnf &>/dev/null; then
+        sudo dnf makecache -q >/dev/null 2>&1
         sudo dnf install -y "python3-venv" -q >/dev/null 2>&1 || true
     elif command -v pacman &>/dev/null; then
+        sudo pacman -Sy --noconfirm >/dev/null 2>&1
         sudo pacman -S --noconfirm python-virtualenv >/dev/null 2>&1 || true
     elif command -v zypper &>/dev/null; then
+        sudo zypper refresh >/dev/null 2>&1
         sudo zypper install -y python3-venv >/dev/null 2>&1 || true
     fi
     $PYTHON -m venv .venv || fail "Failed to create virtual environment. Run: sudo apt install python3.${PYMINOR}-venv"
