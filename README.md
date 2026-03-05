@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/ORCHIX-v1.4-14b8a6" alt="Version">
   <img src="https://img.shields.io/badge/License-Commercial-brightgreen" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/Python-3.8%2B-blue" alt="Python">
+  <img src="https://img.shields.io/badge/Python-3.12%2B-blue" alt="Python">
   <img src="https://img.shields.io/badge/Apps-30-14b8a6" alt="Apps">
 </p>
 
@@ -111,7 +111,7 @@ ORCHIX is a container management platform that abstracts Docker complexity behin
 
 ### Prerequisites
 
-- **Python** 3.8+
+- **Python** 3.12+
 - **Docker** (auto-installed via setup menu if missing)
 - **RAM** 4 GB minimum (8 GB recommended)
 - **Storage** 20 GB free

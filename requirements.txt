@@ -10,7 +10,7 @@
 # Platform Support:
 #   - Linux (Ubuntu 20.04+, Debian 11+)
 #   - Windows 10/11 (with WSL2)
-#   - Python 3.8+ required
+#   - Python 3.12+ required
 # ========================================
 
 # ----------------------------------------

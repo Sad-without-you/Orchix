@@ -57,7 +57,7 @@ ORCHIX is a container management system that simplifies Docker operations throug
 | Requirement | Minimum | Recommended |
 |------------|---------|-------------|
 | **OS** | Ubuntu 20.04, Debian 11, Windows 10 | Ubuntu 22.04, Windows 11 |
-| **Python** | 3.8+ | 3.11+ |
+| **Python** | 3.12+ | 3.11+ |
 | **RAM** | 4 GB | 8 GB |
 | **Storage** | 20 GB free | 50 GB free |
 | **Docker** | 20.10+ | Latest |

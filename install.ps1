@@ -64,18 +64,22 @@ Write-Host ""
 # ── 1. Check Python ──────────────────────────────────────────
 Write-Step "Checking Python..."
 $pyver = python --version 2>&1
-if (-not "$pyver" -or "$pyver" -notmatch "Python") {
-    # Try via winget
+$pyMinor = 0
+if ("$pyver" -match "Python 3\.(\d+)") { $pyMinor = [int]$Matches[1] }
+
+if (-not "$pyver" -or "$pyver" -notmatch "Python" -or $pyMinor -lt 12) {
     $winget = Get-Command winget -ErrorAction SilentlyContinue
     if ($winget) {
         Write-Host "  │  " -NoNewline -ForegroundColor $C
-        Write-Host "Python not found – installing via winget..." -ForegroundColor $Y
-        winget install Python.Python.3 --silent --accept-source-agreements 2>&1 | Out-Null
+        Write-Host "Python 3.12+ not found – installing via winget..." -ForegroundColor $Y
+        winget install Python.Python.3.12 --silent --accept-source-agreements 2>&1 | Out-Null
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
         $pyver = python --version 2>&1
+        $pyMinor = 0
+        if ("$pyver" -match "Python 3\.(\d+)") { $pyMinor = [int]$Matches[1] }
     }
-    if (-not "$pyver" -or "$pyver" -notmatch "Python") {
-        Write-Fail "Python not found.`n  Install from https://python.org then re-run."
+    if (-not "$pyver" -or "$pyver" -notmatch "Python" -or $pyMinor -lt 12) {
+        Write-Fail "Python 3.12+ required.`n  Install from https://python.org/downloads then re-run."
     }
 }
 Write-StepOK "$pyver"

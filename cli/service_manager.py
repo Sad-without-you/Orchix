@@ -197,6 +197,30 @@ def _start_process():
             )
 
     _write_pid(proc.pid)
+
+    # Health check: give the process 3 seconds to start or crash
+    import time, socket
+    time.sleep(3)
+    if proc.poll() is not None:
+        print(f"  ❌ ORCHIX Web UI crashed on startup (exit code: {proc.poll()})")
+        print(f"  ℹ️  Check logs: {LOG_FILE}")
+        try:
+            lines = LOG_FILE.read_text().splitlines()[-10:]
+            for line in lines:
+                print(f"     {line}")
+        except Exception:
+            pass
+        _delete_pid()
+        return False
+
+    try:
+        with socket.create_connection(("127.0.0.1", 5000), timeout=2):
+            pass
+    except OSError:
+        print(f"  ⚠️  Process running (PID {proc.pid}) but port 5000 not responding yet")
+        print(f"  ℹ️  Check logs: {LOG_FILE}")
+        return True
+
     print(f"  ✅ ORCHIX Web UI started (PID {proc.pid})")
     print(f"  ℹ️  Open http://localhost:5000 in your browser")
     print(f"  ℹ️  Logs: {LOG_FILE}")

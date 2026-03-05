@@ -15,7 +15,10 @@
 if [ "$(id -u)" -ne 0 ] && command -v sudo &>/dev/null; then
     echo "  → Some steps require root privileges."
     echo "  → Please enter your sudo password once:"
-    sudo -v || true
+    if ! sudo -v; then
+        echo -e "  ${RED}ERROR:${NC} sudo authentication failed. Please re-run the installer."
+        exit 1
+    fi
 fi
 
 set -e
@@ -72,7 +75,7 @@ for cmd in python3 python; do
         VER=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || true)
         MAJOR=$(echo "$VER" | cut -d. -f1)
         MINOR=$(echo "$VER" | cut -d. -f2)
-        if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 8 ]; then
+        if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 12 ]; then
             PYTHON="$cmd"
             break
         fi
@@ -80,24 +83,24 @@ for cmd in python3 python; do
 done
 
 if [ -z "$PYTHON" ]; then
-    echo -e "  ${CYN}│  ${YEL}Python 3.8+ not found – installing...${NC}"
+    echo -e "  ${CYN}│  ${YEL}Python 3.12+ not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
         DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
-        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3 python3-venv -qq >/dev/null 2>&1 && PYTHON="python3"
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 && PYTHON="python3.12"
     elif command -v dnf &>/dev/null; then
         sudo dnf makecache -q >/dev/null 2>&1
-        sudo dnf install -y python3 -q >/dev/null 2>&1 && PYTHON="python3"
+        sudo dnf install -y python3.12 -q >/dev/null 2>&1 && PYTHON="python3.12"
     elif command -v pacman &>/dev/null; then
         sudo pacman -Sy --noconfirm >/dev/null 2>&1
         sudo pacman -S --noconfirm python >/dev/null 2>&1 && PYTHON="python3"
     elif command -v zypper &>/dev/null; then
         sudo zypper refresh >/dev/null 2>&1
-        sudo zypper install -y python3 >/dev/null 2>&1 && PYTHON="python3"
+        sudo zypper install -y python312 >/dev/null 2>&1 && PYTHON="python3.12"
     elif command -v brew &>/dev/null; then
         brew update >/dev/null 2>&1
-        brew install python3 >/dev/null 2>&1 && PYTHON="python3"
+        brew install python@3.12 >/dev/null 2>&1 && PYTHON="python3.12"
     fi
-    [ -z "$PYTHON" ] && fail "Python not found. Install with:  sudo apt install python3"
+    [ -z "$PYTHON" ] && fail "Python 3.12+ not found. Install with:  sudo apt install python3.12"
 fi
 PYVER=$($PYTHON --version 2>&1)
 step_ok "$PYVER"
@@ -142,18 +145,24 @@ PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
 if ! $PYTHON -m venv .venv 2>/dev/null; then
     echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
-        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
-        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python3.${PYMINOR}-venv" -qq >/dev/null 2>&1 || \
-        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq >/dev/null 2>&1 || true
+        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq 2>&1 || fail "apt-get update failed. Check your repositories or sudo permissions."
+        if ! DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python3.${PYMINOR}-venv" -qq 2>&1; then
+            echo -e "  ${CYN}│  ${YEL}python3.${PYMINOR}-venv not available, trying python3-venv...${NC}"
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq 2>&1 || \
+                fail "Could not install python3-venv.\n  Run: sudo apt install python3.${PYMINOR}-venv"
+        fi
     elif command -v dnf &>/dev/null; then
-        sudo dnf makecache -q >/dev/null 2>&1
-        sudo dnf install -y "python3-venv" -q >/dev/null 2>&1 || true
+        sudo dnf makecache -q 2>&1 || fail "dnf makecache failed."
+        sudo dnf install -y "python3-venv" -q 2>&1 || fail "Could not install python3-virtualenv via dnf."
     elif command -v pacman &>/dev/null; then
-        sudo pacman -Sy --noconfirm >/dev/null 2>&1
-        sudo pacman -S --noconfirm python-virtualenv >/dev/null 2>&1 || true
+        sudo pacman -Sy --noconfirm 2>&1 || fail "pacman -Sy failed."
+        sudo pacman -S --noconfirm python-virtualenv 2>&1 || fail "Could not install python-virtualenv via pacman."
     elif command -v zypper &>/dev/null; then
-        sudo zypper refresh >/dev/null 2>&1
-        sudo zypper install -y python3-venv >/dev/null 2>&1 || true
+        sudo zypper refresh 2>&1 || fail "zypper refresh failed."
+        sudo zypper install -y python3-venv 2>&1 || fail "Could not install python3-venv via zypper."
+    fi
+    if ! $PYTHON -c "import venv" 2>/dev/null; then
+        fail "venv module still unavailable after install.\n  Run: sudo apt install python3.${PYMINOR}-venv"
     fi
     $PYTHON -m venv .venv || fail "Failed to create virtual environment. Run: sudo apt install python3.${PYMINOR}-venv"
 fi
@@ -246,17 +255,24 @@ if command -v docker &>/dev/null; then
 fi
 
 # ── Optional: Start Web UI as background service ──────────────────────────────
-printf "  ${CYN}│${NC}\n"
-printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
-read -r start_now || start_now=""
 VENV_PYTHON="$INSTALL_DIR/.venv/bin/python"
-if [[ ! "$start_now" =~ ^[Nn] ]]; then
-    "$VENV_PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
-    if $DOCKER_GROUP_ADDED; then
-        sg docker -c "\"$VENV_PYTHON\" \"$INSTALL_DIR/main.py\" service start" </dev/null 2>/dev/null || \
-        "$VENV_PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
-    else
-        "$VENV_PYTHON" "$INSTALL_DIR/main.py" service start </dev/null || true
+printf "  ${CYN}│${NC}\n"
+if ! docker info &>/dev/null 2>&1; then
+    echo -e "  ${CYN}│  ${YEL}⚠  Docker is not running — skipping Web UI auto-start${NC}"
+    echo -e "  ${CYN}│  ${YEL}   Start Docker first, then run: orchid service start${NC}"
+else
+    printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
+    read -r start_now || start_now=""
+    if [[ ! "$start_now" =~ ^[Nn] ]]; then
+        "$VENV_PYTHON" "$INSTALL_DIR/main.py" init-users </dev/null || true
+        if $DOCKER_GROUP_ADDED; then
+            sg docker -c "\"$VENV_PYTHON\" \"$INSTALL_DIR/main.py\" service start" </dev/null 2>/dev/null || \
+            "$VENV_PYTHON" "$INSTALL_DIR/main.py" service start </dev/null 2>&1 || \
+            echo -e "  ${CYN}│  ${YEL}⚠  Web UI failed to start — check: ~/.orchix_configs/orchix.log${NC}"
+        else
+            "$VENV_PYTHON" "$INSTALL_DIR/main.py" service start </dev/null 2>&1 || \
+            echo -e "  ${CYN}│  ${YEL}⚠  Web UI failed to start — check: ~/.orchix_configs/orchix.log${NC}"
+        fi
     fi
 fi
 # Flush any buffered input (e.g. Enter pressed during service start) before next prompt
