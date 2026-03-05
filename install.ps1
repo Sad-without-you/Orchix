@@ -74,16 +74,14 @@ function Get-PyMinor($cmd) {
 
 # Check python3.12, py -3.12, then generic python/python3
 $PYTHON = $null
-$pyMinor = -1
 foreach ($candidate in @("python3.12", "python3", "python")) {
-    $m = Get-PyMinor $candidate
-    if ($m -ge 12) { $PYTHON = $candidate; $pyMinor = $m; break }
+    if ((Get-PyMinor $candidate) -ge 12) { $PYTHON = $candidate; break }
 }
 # Also try Windows Python Launcher
 if (-not $PYTHON) {
     try {
         $m = Get-PyMinor { py -3.12 }
-        if ($m -ge 12) { $PYTHON = "py -3.12"; $pyMinor = $m }
+        if ($m -ge 12) { $PYTHON = "py -3.12" }
     } catch {}
 }
 
@@ -95,8 +93,7 @@ if (-not $PYTHON) {
         winget install Python.Python.3.12 --silent --accept-source-agreements 2>&1 | Out-Null
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
         foreach ($candidate in @("python3.12", "python3", "python")) {
-            $m = Get-PyMinor $candidate
-            if ($m -ge 12) { $PYTHON = $candidate; $pyMinor = $m; break }
+            if ((Get-PyMinor $candidate) -ge 12) { $PYTHON = $candidate; break }
         }
     }
     if (-not $PYTHON) {
@@ -210,7 +207,7 @@ Write-Host ""
 Write-Host "  │" -ForegroundColor $C
 $startNow = Read-Host "  ├─ Start ORCHIX Web UI now (background)? [Y/n]"
 if ($startNow -notmatch '^[Nn]') {
-    try { & ".venv\Scripts\python.exe" "main.py" init-users 2>&1 | Out-Null } catch {}
+    try { & ".venv\Scripts\python.exe" "main.py" init-users } catch {}
     try {
         & ".venv\Scripts\python.exe" "main.py" service start
     } catch {
