@@ -85,29 +85,34 @@ done
 if [ -z "$PYTHON" ]; then
     echo -e "  ${CYN}│  ${YEL}Python 3.12+ not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
-        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
-        if ! DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1; then
+        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1 || true
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 || true
+        if ! command -v python3.12 &>/dev/null; then
             echo -e "  ${CYN}│  ${YEL}Adding deadsnakes PPA for Python 3.12...${NC}"
             DEBIAN_FRONTEND=noninteractive sudo apt-get install -y software-properties-common -qq >/dev/null 2>&1 || true
             sudo add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1 || true
-            DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
+            DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1 || true
             DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 || true
         fi
         command -v python3.12 &>/dev/null && PYTHON="python3.12"
     elif command -v dnf &>/dev/null; then
-        sudo dnf makecache -q >/dev/null 2>&1
-        sudo dnf install -y python3.12 -q >/dev/null 2>&1 && PYTHON="python3.12"
+        sudo dnf makecache -q >/dev/null 2>&1 || true
+        sudo dnf install -y python3.12 -q >/dev/null 2>&1 || true
+        command -v python3.12 &>/dev/null && PYTHON="python3.12"
     elif command -v pacman &>/dev/null; then
-        sudo pacman -Sy --noconfirm >/dev/null 2>&1
-        sudo pacman -S --noconfirm python >/dev/null 2>&1 && PYTHON="python3"
+        sudo pacman -Sy --noconfirm >/dev/null 2>&1 || true
+        sudo pacman -S --noconfirm python >/dev/null 2>&1 || true
+        command -v python3 &>/dev/null && PYTHON="python3"
     elif command -v zypper &>/dev/null; then
-        sudo zypper refresh >/dev/null 2>&1
-        sudo zypper install -y python312 >/dev/null 2>&1 && PYTHON="python3.12"
+        sudo zypper refresh >/dev/null 2>&1 || true
+        sudo zypper install -y python312 >/dev/null 2>&1 || true
+        command -v python3.12 &>/dev/null && PYTHON="python3.12"
     elif command -v brew &>/dev/null; then
-        brew update >/dev/null 2>&1
-        brew install python@3.12 >/dev/null 2>&1 && PYTHON="python3.12"
+        brew update >/dev/null 2>&1 || true
+        brew install python@3.12 >/dev/null 2>&1 || true
+        command -v python3.12 &>/dev/null && PYTHON="python3.12"
     fi
-    [ -z "$PYTHON" ] && fail "Python 3.12+ not found. Install with:  sudo apt install python3.12"
+    [ -z "$PYTHON" ] && fail "Python 3.12+ could not be installed automatically.\n  Please install manually:\n    Ubuntu/Debian: sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt install python3.12\n    Other: https://python.org/downloads"
 fi
 PYVER=$($PYTHON --version 2>&1)
 step_ok "$PYVER"
