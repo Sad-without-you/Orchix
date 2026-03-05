@@ -70,49 +70,91 @@ echo ""
 # ── 1. Check Python ──────────────────────────────────────────
 step "Checking Python..."
 PYTHON=""
-for cmd in python3 python; do
-    if command -v "$cmd" &>/dev/null; then
-        VER=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || true)
-        MAJOR=$(echo "$VER" | cut -d. -f1)
-        MINOR=$(echo "$VER" | cut -d. -f2)
-        if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 12 ]; then
-            PYTHON="$cmd"
-            break
-        fi
-    fi
+
+# Helper: returns 0 if $1 is Python 3.12+
+_py_ok() {
+    local cmd="$1"
+    command -v "$cmd" &>/dev/null || return 1
+    local minor major
+    major=$("$cmd" -c "import sys; print(sys.version_info.major)" 2>/dev/null) || return 1
+    minor=$("$cmd" -c "import sys; print(sys.version_info.minor)"  2>/dev/null) || return 1
+    [ "$major" -ge 3 ] && [ "$minor" -ge 12 ]
+}
+
+for cmd in python3.14 python3.13 python3.12 python3 python; do
+    if _py_ok "$cmd"; then PYTHON="$cmd"; break; fi
 done
 
 if [ -z "$PYTHON" ]; then
     echo -e "  ${CYN}│  ${YEL}Python 3.12+ not found – installing...${NC}"
+
     if command -v apt-get &>/dev/null; then
+        # Detect distro: Ubuntu gets deadsnakes PPA, Debian gets backports
+        DISTRO=$(grep -oP '(?<=^ID=).+' /etc/os-release 2>/dev/null | tr -d '"' || echo "unknown")
+        CODENAME=$(grep -oP '(?<=^VERSION_CODENAME=).+' /etc/os-release 2>/dev/null | tr -d '"' || lsb_release -cs 2>/dev/null || echo "")
+
         DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1 || true
         DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 || true
+
         if ! command -v python3.12 &>/dev/null; then
-            echo -e "  ${CYN}│  ${YEL}Adding deadsnakes PPA for Python 3.12...${NC}"
-            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y software-properties-common -qq >/dev/null 2>&1 || true
-            sudo add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1 || true
-            DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1 || true
-            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 || true
+            case "$DISTRO" in
+                ubuntu)
+                    echo -e "  ${CYN}│  ${YEL}Adding deadsnakes PPA (Ubuntu)...${NC}"
+                    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y software-properties-common -qq >/dev/null 2>&1 || true
+                    sudo add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1 || true
+                    DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1 || true
+                    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 || true
+                    ;;
+                debian|raspbian)
+                    if [ -n "$CODENAME" ]; then
+                        echo -e "  ${CYN}│  ${YEL}Trying Debian backports (${CODENAME})...${NC}"
+                        echo "deb http://deb.debian.org/debian ${CODENAME}-backports main" | \
+                            sudo tee /etc/apt/sources.list.d/orchix-backports.list >/dev/null 2>&1 || true
+                        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1 || true
+                        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -t "${CODENAME}-backports" python3.12 python3.12-venv -qq >/dev/null 2>&1 || true
+                    fi
+                    ;;
+            esac
         fi
         command -v python3.12 &>/dev/null && PYTHON="python3.12"
+
     elif command -v dnf &>/dev/null; then
         sudo dnf makecache -q >/dev/null 2>&1 || true
         sudo dnf install -y python3.12 -q >/dev/null 2>&1 || true
         command -v python3.12 &>/dev/null && PYTHON="python3.12"
+
     elif command -v pacman &>/dev/null; then
         sudo pacman -Sy --noconfirm >/dev/null 2>&1 || true
         sudo pacman -S --noconfirm python >/dev/null 2>&1 || true
-        command -v python3 &>/dev/null && PYTHON="python3"
+        for cmd in python3.12 python3; do
+            _py_ok "$cmd" && PYTHON="$cmd" && break || true
+        done
+
     elif command -v zypper &>/dev/null; then
         sudo zypper refresh >/dev/null 2>&1 || true
         sudo zypper install -y python312 >/dev/null 2>&1 || true
         command -v python3.12 &>/dev/null && PYTHON="python3.12"
+
     elif command -v brew &>/dev/null; then
         brew update >/dev/null 2>&1 || true
         brew install python@3.12 >/dev/null 2>&1 || true
-        command -v python3.12 &>/dev/null && PYTHON="python3.12"
+        for cmd in "$(brew --prefix 2>/dev/null)/bin/python3.12" python3.12; do
+            _py_ok "$cmd" 2>/dev/null && PYTHON="$cmd" && break || true
+        done
     fi
-    [ -z "$PYTHON" ] && fail "Python 3.12+ could not be installed automatically.\n  Please install manually:\n    Ubuntu/Debian: sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt install python3.12\n    Other: https://python.org/downloads"
+
+    if [ -z "$PYTHON" ]; then
+        if command -v apt-get &>/dev/null && [ "$DISTRO" = "ubuntu" ]; then
+            _HINT="  sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt install python3.12"
+        elif command -v apt-get &>/dev/null; then
+            _HINT="  sudo apt install python3.12    (or: sudo apt install -t ${CODENAME}-backports python3.12)"
+        elif command -v dnf &>/dev/null; then
+            _HINT="  sudo dnf install python3.12"
+        else
+            _HINT="  See https://python.org/downloads"
+        fi
+        fail "Python 3.12+ could not be installed automatically.\n  Install manually:\n${_HINT}"
+    fi
 fi
 PYVER=$($PYTHON --version 2>&1)
 step_ok "$PYVER"
@@ -153,30 +195,26 @@ fi
 # ── 3. Virtual environment ───────────────────────────────────
 step "Creating Python virtual environment..."
 rm -rf .venv 2>/dev/null || true
-PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
+PYMAJOR=$($PYTHON -c "import sys; print(sys.version_info.major)" 2>/dev/null || echo "3")
+PYMINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)" 2>/dev/null || echo "12")
 if ! $PYTHON -m venv .venv 2>/dev/null; then
     echo -e "  ${CYN}│  ${YEL}python3-venv not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
-        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq 2>&1 || fail "apt-get update failed. Check your repositories or sudo permissions."
-        if ! DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python3.${PYMINOR}-venv" -qq 2>&1; then
-            echo -e "  ${CYN}│  ${YEL}python3.${PYMINOR}-venv not available, trying python3-venv...${NC}"
-            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq 2>&1 || \
-                fail "Could not install python3-venv.\n  Run: sudo apt install python3.${PYMINOR}-venv"
-        fi
+        DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1 || true
+        # Try versioned package first (python3.12-venv), then generic
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "python${PYMAJOR}.${PYMINOR}-venv" -qq >/dev/null 2>&1 || \
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv -qq >/dev/null 2>&1 || true
     elif command -v dnf &>/dev/null; then
-        sudo dnf makecache -q 2>&1 || fail "dnf makecache failed."
-        sudo dnf install -y "python3-venv" -q 2>&1 || fail "Could not install python3-virtualenv via dnf."
+        sudo dnf install -y python3-virtualenv -q >/dev/null 2>&1 || true
     elif command -v pacman &>/dev/null; then
-        sudo pacman -Sy --noconfirm 2>&1 || fail "pacman -Sy failed."
-        sudo pacman -S --noconfirm python-virtualenv 2>&1 || fail "Could not install python-virtualenv via pacman."
+        sudo pacman -S --noconfirm python-virtualenv >/dev/null 2>&1 || true
     elif command -v zypper &>/dev/null; then
-        sudo zypper refresh 2>&1 || fail "zypper refresh failed."
-        sudo zypper install -y python3-venv 2>&1 || fail "Could not install python3-venv via zypper."
+        sudo zypper install -y python3-venv >/dev/null 2>&1 || true
     fi
     if ! $PYTHON -c "import venv" 2>/dev/null; then
-        fail "venv module still unavailable after install.\n  Run: sudo apt install python3.${PYMINOR}-venv"
+        fail "venv module unavailable.\n  Run: sudo apt install python${PYMAJOR}.${PYMINOR}-venv"
     fi
-    $PYTHON -m venv .venv || fail "Failed to create virtual environment. Run: sudo apt install python3.${PYMINOR}-venv"
+    $PYTHON -m venv .venv || fail "Failed to create virtual environment.\n  Run: sudo apt install python${PYMAJOR}.${PYMINOR}-venv"
 fi
 step_ok ".venv ready"
 
