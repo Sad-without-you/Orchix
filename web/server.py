@@ -99,12 +99,22 @@ def create_app():
 
 
 def run_web(host='0.0.0.0', port=5000):
+    import logging
+    import sys
     from web.auth import ensure_users_exist
     ensure_users_exist()
 
+    # Route all logging (including Waitress access log) to stdout
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.INFO,
+        format='%(asctime)s [%(name)s] %(levelname)s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+
     app = create_app()
-    print(f"\n  ORCHIX Web UI running at http://{host}:{port}")
-    print(f"  (Production server: Waitress)\n")
+    print(f"\n  ORCHIX Web UI running at http://{host}:{port}", flush=True)
+    print(f"  (Production server: Waitress)\n", flush=True)
 
     from waitress import serve
     serve(app, host=host, port=port, threads=8, channel_timeout=120)

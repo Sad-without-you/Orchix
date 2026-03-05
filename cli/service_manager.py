@@ -176,24 +176,29 @@ def _start_process():
     python = _get_python()
     main = _get_main()
 
+    env = os.environ.copy()
+    env['PYTHONUNBUFFERED'] = '1'
+
     with open(LOG_FILE, 'a') as log:
         if platform.system() == 'Windows':
             DETACHED_PROCESS = 0x00000008
             CREATE_NO_WINDOW = 0x08000000
             proc = subprocess.Popen(
-                [python, main, '--web'],
+                [python, '-u', main, '--web'],
                 creationflags=DETACHED_PROCESS | CREATE_NO_WINDOW,
                 stdout=log,
                 stderr=log,
-                cwd=str(INSTALL_DIR)
+                cwd=str(INSTALL_DIR),
+                env=env
             )
         else:
             proc = subprocess.Popen(
-                [python, main, '--web'],
+                [python, '-u', main, '--web'],
                 stdout=log,
                 stderr=log,
                 cwd=str(INSTALL_DIR),
-                start_new_session=True
+                start_new_session=True,
+                env=env
             )
 
     _write_pid(proc.pid)
