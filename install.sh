@@ -86,7 +86,14 @@ if [ -z "$PYTHON" ]; then
     echo -e "  ${CYN}│  ${YEL}Python 3.12+ not found – installing...${NC}"
     if command -v apt-get &>/dev/null; then
         DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
-        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 && PYTHON="python3.12"
+        if ! DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1; then
+            echo -e "  ${CYN}│  ${YEL}Adding deadsnakes PPA for Python 3.12...${NC}"
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y software-properties-common -qq >/dev/null 2>&1 || true
+            sudo add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1 || true
+            DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq >/dev/null 2>&1
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.12 python3.12-venv -qq >/dev/null 2>&1 || true
+        fi
+        command -v python3.12 &>/dev/null && PYTHON="python3.12"
     elif command -v dnf &>/dev/null; then
         sudo dnf makecache -q >/dev/null 2>&1
         sudo dnf install -y python3.12 -q >/dev/null 2>&1 && PYTHON="python3.12"
