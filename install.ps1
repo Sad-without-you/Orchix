@@ -63,25 +63,47 @@ Write-Host ""
 
 # ── 1. Check Python ──────────────────────────────────────────
 Write-Step "Checking Python..."
-$pyver = python --version 2>&1
-$pyMinor = 0
-if ("$pyver" -match "Python 3\.(\d+)") { $pyMinor = [int]$Matches[1] }
 
-if (-not "$pyver" -or "$pyver" -notmatch "Python" -or $pyMinor -lt 12) {
+function Get-PyMinor($cmd) {
+    try {
+        $v = & $cmd --version 2>&1
+        if ("$v" -match "Python 3\.(\d+)") { return [int]$Matches[1] }
+    } catch {}
+    return -1
+}
+
+# Check python3.12, py -3.12, then generic python/python3
+$PYTHON = $null
+$pyMinor = -1
+foreach ($candidate in @("python3.12", "python3", "python")) {
+    $m = Get-PyMinor $candidate
+    if ($m -ge 12) { $PYTHON = $candidate; $pyMinor = $m; break }
+}
+# Also try Windows Python Launcher
+if (-not $PYTHON) {
+    try {
+        $m = Get-PyMinor { py -3.12 }
+        if ($m -ge 12) { $PYTHON = "py -3.12"; $pyMinor = $m }
+    } catch {}
+}
+
+if (-not $PYTHON) {
     $winget = Get-Command winget -ErrorAction SilentlyContinue
     if ($winget) {
         Write-Host "  │  " -NoNewline -ForegroundColor $C
         Write-Host "Python 3.12+ not found – installing via winget..." -ForegroundColor $Y
         winget install Python.Python.3.12 --silent --accept-source-agreements 2>&1 | Out-Null
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        $pyver = python --version 2>&1
-        $pyMinor = 0
-        if ("$pyver" -match "Python 3\.(\d+)") { $pyMinor = [int]$Matches[1] }
+        foreach ($candidate in @("python3.12", "python3", "python")) {
+            $m = Get-PyMinor $candidate
+            if ($m -ge 12) { $PYTHON = $candidate; $pyMinor = $m; break }
+        }
     }
-    if (-not "$pyver" -or "$pyver" -notmatch "Python" -or $pyMinor -lt 12) {
+    if (-not $PYTHON) {
         Write-Fail "Python 3.12+ required.`n  Install from https://python.org/downloads then re-run."
     }
 }
+$pyver = & $PYTHON --version 2>&1
 Write-StepOK "$pyver"
 
 # ── 2. Determine install directory ───────────────────────────
@@ -126,7 +148,11 @@ Set-Location $INSTALL_DIR
 
 # ── 4. Virtual environment ───────────────────────────────────
 Write-Step "Creating Python virtual environment..."
-if (-not (Test-Path ".venv")) { python -m venv .venv 2>&1 | Out-Null }
+if (Test-Path ".venv") { Remove-Item ".venv" -Recurse -Force -ErrorAction SilentlyContinue }
+& $PYTHON -m venv .venv 2>&1 | Out-Null
+if (-not (Test-Path ".venv\Scripts\python.exe")) {
+    Write-Fail "Failed to create virtual environment. Make sure Python 3.12 is installed correctly."
+}
 Write-StepOK ".venv ready"
 
 # ── 5. Install dependencies ───────────────────────────────────
@@ -184,13 +210,18 @@ Write-Host ""
 Write-Host "  │" -ForegroundColor $C
 $startNow = Read-Host "  ├─ Start ORCHIX Web UI now (background)? [Y/n]"
 if ($startNow -notmatch '^[Nn]') {
-    & ".venv\Scripts\python.exe" "main.py" init-users
-    & ".venv\Scripts\python.exe" "main.py" service start
+    try { & ".venv\Scripts\python.exe" "main.py" init-users 2>&1 | Out-Null } catch {}
+    try {
+        & ".venv\Scripts\python.exe" "main.py" service start
+    } catch {
+        Write-Host "  │  " -NoNewline -ForegroundColor $C
+        Write-Host "⚠  Web UI failed to start — check: $env:USERPROFILE\.orchix_configs\orchix.log" -ForegroundColor $Y
+    }
 }
 Write-Host "  │" -ForegroundColor $C
 $autoStart = Read-Host "  ├─ Enable autostart on login? [Y/n]"
 if ($autoStart -notmatch '^[Nn]') {
-    & ".venv\Scripts\python.exe" "main.py" service enable
+    try { & ".venv\Scripts\python.exe" "main.py" service enable } catch {}
     Write-Host "  │  " -NoNewline -ForegroundColor $C
     Write-Host "i  Autostart on login enabled — ORCHIX Web UI starts automatically" -ForegroundColor DarkCyan
 }

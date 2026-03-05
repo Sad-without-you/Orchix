@@ -11,12 +11,15 @@
 # a temp file and re-exec it with /dev/tty as stdin.
 [ -t 0 ] || { _T=$(mktemp /tmp/orchix_XXXXXX.sh); cat > "$_T"; exec bash "$_T" </dev/tty 2>/dev/null || exec bash "$_T"; exit; }
 
+# Colors defined early so sudo error message renders correctly
+_CYN='\033[0;36m'; _RED='\033[0;31m'; _NC='\033[0m'
+
 # ── Pre-authenticate sudo once ───────────────────────────────
 if [ "$(id -u)" -ne 0 ] && command -v sudo &>/dev/null; then
     echo "  → Some steps require root privileges."
     echo "  → Please enter your sudo password once:"
     if ! sudo -v; then
-        echo -e "  ${RED}ERROR:${NC} sudo authentication failed. Please re-run the installer."
+        echo -e "  ${_RED}ERROR:${_NC} sudo authentication failed. Please re-run the installer."
         exit 1
     fi
 fi
@@ -309,7 +312,7 @@ VENV_PYTHON="$INSTALL_DIR/.venv/bin/python"
 printf "  ${CYN}│${NC}\n"
 if ! docker info &>/dev/null 2>&1; then
     echo -e "  ${CYN}│  ${YEL}⚠  Docker is not running — skipping Web UI auto-start${NC}"
-    echo -e "  ${CYN}│  ${YEL}   Start Docker first, then run: orchid service start${NC}"
+    echo -e "  ${CYN}│  ${YEL}   Start Docker first, then run: orchix service start${NC}"
 else
     printf "  ${CYN}├─${NC} Start ORCHIX Web UI now (background)? [Y/n]: "
     read -r start_now || start_now=""
