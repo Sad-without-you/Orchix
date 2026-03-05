@@ -138,11 +138,39 @@ def _print_credentials(password, title="First Time Setup"):
     print(f"{C}  ╰{border}╯{NC}\n")
 
 
+def _print_existing_users(users):
+    C  = '\033[96m'
+    W  = '\033[97m'
+    NC = '\033[0m'
+    I  = 41
+
+    def row(text=''):
+        pad = ' ' * (I - len(text))
+        return f"{C}  │{NC}  {text}{pad}{C}│{NC}"
+
+    def row_colored(label, value):
+        plain = f"{label}{value}"
+        pad = ' ' * (I - len(plain))
+        return f"{C}  │{NC}  {label}{W}{value}{NC}{pad}{C}│{NC}"
+
+    border = '─' * (I + 2)
+    print(f"\n{C}  ╭{border}╮{NC}")
+    print(row("ORCHIX Web UI — Existing Installation"))
+    print(f"{C}  ├{border}┤{NC}")
+    names = list(users.keys())
+    print(row_colored("Users found : ", ", ".join(names)))
+    print(row("Login at http://localhost:5000"))
+    print(f"{C}  ├{border}┤{NC}")
+    print(row("Forgot password? Run: orchix reset-password"))
+    print(f"{C}  ╰{border}╯{NC}\n")
+
+
 def ensure_users_exist():
     """Migrate from single-password to multi-user, or create first admin."""
     if USERS_FILE.exists():
         data = _load_users()
         if data.get('users'):
+            _print_existing_users(data['users'])
             return
 
     # Migrate from single-password file
