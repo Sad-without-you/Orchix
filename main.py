@@ -89,6 +89,8 @@ if __name__ == "__main__":
                 except ValueError:
                     pass
 
+        if sys.stdout.isatty():
+            print_header()
         from utils.docker_utils import ensure_orchix_network
         ensure_orchix_network()
         from web.server import run_web
