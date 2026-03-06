@@ -111,11 +111,15 @@ def run_web(host='0.0.0.0', port=5000):
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
-    sep = '=' * 72
+    import sys
+    is_tty = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"\n{sep}", flush=True)
-    print(f"  ORCHIX Web UI  |  Starting at {now}", flush=True)
-    print(sep, flush=True)
+    if not is_tty:
+        sep = '=' * 72
+        print(f"\n{sep}", flush=True)
+        print(f"  ORCHIX Web UI  |  Starting at {now}", flush=True)
+        print(f"{sep}", flush=True)
 
     from web.auth import ensure_users_exist
     ensure_users_exist()
@@ -123,8 +127,11 @@ def run_web(host='0.0.0.0', port=5000):
     app = create_app()
     print(f"\n  Listening  : http://{host}:{port}", flush=True)
     print(f"  Server     : Waitress  (threads=8)", flush=True)
-    print(f"  Log file   : ~/.orchix_configs/orchix.log", flush=True)
-    print(f"{'-' * 72}\n", flush=True)
+    if not is_tty:
+        print(f"  Log file   : ~/.orchix_configs/orchix.log", flush=True)
+        print(f"{'-' * 72}\n", flush=True)
+    else:
+        print("", flush=True)
 
     from waitress import serve
     serve(app, host=host, port=port, threads=8, channel_timeout=120)

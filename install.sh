@@ -169,7 +169,12 @@ if [ -f "$INSTALL_DIR/main.py" ]; then
     cd "$INSTALL_DIR"
 elif [ -d "$INSTALL_DIR/.git" ]; then
     cd "$INSTALL_DIR"
-    command -v git &>/dev/null && git pull -q 2>/dev/null || true
+    if command -v git &>/dev/null; then
+        echo -e "  ${CYN}│${NC}"
+        git pull --progress 2>&1 | \
+            grep -E '^(Already|remote:|Receiving|Resolving|Unpacking|Updating|Fast-forward)' | \
+            while IFS= read -r line; do echo -e "  ${CYN}│  ${NC}${line}"; done || true
+    fi
     step_ok "Updated to latest"
 else
     if command -v git &>/dev/null; then

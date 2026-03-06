@@ -114,7 +114,12 @@ if (Test-Path "$PWD\main.py") {
 Write-Step "Downloading ORCHIX $ORCHIX_VERSION..."
 if (Test-Path "$INSTALL_DIR\.git") {
     Set-Location $INSTALL_DIR
-    git pull -q 2>&1 | Out-Null
+    Write-Host "  │" -ForegroundColor $C
+    git pull --progress 2>&1 | ForEach-Object {
+        if ($_ -match '^(Already|remote:|Receiving|Resolving|Unpacking|Updating|Fast-forward)') {
+            Write-Host "  │  $_" -ForegroundColor $C
+        }
+    }
     Write-StepOK "Updated to latest"
 } elseif (Test-Path "$INSTALL_DIR\main.py") {
     Write-StepOK "Already installed at $INSTALL_DIR"
@@ -237,8 +242,6 @@ Write-Host "  │" -ForegroundColor $C
 $autoStart = Read-Host "  ├─ Enable autostart on login? [Y/n]"
 if ($autoStart -notmatch '^[Nn]') {
     try { & ".venv\Scripts\python.exe" "main.py" service enable } catch {}
-    Write-Host "  │  " -NoNewline -ForegroundColor $C
-    Write-Host "i  Autostart on login enabled — ORCHIX Web UI starts automatically" -ForegroundColor DarkCyan
 }
 Write-Host ""
 Read-Host "  Press Enter to exit"
