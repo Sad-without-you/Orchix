@@ -178,8 +178,9 @@ def _start_process():
 
     env = os.environ.copy()
     env['PYTHONUNBUFFERED'] = '1'
+    env['PYTHONIOENCODING'] = 'utf-8'
 
-    with open(LOG_FILE, 'a') as log:
+    with open(LOG_FILE, 'a', encoding='utf-8') as log:
         if platform.system() == 'Windows':
             DETACHED_PROCESS = 0x00000008
             CREATE_NO_WINDOW = 0x08000000
