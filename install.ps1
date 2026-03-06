@@ -114,39 +114,21 @@ if (Test-Path "$PWD\main.py") {
 Write-Step "Downloading ORCHIX $ORCHIX_VERSION..."
 if (Test-Path "$INSTALL_DIR\.git") {
     Set-Location $INSTALL_DIR
-    Write-Host "  │" -ForegroundColor $C
-    git pull --progress 2>&1 | ForEach-Object { "$_" } | Where-Object {
-        $_ -match '^(Already|remote:|Receiving|Resolving|Unpacking|Updating|Fast-forward)'
-    } | ForEach-Object { Write-Host "  │  $_" -ForegroundColor $C }
+    git pull -q 2>&1 | Out-Null
     Write-StepOK "Updated to latest"
 } elseif (Test-Path "$INSTALL_DIR\main.py") {
     Write-StepOK "Already installed at $INSTALL_DIR"
 } else {
     $git = Get-Command git -ErrorAction SilentlyContinue
     if ($git) {
-        Write-Host "  │" -ForegroundColor $C
-        git clone --progress https://github.com/Sad-without-you/Orchix.git $INSTALL_DIR 2>&1 | ForEach-Object { "$_" } | Where-Object {
-            $_ -match '^(Cloning|remote:|Receiving|Resolving|Unpacking)'
-        } | ForEach-Object { Write-Host "  │  $_" -ForegroundColor $C }
+        git clone https://github.com/Sad-without-you/Orchix.git $INSTALL_DIR --quiet 2>&1 | Out-Null
     }
     if (-not (Test-Path "$INSTALL_DIR\main.py")) {
         $zipPath = "$env:TEMP\orchix_install.zip"
         $extractPath = "$env:TEMP\orchix_extract_$(Get-Random)"
         try {
-            Write-Host "  │" -ForegroundColor $C
             $ProgressPreference = 'SilentlyContinue'
-            $wc = [System.Net.WebClient]::new()
-            $wc.add_DownloadProgressChanged({
-                param($s, $e)
-                $p  = $e.ProgressPercentage
-                $n  = [Math]::Max(0, [Math]::Min(40, [int]($p * 40 / 100)))
-                $bar = ('█' * $n) + ('░' * (40 - $n))
-                $mb = [Math]::Round($e.BytesReceived / 1MB, 1)
-                Write-Host "`r  │  [$bar] $p%  ($mb MB)" -NoNewline -ForegroundColor $C
-            })
-            $task = $wc.DownloadFileTaskAsync($GITHUB_ZIP, $zipPath)
-            $task.Wait()
-            Write-Host "`r  │  [$('█' * 40)] 100%           " -ForegroundColor $C
+            Invoke-WebRequest -Uri $GITHUB_ZIP -OutFile $zipPath -UseBasicParsing
             Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
             if (-not (Test-Path $INSTALL_DIR)) { New-Item -ItemType Directory -Path $INSTALL_DIR | Out-Null }
             Get-ChildItem "$extractPath\Orchix-main" | Move-Item -Destination $INSTALL_DIR -Force

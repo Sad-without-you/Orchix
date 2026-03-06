@@ -169,29 +169,19 @@ if [ -f "$INSTALL_DIR/main.py" ]; then
     cd "$INSTALL_DIR"
 elif [ -d "$INSTALL_DIR/.git" ]; then
     cd "$INSTALL_DIR"
-    if command -v git &>/dev/null; then
-        echo -e "  ${CYN}│${NC}"
-        git pull --progress 2>&1 | \
-            grep -E '^(Already|remote:|Receiving|Resolving|Unpacking|Updating|Fast-forward)' | \
-            while IFS= read -r line; do echo -e "  ${CYN}│  ${NC}${line}"; done || true
-    fi
+    command -v git &>/dev/null && git pull -q 2>/dev/null || true
     step_ok "Updated to latest"
 else
     if command -v git &>/dev/null; then
-        echo -e "  ${CYN}│${NC}"
-        git clone --progress https://github.com/Sad-without-you/Orchix.git "$INSTALL_DIR" 2>&1 | \
-            grep -E '^(Cloning|remote:|Receiving|Resolving|Unpacking)' | \
-            while IFS= read -r line; do echo -e "  ${CYN}│  ${NC}${line}"; done || true
+        git clone -q https://github.com/Sad-without-you/Orchix.git "$INSTALL_DIR" 2>/dev/null || true
     fi
     if [ ! -f "$INSTALL_DIR/main.py" ]; then
         TMPZIP="/tmp/orchix_$$.zip"
         TMPDIR="/tmp/orchix_extract_$$"
         if command -v curl &>/dev/null; then
-            echo -e "  ${CYN}│${NC}"
-            curl -L --progress-bar "$GITHUB_ZIP" -o "$TMPZIP" 2>&1 || fail "Download failed – check your connection."
+            curl -sL "$GITHUB_ZIP" -o "$TMPZIP" || fail "Download failed – check your connection."
         elif command -v wget &>/dev/null; then
-            echo -e "  ${CYN}│${NC}"
-            wget --show-progress --progress=bar:force "$GITHUB_ZIP" -O "$TMPZIP" 2>&1 || fail "Download failed – check your connection."
+            wget -q "$GITHUB_ZIP" -O "$TMPZIP" || fail "Download failed – check your connection."
         else
             fail "Neither git, curl, nor wget found. Please install one."
         fi
