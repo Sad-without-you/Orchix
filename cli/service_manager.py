@@ -211,7 +211,7 @@ def _start_process():
         print(f"  ❌ ORCHIX Web UI crashed on startup (exit code: {proc.poll()})")
         print(f"  ℹ️  Check logs: {LOG_FILE}")
         try:
-            lines = LOG_FILE.read_text().splitlines()[-10:]
+            lines = LOG_FILE.read_text(encoding='utf-8').splitlines()[-10:]
             for line in lines:
                 print(f"     {line}")
         except Exception:

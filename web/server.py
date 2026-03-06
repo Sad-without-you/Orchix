@@ -101,20 +101,30 @@ def create_app():
 def run_web(host='0.0.0.0', port=5000):
     import logging
     import sys
-    from web.auth import ensure_users_exist
-    ensure_users_exist()
+    from datetime import datetime
 
     # Route all logging (including Waitress access log) to stdout
     logging.basicConfig(
         stream=sys.stdout,
         level=logging.INFO,
-        format='%(asctime)s [%(name)s] %(levelname)s %(message)s',
+        format='%(asctime)s [%(name)s] %(levelname)s  %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
+    sep = '=' * 72
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n{sep}", flush=True)
+    print(f"  ORCHIX Web UI  |  Starting at {now}", flush=True)
+    print(sep, flush=True)
+
+    from web.auth import ensure_users_exist
+    ensure_users_exist()
+
     app = create_app()
-    print(f"\n  ORCHIX Web UI running at http://{host}:{port}", flush=True)
-    print(f"  (Production server: Waitress)\n", flush=True)
+    print(f"\n  Listening  : http://{host}:{port}", flush=True)
+    print(f"  Server     : Waitress  (threads=8)", flush=True)
+    print(f"  Log file   : ~/.orchix_configs/orchix.log", flush=True)
+    print(f"{'-' * 72}\n", flush=True)
 
     from waitress import serve
     serve(app, host=host, port=port, threads=8, channel_timeout=120)

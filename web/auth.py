@@ -112,57 +112,68 @@ def _save_users(data):
         _secure_file(str(USERS_FILE))
 
 
+def _is_tty():
+    import sys
+    return hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+
+
 def _print_credentials(password, title="First Time Setup"):
-    C  = '\033[96m'   # cyan
-    W  = '\033[97m'   # bright white
-    NC = '\033[0m'    # reset
-    I  = 41           # inner content width (after 2-space indent)
+    import sys
+    if _is_tty():
+        C = '\033[96m'; W = '\033[97m'; NC = '\033[0m'
+    else:
+        C = W = NC = ''
+    I = 41
 
     def row(text=''):
-        pad = ' ' * (I - len(text))
-        return f"{C}  │{NC}  {text}{pad}{C}│{NC}"
+        pad = ' ' * max(0, I - len(text))
+        return f"{C}  \u2502{NC}  {text}{pad}{C}\u2502{NC}"
 
     def row_colored(label, value):
         plain = f"{label}{value}"
-        pad = ' ' * (I - len(plain))
-        return f"{C}  │{NC}  {label}{W}{value}{NC}{pad}{C}│{NC}"
+        pad = ' ' * max(0, I - len(plain))
+        return f"{C}  \u2502{NC}  {label}{W}{value}{NC}{pad}{C}\u2502{NC}"
 
-    border = '─' * (I + 2)
-    print(f"\n{C}  ╭{border}╮{NC}")
-    print(row(f"ORCHIX Web UI — {title}"))
-    print(f"{C}  ├{border}┤{NC}")
-    print(row_colored("Username : ", "admin"))
-    print(row_colored("Password : ", password))
-    print(f"{C}  ├{border}┤{NC}")
-    print(row("Change it in Settings › User Management"))
-    print(f"{C}  ╰{border}╯{NC}\n")
+    border = '\u2500' * (I + 2)
+    print(f"\n{C}  \u256d{border}\u256e{NC}", flush=True)
+    print(row(f"ORCHIX Web UI \u2014 {title}"), flush=True)
+    print(f"{C}  \u251c{border}\u2524{NC}", flush=True)
+    print(row_colored("Username : ", "admin"), flush=True)
+    print(row_colored("Password : ", password), flush=True)
+    print(f"{C}  \u251c{border}\u2524{NC}", flush=True)
+    print(row("Change it in Settings \u203a User Management"), flush=True)
+    print(f"{C}  \u2570{border}\u256f{NC}\n", flush=True)
 
 
 def _print_existing_users(users):
-    C  = '\033[96m'
-    W  = '\033[97m'
-    NC = '\033[0m'
-    I  = 41
+    import sys
+    import logging
+    names = ', '.join(users.keys())
+    if _is_tty():
+        C = '\033[96m'; W = '\033[97m'; NC = '\033[0m'
+        I = 41
 
-    def row(text=''):
-        pad = ' ' * (I - len(text))
-        return f"{C}  │{NC}  {text}{pad}{C}│{NC}"
+        def row(text=''):
+            pad = ' ' * max(0, I - len(text))
+            return f"{C}  \u2502{NC}  {text}{pad}{C}\u2502{NC}"
 
-    def row_colored(label, value):
-        plain = f"{label}{value}"
-        pad = ' ' * (I - len(plain))
-        return f"{C}  │{NC}  {label}{W}{value}{NC}{pad}{C}│{NC}"
+        def row_colored(label, value):
+            plain = f"{label}{value}"
+            pad = ' ' * max(0, I - len(plain))
+            return f"{C}  \u2502{NC}  {label}{W}{value}{NC}{pad}{C}\u2502{NC}"
 
-    border = '─' * (I + 2)
-    print(f"\n{C}  ╭{border}╮{NC}")
-    print(row("ORCHIX Web UI — Existing Installation"))
-    print(f"{C}  ├{border}┤{NC}")
-    names = list(users.keys())
-    print(row_colored("Users found : ", ", ".join(names)))
-    print(row("Login at http://localhost:5000"))
-    print(f"{C}  ├{border}┤{NC}")
-    print(row("Forgot password? Run: orchix reset-password"))
-    print(f"{C}  ╰{border}╯{NC}\n")
+        border = '\u2500' * (I + 2)
+        print(f"\n{C}  \u256d{border}\u256e{NC}", flush=True)
+        print(row("ORCHIX Web UI \u2014 Existing Installation"), flush=True)
+        print(f"{C}  \u251c{border}\u2524{NC}", flush=True)
+        print(row_colored("Users found : ", names), flush=True)
+        print(row("Login at http://localhost:5000"), flush=True)
+        print(f"{C}  \u251c{border}\u2524{NC}", flush=True)
+        print(row("Forgot password? Run: orchix reset-password"), flush=True)
+        print(f"{C}  \u2570{border}\u256f{NC}\n", flush=True)
+    else:
+        logging.getLogger('orchix').info("Existing installation — users: %s", names)
+        logging.getLogger('orchix').info("Login at http://localhost:5000")
 
 
 def ensure_users_exist():
