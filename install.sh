@@ -345,6 +345,5 @@ printf "  ${CYN}├─${NC} Enable autostart on boot? [Y/n]: "
 read -r auto_start || auto_start=""
 if [[ ! "$auto_start" =~ ^[Nn] ]]; then
     "$VENV_PYTHON" "$INSTALL_DIR/main.py" service enable </dev/null || true
-    echo -e "  ${CYN}│  ${NC}ℹ  Autostart on boot enabled — ORCHIX Web UI starts automatically"
 fi
 echo ""

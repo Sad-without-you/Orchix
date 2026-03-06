@@ -115,11 +115,9 @@ Write-Step "Downloading ORCHIX $ORCHIX_VERSION..."
 if (Test-Path "$INSTALL_DIR\.git") {
     Set-Location $INSTALL_DIR
     Write-Host "  │" -ForegroundColor $C
-    git pull --progress 2>&1 | ForEach-Object {
-        if ($_ -match '^(Already|remote:|Receiving|Resolving|Unpacking|Updating|Fast-forward)') {
-            Write-Host "  │  $_" -ForegroundColor $C
-        }
-    }
+    git pull --progress 2>&1 | ForEach-Object { "$_" } | Where-Object {
+        $_ -match '^(Already|remote:|Receiving|Resolving|Unpacking|Updating|Fast-forward)'
+    } | ForEach-Object { Write-Host "  │  $_" -ForegroundColor $C }
     Write-StepOK "Updated to latest"
 } elseif (Test-Path "$INSTALL_DIR\main.py") {
     Write-StepOK "Already installed at $INSTALL_DIR"
@@ -127,11 +125,9 @@ if (Test-Path "$INSTALL_DIR\.git") {
     $git = Get-Command git -ErrorAction SilentlyContinue
     if ($git) {
         Write-Host "  │" -ForegroundColor $C
-        git clone --progress https://github.com/Sad-without-you/Orchix.git $INSTALL_DIR 2>&1 | ForEach-Object {
-            if ($_ -match '^(Cloning|remote:|Receiving|Resolving|Unpacking)') {
-                Write-Host "  │  $_" -ForegroundColor $C
-            }
-        }
+        git clone --progress https://github.com/Sad-without-you/Orchix.git $INSTALL_DIR 2>&1 | ForEach-Object { "$_" } | Where-Object {
+            $_ -match '^(Cloning|remote:|Receiving|Resolving|Unpacking)'
+        } | ForEach-Object { Write-Host "  │  $_" -ForegroundColor $C }
     }
     if (-not (Test-Path "$INSTALL_DIR\main.py")) {
         $zipPath = "$env:TEMP\orchix_install.zip"

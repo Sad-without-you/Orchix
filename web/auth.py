@@ -151,7 +151,7 @@ def _print_existing_users(users):
     names = ', '.join(users.keys())
     if _is_tty():
         C = '\033[96m'; W = '\033[97m'; NC = '\033[0m'
-        I = 41
+        I = 45
 
         def row(text=''):
             pad = ' ' * max(0, I - len(text))
