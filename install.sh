@@ -173,15 +173,20 @@ elif [ -d "$INSTALL_DIR/.git" ]; then
     step_ok "Updated to latest"
 else
     if command -v git &>/dev/null; then
-        git clone -q https://github.com/Sad-without-you/Orchix.git "$INSTALL_DIR" 2>/dev/null || true
+        echo -e "  ${CYN}│${NC}"
+        git clone --progress https://github.com/Sad-without-you/Orchix.git "$INSTALL_DIR" 2>&1 | \
+            grep -E '^(Cloning|remote:|Receiving|Resolving|Unpacking)' | \
+            while IFS= read -r line; do echo -e "  ${CYN}│  ${NC}${line}"; done || true
     fi
     if [ ! -f "$INSTALL_DIR/main.py" ]; then
         TMPZIP="/tmp/orchix_$$.zip"
         TMPDIR="/tmp/orchix_extract_$$"
         if command -v curl &>/dev/null; then
-            curl -sL "$GITHUB_ZIP" -o "$TMPZIP" || fail "Download failed – check your connection."
+            echo -e "  ${CYN}│${NC}"
+            curl -L --progress-bar "$GITHUB_ZIP" -o "$TMPZIP" 2>&1 || fail "Download failed – check your connection."
         elif command -v wget &>/dev/null; then
-            wget -q "$GITHUB_ZIP" -O "$TMPZIP" || fail "Download failed – check your connection."
+            echo -e "  ${CYN}│${NC}"
+            wget --show-progress --progress=bar:force "$GITHUB_ZIP" -O "$TMPZIP" 2>&1 || fail "Download failed – check your connection."
         else
             fail "Neither git, curl, nor wget found. Please install one."
         fi

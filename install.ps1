@@ -121,13 +121,31 @@ if (Test-Path "$INSTALL_DIR\.git") {
 } else {
     $git = Get-Command git -ErrorAction SilentlyContinue
     if ($git) {
-        git clone https://github.com/Sad-without-you/Orchix.git $INSTALL_DIR --quiet 2>&1 | Out-Null
+        Write-Host "  │" -ForegroundColor $C
+        git clone --progress https://github.com/Sad-without-you/Orchix.git $INSTALL_DIR 2>&1 | ForEach-Object {
+            if ($_ -match '^(Cloning|remote:|Receiving|Resolving|Unpacking)') {
+                Write-Host "  │  $_" -ForegroundColor $C
+            }
+        }
     }
     if (-not (Test-Path "$INSTALL_DIR\main.py")) {
         $zipPath = "$env:TEMP\orchix_install.zip"
         $extractPath = "$env:TEMP\orchix_extract_$(Get-Random)"
         try {
-            Invoke-WebRequest -Uri $GITHUB_ZIP -OutFile $zipPath -UseBasicParsing
+            Write-Host "  │" -ForegroundColor $C
+            $ProgressPreference = 'SilentlyContinue'
+            $wc = [System.Net.WebClient]::new()
+            $wc.add_DownloadProgressChanged({
+                param($s, $e)
+                $p  = $e.ProgressPercentage
+                $n  = [Math]::Max(0, [Math]::Min(40, [int]($p * 40 / 100)))
+                $bar = ('█' * $n) + ('░' * (40 - $n))
+                $mb = [Math]::Round($e.BytesReceived / 1MB, 1)
+                Write-Host "`r  │  [$bar] $p%  ($mb MB)" -NoNewline -ForegroundColor $C
+            })
+            $task = $wc.DownloadFileTaskAsync($GITHUB_ZIP, $zipPath)
+            $task.Wait()
+            Write-Host "`r  │  [$('█' * 40)] 100%           " -ForegroundColor $C
             Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
             if (-not (Test-Path $INSTALL_DIR)) { New-Item -ItemType Directory -Path $INSTALL_DIR | Out-Null }
             Get-ChildItem "$extractPath\Orchix-main" | Move-Item -Destination $INSTALL_DIR -Force
