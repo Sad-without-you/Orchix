@@ -2,6 +2,35 @@
 
 ## v1.5 (in progress)
 
+### Installer
+- **install.ps1: Python 3.12+ enforcement** — detection loop checks `python3.12`, `python3`, `python`, then `py -3.12`; auto-installs via winget if missing
+- **install.ps1: venv always recreated** — `.venv` is deleted and rebuilt on every install to eliminate stale/broken environments as root cause of missing-package errors
+- **install.ps1: silent downloads** — git clone and zip fallback run silently; no spurious PowerShell `NativeCommandError` from git stderr
+- **install.sh: Python 3.12+ enforcement** — added `_py_ok()` helper and explicit detection for `python3.14 → python3.12 → python3 → python`; raises minimum from 3.8 to 3.12
+- **install.sh: distro-specific Python install** — Ubuntu uses deadsnakes PPA, Debian/Raspberry Pi uses backports; prevents silent failure when `python3.12` is unavailable in default repos
+- **install.sh: sudo pre-authentication** — `sudo -v` at startup caches credentials for the full install run; no mid-install password prompt
+- **install.sh: `apt-get update` before all installs** — package index is refreshed before any `apt-get install` call on all distros
+- **install.sh: `set -e` protection** — all package install commands in the Python block now end with `|| true` to prevent silent abort under `set -e`
+- **install.sh / install.ps1: duplicate autostart message removed** — installer no longer prints its own autostart confirmation; `service_manager.py` output is the single source of truth
+
+### Service & Logging
+- **Background service: unbuffered output** — subprocess launched with `python -u` and `PYTHONUNBUFFERED=1`; log file no longer shows delayed or missing output
+- **Background service: UTF-8 log file** — `PYTHONIOENCODING=utf-8` added to service env and log file opened with `encoding='utf-8'`; eliminates `UnicodeEncodeError` on Windows for box-drawing characters
+- **Startup health check** — after launching the background service, ORCHIX waits 3 seconds then checks: (1) process still alive, (2) port 5000 responding; prints last 10 log lines on crash
+- **Structured log format** — log file now has a `====` startup separator with timestamp, server info block, and `--------` divider before Waitress output
+- **ASCII banner suppressed in log** — banner is only printed when stdout is a TTY; log file stays clean
+- **Waitress access log routed** — `logging.basicConfig(stream=sys.stdout)` ensures all Waitress request logs appear in `orchix.log`
+
+### Web UI: Auth
+- **Multi-user system** — migrated from single password file to JSON user store with roles (admin / operator / viewer)
+- **Existing-installation hint** — on reinstall, `ensure_users_exist()` now prints a box showing existing usernames and login URL instead of silently returning
+- **Credentials box: ANSI-aware** — color codes only emitted when stdout is a TTY; plain structured log output when writing to file
+- **Credentials box: overflow fixed** — inner width increased to 45 for the existing-users box so "Forgot password? Run: orchix reset-password" fits without truncation
+
+### Bug Fixes
+- **`check_sudo()` fixed** — was restarting with `sudo python3` (system Python); now uses `os.execvp("sudo", ["sudo", sys.executable] + sys.argv)` so the venv Python is preserved after privilege escalation
+- **Python requirement raised to 3.12+** — eliminates PEP 701 f-string backslash SyntaxErrors on older interpreters; updated in README, DOCUMENTATION, requirements
+
 ### New Commands
 - **`orchix reset-password`** — resets the admin password when no user has ever logged in; safely refuses (with a clear message) if anyone has already authenticated; generates and displays a new random password in the credentials box
 - **`orchix service restart`** — restarts the ORCHIX Web UI background service (CLI + Windows/Linux)
