@@ -22,7 +22,7 @@
 
 ## What is ORCHIX?
 
-ORCHIX is a container management platform that abstracts Docker complexity behind an intuitive interface. It includes a full-featured CLI and a modern Web UI, both capable of installing, updating, and monitoring 30 pre-configured applications.
+ORCHIX is a container management system that abstracts Docker complexity behind an intuitive interface. It includes a full-featured CLI and a modern Web UI, both capable of installing, updating, and monitoring 30 pre-configured applications.
 
 **Target users:**
 - Small teams and startups without dedicated DevOps
