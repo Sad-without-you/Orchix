@@ -135,7 +135,6 @@ if (Test-Path "$INSTALL_DIR\.git") {
         } catch {
             Write-Fail "Download failed – check your internet connection."
         } finally {
-            # FIX: $ErrorActionPreference="Stop" overrides -ErrorAction SilentlyContinue
             try { Remove-Item $zipPath -Force } catch {}
             try { Remove-Item $extractPath -Recurse -Force } catch {}
         }
@@ -147,7 +146,6 @@ Set-Location $INSTALL_DIR
 
 # ── 4. Virtual environment ───────────────────────────────────
 Write-Step "Creating Python virtual environment..."
-# FIX: same try/catch pattern for cleanup
 if (Test-Path ".venv") { try { Remove-Item ".venv" -Recurse -Force } catch {} }
 & $PYTHON -m venv .venv 2>&1 | Out-Null
 if (-not (Test-Path ".venv\Scripts\python.exe")) {
@@ -157,9 +155,18 @@ Write-StepOK ".venv ready"
 
 # ── 5. Install dependencies ───────────────────────────────────
 Write-Step "Installing dependencies..."
-& ".venv\Scripts\python.exe" -m pip install --upgrade pip -q 2>&1 | Out-Null
-& ".venv\Scripts\python.exe" -m pip install -r requirements.txt -q 2>&1 | Out-Null
-Write-StepOK "All packages installed"
+$PIP = ".venv\Scripts\python.exe"
+& $PIP -m pip install --upgrade pip -q 2>&1 | Out-Null
+& $PIP -m pip install -r requirements.txt -q 2>&1 | Out-Null
+# windows-curses: best-effort (wheels may not exist for newest Python)
+try {
+    & $PIP -m pip install windows-curses -q 2>&1 | Out-Null
+    Write-StepOK "All packages installed"
+} catch {
+    Write-Host "  │  " -NoNewline -ForegroundColor $C
+    Write-Host "windows-curses skipped (no wheel for $pyver — live dashboard disabled)" -ForegroundColor $Y
+    Write-StepOK "Core packages installed"
+}
 
 # ── 6. Create PowerShell launcher (no CMD layer = no language issues) ──────
 Write-Step "Creating launcher..."
