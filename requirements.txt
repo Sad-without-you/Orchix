@@ -33,7 +33,7 @@ python-dotenv>=1.0.0,<2.0.0
 psutil>=5.9.0,<6.0.0
 
 # Curses support for Windows (required for live dashboard)
-windows-curses>=2.3.0; sys_platform == "win32"
+# windows-curses>=2.3.0; sys_platform == "win32"
 
 # HTTP client for license validation and GitHub update checks
 requests>=2.31.0,<3.0.0
