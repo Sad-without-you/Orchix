@@ -7,8 +7,9 @@ bp = Blueprint('api_license', __name__, url_prefix='/api')
 @bp.route('/license')
 @require_permission('license.read')
 def get_license():
-    from license import get_license_manager
-    lm = get_license_manager()
+    import license as _lic_mod
+    _lic_mod._license_manager = None  # Force re-read from file (picks up CLI changes)
+    lm = _lic_mod.get_license_manager()
     info = lm.get_license_info()
 
     # Serialize for JSON (handle datetime and float('inf'))
