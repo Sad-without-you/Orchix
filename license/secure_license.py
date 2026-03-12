@@ -90,7 +90,15 @@ class LicenseKeyValidator:
 
     @classmethod
     def decrement_activations(cls, license_key: str):
-        """No-op: deactivation tracking is now server-side."""
+        """Notify license server to remove this device's activation."""
+        try:
+            requests.post(
+                f'{_SERVER}/api/v1/deactivate',
+                json={'license_key': license_key, 'device_id': _get_device_id()},
+                timeout=_TIMEOUT,
+            )
+        except Exception:
+            pass  # Best-effort: don't block deactivation if server unreachable
 
     # -------------------------------------------------------------------------
     # Internal helpers
