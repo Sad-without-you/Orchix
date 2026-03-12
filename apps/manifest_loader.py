@@ -35,7 +35,7 @@ def _load_templates():
                 if v.get('name_suffix')
             ],
             'networks': [],
-            'hooks': {},
+            'hooks': t.get('hooks', {}),
             'image_size_mb': t.get('image_size_mb', 0),
             '_template': t,
             '_is_template': True,

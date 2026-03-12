@@ -435,6 +435,10 @@
         {"key": "MARIADB_USER", "label": "Database User", "default": "user"},
         {"key": "MARIADB_PASSWORD", "label": "Database Password", "type": "password", "generate": true}
       ],
+      "hooks": {
+        "backup": "apps.hooks.mariadb.backup",
+        "restore": "apps.hooks.mariadb.restore"
+      },
       "restart": "unless-stopped"
     },
     {
@@ -513,6 +517,10 @@
         {"key": "POSTGRES_USER", "label": "Username", "default": "postgres"},
         {"key": "POSTGRES_PASSWORD", "label": "Password", "type": "password", "generate": true}
       ],
+      "hooks": {
+        "backup": "apps.hooks.postgres.backup",
+        "restore": "apps.hooks.postgres.restore"
+      },
       "restart": "unless-stopped"
     },
     {

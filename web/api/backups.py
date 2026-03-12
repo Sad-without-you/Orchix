@@ -69,6 +69,9 @@ def _generic_volume_backup(container_name: str) -> bool:
         backup_dir_abs = str(BACKUP_DIR.resolve())
         alpine_existed = _alpine_image_exists()
 
+        # Stop container for a consistent backup
+        subprocess.run(['docker', 'stop', container_name], capture_output=True)
+
         # Build volume mounts for all volumes
         vol_mounts = []
         for vol in volumes:
@@ -101,6 +104,9 @@ def _generic_volume_backup(container_name: str) -> bool:
 
         if not alpine_existed:
             subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
+
+        # Restart container regardless of backup result
+        subprocess.run(['docker', 'start', container_name], capture_output=True)
 
         if br.returncode != 0:
             return False
