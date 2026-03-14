@@ -812,14 +812,16 @@ def import_migration_package():
 
             compose_file = container_data.get('compose_file')
 
+            # Always restore compose file so passwords/env vars are correct
+            if compose_file:
+                compose_src = extract_dir / compose_file
+                compose_dst = _ORCHIX_ROOT / compose_file
+                if compose_src.exists():
+                    shutil.copy2(compose_src, compose_dst)
+
             if not container_exists:
-                # Copy compose file and create container from scratch
+                # Create container from scratch
                 progress.update(main_task, completed=idx * 100 + 20, description=f"Installing {container_name}...")
-                if compose_file:
-                    compose_src = extract_dir / compose_file
-                    compose_dst = _ORCHIX_ROOT / compose_file
-                    if compose_src.exists():
-                        shutil.copy2(compose_src, compose_dst)
 
                 progress.update(main_task, completed=idx * 100 + 40, description=f"Starting {container_name}...")
                 start_result = subprocess.run(
