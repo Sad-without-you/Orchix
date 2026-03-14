@@ -533,6 +533,20 @@ def _generic_volume_backup(container_name, output_dir):
 
     success = result is not None and result.returncode == 0
     _start_container(container_name)
+
+    if success:
+        from datetime import datetime
+        vol_names = [v['name'] for v in volumes]
+        meta_path = output_dir / f"{container_name}_volumes.meta"
+        with open(meta_path, 'w') as f:
+            f.write(f"container: {container_name}\n")
+            f.write(f"app_type: generic\n")
+            f.write(f"created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            if len(vol_names) == 1:
+                f.write(f"volume: {vol_names[0]}\n")
+            else:
+                f.write(f"volumes: {','.join(vol_names)}\n")
+
     return success
 
 
