@@ -546,6 +546,9 @@ def _generic_volume_backup(container_name, output_dir):
                 f.write(f"volume: {vol_names[0]}\n")
             else:
                 f.write(f"volumes: {','.join(vol_names)}\n")
+                # Store explicit index mapping so restore can match by name
+                mapping = ','.join(f"v{i}:{n}" for i, n in enumerate(vol_names))
+                f.write(f"volume_map: {mapping}\n")
 
     return success
 
@@ -593,8 +596,26 @@ def _restore_container_volumes(container_name, backup_path):
     container_uid = resolve_container_uid(container_name)
 
     if is_multi:
+        # Build volume-name → archive-index map.
+        # Prefer the explicit map from the .meta file (created by new backups).
+        # Fall back to positional order (same as backup order from docker inspect).
+        vol_name_to_idx = {vol_name: idx for idx, vol_name in enumerate(volumes)}
+        meta_path = _get_meta_file(backup_path)
+        if meta_path.exists():
+            for line in meta_path.read_text(encoding='utf-8', errors='ignore').splitlines():
+                if line.startswith('volume_map:'):
+                    raw = line.split(':', 1)[1].strip()
+                    for entry in raw.split(','):
+                        parts = entry.strip().split(':')
+                        if len(parts) == 2:
+                            vi, vname = parts[0].strip(), parts[1].strip()
+                            if vi.startswith('v') and vi[1:].isdigit():
+                                vol_name_to_idx[vname] = int(vi[1:])
+                    break
+
         # Multi-volume: extract v{idx}/ into each corresponding volume
-        for idx, vol_name in enumerate(volumes):
+        for vol_name in volumes:
+            idx = vol_name_to_idx.get(vol_name, volumes.index(vol_name))
             chown_cmd = f' && chown -R {container_uid}:{container_uid} /data' if container_uid != '0' else ''
             rr = subprocess.run(
                 ['docker', 'run', '--rm',
@@ -833,26 +854,46 @@ def import_migration_package():
                 if compose_src.exists():
                     shutil.copy2(compose_src, compose_dst)
 
+            # Ensure orchix network exists before any docker compose call
+            from utils.docker_utils import ensure_orchix_network
+            ensure_orchix_network()
+
+            backup_file = container_data.get('backup_file')
+            backup_src = extract_dir / backup_file if backup_file else None
+            has_backup = backup_file and backup_src and backup_src.exists()
+
             if not container_exists:
-                # Create container from scratch
-                progress.update(main_task, completed=idx * 100 + 20, description=f"Installing {container_name}...")
+                progress.update(main_task, completed=idx * 100 + 30, description=f"Creating {container_name}...")
 
-                progress.update(main_task, completed=idx * 100 + 40, description=f"Starting {container_name}...")
-                start_result = subprocess.run(
-                    ['docker', 'compose', '-f', str(_ORCHIX_ROOT / compose_file), 'up', '-d'],
-                    capture_output=True,
-                    text=True,
-                    encoding='utf-8',
-                    errors='ignore'
-                )
-
-                if start_result.returncode != 0:
-                    progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} failed to start")
-                    continue
-
-                # Wait for container to be ready before restoring
-                progress.update(main_task, completed=idx * 100 + 60, description=f"Initializing {container_name}...")
-                _wait_for_container_ready(container_name)
+                if has_backup:
+                    # Create container and volumes WITHOUT starting so the app
+                    # never writes a fresh DB/config — backup data lands first.
+                    create_result = subprocess.run(
+                        ['docker', 'compose', '-f', str(_ORCHIX_ROOT / compose_file), 'create'],
+                        capture_output=True, text=True, encoding='utf-8', errors='ignore'
+                    )
+                    if create_result.returncode != 0:
+                        # Fallback: start normally if 'create' not supported
+                        start_result = subprocess.run(
+                            ['docker', 'compose', '-f', str(_ORCHIX_ROOT / compose_file), 'up', '-d'],
+                            capture_output=True, text=True, encoding='utf-8', errors='ignore'
+                        )
+                        if start_result.returncode != 0:
+                            progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} failed to start")
+                            continue
+                        # Container started; stop it so restore can wipe volumes cleanly
+                        subprocess.run(['docker', 'stop', container_name], capture_output=True)
+                else:
+                    # No backup — start normally
+                    start_result = subprocess.run(
+                        ['docker', 'compose', '-f', str(_ORCHIX_ROOT / compose_file), 'up', '-d'],
+                        capture_output=True, text=True, encoding='utf-8', errors='ignore'
+                    )
+                    if start_result.returncode != 0:
+                        progress.update(main_task, completed=(idx + 1) * 100, description=f"{container_name} failed to start")
+                        continue
+                    progress.update(main_task, completed=idx * 100 + 60, description=f"Initializing {container_name}...")
+                    _wait_for_container_ready(container_name)
 
             # Restore backup using hooks
             progress.update(main_task, completed=idx * 100 + 80, description=f"Restoring {container_name}...")
