@@ -79,18 +79,21 @@ def _generic_volume_backup(container_name: str) -> bool:
         for vol in volumes:
             vol_mounts += ['-v', f'{vol}:/_vol_{vol}:ro']
 
+        stat_cmds = '; '.join(
+            f'stat -c %u /_vol_{vol} 2>/dev/null || echo 0' for vol in volumes
+        )
+
         if is_windows():
             backup_name = f"{container_name}_{timestamp}.zip"
             if len(volumes) == 1:
-                copy_cmd = f'apk add --no-cache zip -q && cd /_vol_{volumes[0]} && zip -r /backup/{backup_name} .'
+                copy_cmd = (f'{stat_cmds}; '
+                            f'apk add --no-cache zip -q && cd /_vol_{volumes[0]} && zip -r /backup/{backup_name} .')
             else:
-                copy_cmds = [f'apk add --no-cache zip -q']
-                for vol in volumes:
-                    copy_cmds.append(f'cd /_vol_{vol} && zip -r /backup/{backup_name} -x "*.zip" . && cd /')
-                copy_cmd = ' && '.join(copy_cmds)
-                # Simpler: copy all into /tmp tree then zip
-                mkdir_cmds = ' && '.join(f'cp -r /_vol_{vol} /tmp/bk/{vol}' for vol in volumes)
-                copy_cmd = f'apk add --no-cache zip -q && mkdir -p /tmp/bk && {mkdir_cmds} && cd /tmp/bk && zip -r /backup/{backup_name} .'
+                mkdir_cmds = ' && '.join(
+                    f'mkdir -p /tmp/bk/{vol} && cp -a /_vol_{vol}/. /tmp/bk/{vol}/' for vol in volumes
+                )
+                copy_cmd = (f'{stat_cmds}; '
+                            f'apk add --no-cache zip -q && mkdir -p /tmp/bk && {mkdir_cmds} && cd /tmp/bk && zip -r /backup/{backup_name} .')
             backup_result = subprocess.run(
                 ['docker', 'run', '--rm'] + vol_mounts + ['-v', f'{backup_dir_abs}:/backup',
                  'alpine', 'sh', '-c', copy_cmd],
@@ -99,15 +102,25 @@ def _generic_volume_backup(container_name: str) -> bool:
         else:
             backup_name = f"{container_name}_{timestamp}.tar.gz"
             if len(volumes) == 1:
-                tar_cmd = f'tar czf /backup/{backup_name} -C /_vol_{volumes[0]} .'
+                tar_cmd = (f'{stat_cmds}; '
+                           f'tar czf /backup/{backup_name} -C /_vol_{volumes[0]} .')
             else:
-                mkdir_cmds = ' && '.join(f'cp -r /_vol_{vol} /tmp/bk/{vol}' for vol in volumes)
-                tar_cmd = f'mkdir -p /tmp/bk && {mkdir_cmds} && tar czf /backup/{backup_name} -C /tmp/bk .'
+                mkdir_cmds = ' && '.join(
+                    f'mkdir -p /tmp/bk/{vol} && cp -a /_vol_{vol}/. /tmp/bk/{vol}/' for vol in volumes
+                )
+                tar_cmd = (f'{stat_cmds}; '
+                           f'mkdir -p /tmp/bk && {mkdir_cmds} && tar czf /backup/{backup_name} -C /tmp/bk .')
             backup_result = subprocess.run(
                 ['docker', 'run', '--rm'] + vol_mounts + ['-v', f'{backup_dir_abs}:/backup',
                  'alpine', 'sh', '-c', tar_cmd],
                 capture_output=True, text=True
             )
+
+        # Parse UIDs from stdout (one per line, digits only)
+        volume_uids = []
+        if backup_result.stdout:
+            volume_uids = [l.strip() for l in backup_result.stdout.splitlines()
+                           if l.strip().isdigit()][:len(volumes)]
 
         if not alpine_existed:
             subprocess.run(['docker', 'rmi', 'alpine'], capture_output=True)
@@ -129,6 +142,9 @@ def _generic_volume_backup(container_name: str) -> bool:
                 f.write(f"volume: {volumes[0]}\n")
             else:
                 f.write(f"volumes: {','.join(volumes)}\n")
+            if volume_uids:
+                pairs = ','.join(f'{v}:{u}' for v, u in zip(volumes, volume_uids))
+                f.write(f"volume_owners: {pairs}\n")
 
         # Also back up the compose file so restore can recreate the container exactly
         compose_src = _ORCHIX_ROOT / f"docker-compose-{container_name}.yml"
@@ -147,15 +163,20 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
         meta_path = _get_meta_path(backup_file)
         volume_name = None
         all_volumes = []  # multi-volume format
+        volume_owners = {}  # vol -> uid string
         if meta_path.exists():
             with open(meta_path, 'r') as f:
                 for line in f:
                     if line.startswith('volumes:'):
                         all_volumes = [v.strip() for v in line.split(':', 1)[1].strip().split(',') if v.strip()]
                         volume_name = all_volumes[0] if all_volumes else None
-                        break
-                    if line.startswith('volume:'):
+                    elif line.startswith('volume:'):
                         volume_name = line.split(':', 1)[1].strip()
+                    elif line.startswith('volume_owners:'):
+                        for pair in line.split(':', 1)[1].strip().split(','):
+                            kv = pair.strip().rsplit(':', 1)
+                            if len(kv) == 2 and kv[1].strip().isdigit():
+                                volume_owners[kv[0].strip()] = kv[1].strip()
 
         if not volume_name:
             result = subprocess.run(
@@ -190,6 +211,16 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
         # Stop container before modifying its volume
         subprocess.run(['docker', 'stop', container_name], capture_output=True)
 
+        # Fallback: if no volume_owners in meta, resolve UID from image (handles old backups)
+        if not volume_owners:
+            from utils.docker_utils import resolve_container_uid
+            fallback_uid = resolve_container_uid(container_name)
+            if fallback_uid != '0':
+                vols_to_fix = all_volumes if len(all_volumes) > 1 else [volume_name]
+                for vol in vols_to_fix:
+                    if vol:
+                        volume_owners[vol] = fallback_uid
+
         # Restore compose file from sidecar so container config (env vars, ports) matches
         compose_sidecar = _get_compose_sidecar_path(backup_file)
         if compose_sidecar.exists():
@@ -197,14 +228,16 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
 
         def _restore_single(vol: str, subdir: str | None) -> subprocess.CompletedProcess:
             """Restore one volume, optionally extracting only a named subdir."""
+            uid = volume_owners.get(vol, '0')
+            chown_cmd = f' && chown -R {uid}:{uid} /data' if uid and uid != '0' else ''
             if backup_name.endswith('.zip'):
                 if subdir:
                     cmd = (f'apk add --no-cache unzip -q && rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
                            f'unzip -o /backup/{backup_name} "{subdir}/*" -d /tmp/x && '
-                           f'cp -r /tmp/x/{subdir}/. /data/')
+                           f'cp -a /tmp/x/{subdir}/. /data/' + chown_cmd)
                 else:
                     cmd = (f'apk add --no-cache unzip -q && rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
-                           f'unzip -o /backup/{backup_name} -d /data')
+                           f'unzip -o /backup/{backup_name} -d /data' + chown_cmd)
                 return subprocess.run(
                     ['docker', 'run', '--rm',
                      '-v', f'{vol}:/data',
@@ -215,9 +248,10 @@ def _generic_volume_restore(container_name: str, backup_file: Path) -> bool:
             elif backup_name.endswith('.tar.gz'):
                 if subdir:
                     cmd = (f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
-                           f'tar xzf /backup/{backup_name} -C /data --strip-components=1 {subdir}')
+                           f'tar xzf /backup/{backup_name} -C /data --strip-components=1 {subdir}' + chown_cmd)
                 else:
-                    cmd = f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; tar xzf /backup/{backup_name} -C /data'
+                    cmd = (f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
+                           f'tar xzf /backup/{backup_name} -C /data' + chown_cmd)
                 return subprocess.run(
                     ['docker', 'run', '--rm',
                      '-v', f'{vol}:/data',

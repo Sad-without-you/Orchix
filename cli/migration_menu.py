@@ -514,7 +514,7 @@ def _generic_volume_backup(container_name, output_dir):
                '-v', f"{volumes[0]['name']}:/data:ro",
                '-v', f'{output_dir.resolve()}:/backup_dst',
                'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz',
-               '-C', '/data', '.']
+               '--numeric-owner', '-C', '/data', '.']
         result = safe_docker_run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
     else:
         # Multi-volume: each volume stored in v0/, v1/, ... subdirectory
@@ -525,7 +525,7 @@ def _generic_volume_backup(container_name, output_dir):
         cmd = (['docker', 'run', '--rm'] + vol_args +
                ['-v', f'{output_dir.resolve()}:/backup_dst',
                 'alpine', 'tar', 'czf', f'/backup_dst/{container_name}_volumes.tar.gz',
-                '-C', '/vols', '.'])
+                '--numeric-owner', '-C', '/vols', '.'])
         result = safe_docker_run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
 
     if not alpine_existed:
@@ -574,30 +574,36 @@ def _restore_container_volumes(container_name, backup_path):
     subprocess.run(['docker', 'stop', container_name], capture_output=True)
     success = True
 
+    # Resolve UID for post-restore chown (handles non-root containers)
+    from utils.docker_utils import resolve_container_uid
+    container_uid = resolve_container_uid(container_name)
+
     if is_multi:
         # Multi-volume: extract v{idx}/ into each corresponding volume
         for idx, vol_name in enumerate(volumes):
+            chown_cmd = f' && chown -R {container_uid}:{container_uid} /data' if container_uid != '0' else ''
             rr = subprocess.run(
                 ['docker', 'run', '--rm',
                  '-v', f'{vol_name}:/data',
                  '-v', f'{backup_dir_abs}:/backup:ro',
                  'alpine', 'sh', '-c',
                  f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
-                 f'tar xzf /backup/{backup_name} --strip-components=2 '
-                 f'--wildcards -C /data "./v{idx}/*"'],
+                 f'tar xzf /backup/{backup_name} --numeric-owner --strip-components=2 '
+                 f'--wildcards -C /data "./v{idx}/*"' + chown_cmd],
                 capture_output=True, text=True
             )
             if rr.returncode != 0:
                 success = False
     else:
         # Single-volume flat format: restore into first volume
+        chown_cmd = f' && chown -R {container_uid}:{container_uid} /data' if container_uid != '0' else ''
         rr = subprocess.run(
             ['docker', 'run', '--rm',
              '-v', f'{volumes[0]}:/data',
              '-v', f'{backup_dir_abs}:/backup:ro',
              'alpine', 'sh', '-c',
              f'rm -rf /data/* /data/..?* /data/.[!.]* 2>/dev/null; '
-             f'tar xzf /backup/{backup_name} -C /data'],
+             f'tar xzf /backup/{backup_name} --numeric-owner -C /data' + chown_cmd],
             capture_output=True, text=True
         )
         success = rr.returncode == 0

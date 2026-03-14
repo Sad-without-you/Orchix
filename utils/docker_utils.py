@@ -99,3 +99,38 @@ def ensure_orchix_network():
                 )
     except Exception:
         pass
+
+
+def resolve_container_uid(container_name: str) -> str:
+    """Resolve the numeric UID a container runs as.
+
+    Returns the UID as a string, or '0' if it cannot be determined or runs as root.
+    Used by backup/restore to fix file ownership after volume extraction.
+    """
+    try:
+        insp = subprocess.run(
+            ['docker', 'inspect', container_name,
+             '--format', '{{.Config.Image}}\n{{.Config.User}}'],
+            capture_output=True, text=True
+        )
+        if insp.returncode != 0:
+            return '0'
+        lines = insp.stdout.strip().splitlines()
+        if len(lines) < 2:
+            return '0'
+        image, cuser = lines[0].strip(), lines[1].strip()
+        if not cuser or cuser in ('', 'root', '0'):
+            return '0'
+        if cuser.isdigit():
+            return cuser
+        # Named user: resolve via a quick container run using the same image
+        uid_r = subprocess.run(
+            ['docker', 'run', '--rm', '--entrypoint', 'id', image, '-u', cuser],
+            capture_output=True, text=True
+        )
+        if uid_r.returncode == 0 and uid_r.stdout.strip().isdigit():
+            return uid_r.stdout.strip()
+    except Exception:
+        pass
+    return '0'
+
