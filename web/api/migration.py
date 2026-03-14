@@ -347,61 +347,74 @@ def import_migration():
             ['docker', 'ps', '-a', '--filter', f'name=^{container_name}$', '--format', '{{.Names}}'],
             capture_output=True, text=True
         )
-        if r and container_name in r.stdout:
-            status['message'] = 'Container already exists - skipped'
-            results.append(status)
-            continue
+        container_exists = bool(r and container_name in r.stdout)
 
-        # Copy compose file
+        # Always restore compose file (ensures env vars / passwords are current)
         compose_file = container_data.get('compose_file')
         if compose_file:
             compose_src = extract_dir / compose_file
             if compose_src.exists():
                 shutil.copy2(compose_src, Path(compose_file))
 
-        # Deploy container
-        if compose_file:
-            r = safe_docker_run(
-                ['docker', 'compose', '-f', compose_file, 'up', '-d'],
-                capture_output=True, text=True
-            )
-            if not r or r.returncode != 0:
-                status['message'] = 'Failed to start container'
-                results.append(status)
-                continue
+        # Ensure orchix network exists before any docker compose call
+        from utils.docker_utils import ensure_orchix_network
+        ensure_orchix_network()
+
+        backup_file = container_data.get('backup_file')
+        backup_src = extract_dir / backup_file if backup_file else None
+        has_backup = bool(backup_file and backup_src and backup_src.exists())
+
+        if not container_exists and compose_file:
+            if has_backup:
+                # Create container + volumes WITHOUT starting so the app never
+                # writes a fresh DB/config before backup data lands.
+                cr = safe_docker_run(
+                    ['docker', 'compose', '-f', compose_file, 'create'],
+                    capture_output=True, text=True
+                )
+                if not cr or cr.returncode != 0:
+                    # Fallback: start then stop immediately
+                    sr = safe_docker_run(
+                        ['docker', 'compose', '-f', compose_file, 'up', '-d'],
+                        capture_output=True, text=True
+                    )
+                    if not sr or sr.returncode != 0:
+                        status['message'] = 'Failed to create container'
+                        results.append(status)
+                        continue
+                    safe_docker_run(['docker', 'stop', container_name], capture_output=True, text=True)
+            else:
+                r = safe_docker_run(
+                    ['docker', 'compose', '-f', compose_file, 'up', '-d'],
+                    capture_output=True, text=True
+                )
+                if not r or r.returncode != 0:
+                    status['message'] = 'Failed to start container'
+                    results.append(status)
+                    continue
 
         # Restore backup
-        backup_file = container_data.get('backup_file')
-        if backup_file:
-            backup_src = extract_dir / backup_file
+        if backup_file and backup_src and backup_src.exists():
             backup_dst = BACKUP_DIR / backup_file
-            if backup_src.exists():
-                shutil.copy2(backup_src, backup_dst)
+            shutil.copy2(backup_src, backup_dst)
 
-                # Copy meta file
-                from cli.migration_menu import _get_meta_file, _restore_container_volumes
-                meta_src = _get_meta_file(backup_src)
-                if meta_src.exists():
-                    meta_dst = _get_meta_file(backup_dst)
-                    shutil.copy2(meta_src, meta_dst)
+            from cli.migration_menu import _get_meta_file, _restore_container_volumes
+            meta_src = _get_meta_file(backup_src)
+            if meta_src.exists():
+                shutil.copy2(meta_src, _get_meta_file(backup_dst))
 
-                # Wait briefly for container to initialize before restore
-                import time
-                time.sleep(3)
-
-                # Restore via hook, or fall back to generic volume restore
-                base_name = container_name.split('_')[0] if '_' in container_name else container_name
-                manifest = manifests.get(base_name)
-                if manifest and hook_loader.has_hook(manifest, 'restore'):
-                    try:
-                        hook_loader.execute_hook(manifest, 'restore', backup_dst, container_name)
-                    except Exception:
-                        pass
-                else:
-                    try:
-                        _restore_container_volumes(container_name, backup_dst)
-                    except Exception:
-                        pass
+            base_name = container_name.split('_')[0] if '_' in container_name else container_name
+            manifest = manifests.get(base_name)
+            if manifest and hook_loader.has_hook(manifest, 'restore'):
+                try:
+                    hook_loader.execute_hook(manifest, 'restore', backup_dst, container_name)
+                except Exception:
+                    pass
+            else:
+                try:
+                    _restore_container_volumes(container_name, backup_dst)
+                except Exception:
+                    pass
 
         status['success'] = True
         status['message'] = 'Imported successfully'
@@ -505,63 +518,75 @@ def import_migration_stream():
                     ['docker', 'ps', '-a', '--filter', f'name=^{container_name}$', '--format', '{{.Names}}'],
                     capture_output=True, text=True
                 )
-                if r and container_name in r.stdout:
-                    yield f"data: {json.dumps({'progress': base_progress + 5, 'status': f'{container_name} already exists - skipped'})}\n\n"
-                    continue
+                container_exists = bool(r and container_name in r.stdout)
 
-                # Copy compose file
+                # Always restore compose file (ensures env vars / passwords are current)
                 compose_file = container_data.get('compose_file')
                 if compose_file:
                     compose_src = extract_dir / compose_file
                     if compose_src.exists():
                         shutil.copy2(compose_src, Path(compose_file))
 
-                # Deploy
-                yield f"data: {json.dumps({'progress': base_progress + 10, 'status': f'Starting {container_name}...'})}\n\n"
+                # Ensure orchix network exists before any docker compose call
+                from utils.docker_utils import ensure_orchix_network
+                ensure_orchix_network()
 
-                if compose_file:
-                    r = safe_docker_run(
-                        ['docker', 'compose', '-f', compose_file, 'up', '-d'],
-                        capture_output=True, text=True
-                    )
-                    if not r or r.returncode != 0:
-                        yield f"data: {json.dumps({'progress': base_progress + 15, 'status': f'Failed to start {container_name}'})}\n\n"
-                        continue
+                backup_file = container_data.get('backup_file')
+                backup_src = extract_dir / backup_file if backup_file else None
+                has_backup = bool(backup_file and backup_src and backup_src.exists())
+
+                if not container_exists and compose_file:
+                    yield f"data: {json.dumps({'progress': base_progress + 10, 'status': f'Creating {container_name}...'})}\n\n"
+
+                    if has_backup:
+                        # Create container + volumes WITHOUT starting so the app
+                        # never writes a fresh DB/config before backup data lands.
+                        cr = safe_docker_run(
+                            ['docker', 'compose', '-f', compose_file, 'create'],
+                            capture_output=True, text=True
+                        )
+                        if not cr or cr.returncode != 0:
+                            sr = safe_docker_run(
+                                ['docker', 'compose', '-f', compose_file, 'up', '-d'],
+                                capture_output=True, text=True
+                            )
+                            if not sr or sr.returncode != 0:
+                                yield f"data: {json.dumps({'progress': base_progress + 15, 'status': f'Failed to create {container_name}'})}\n\n"
+                                continue
+                            safe_docker_run(['docker', 'stop', container_name], capture_output=True, text=True)
+                    else:
+                        r = safe_docker_run(
+                            ['docker', 'compose', '-f', compose_file, 'up', '-d'],
+                            capture_output=True, text=True
+                        )
+                        if not r or r.returncode != 0:
+                            yield f"data: {json.dumps({'progress': base_progress + 15, 'status': f'Failed to start {container_name}'})}\n\n"
+                            continue
 
                 # Restore backup
-                backup_file = container_data.get('backup_file')
-                if backup_file:
+                if backup_file and backup_src and backup_src.exists():
                     yield f"data: {json.dumps({'progress': base_progress + 20, 'status': f'Restoring {container_name}...'})}\n\n"
 
-                    backup_src = extract_dir / backup_file
                     backup_dst = BACKUP_DIR / backup_file
-                    if backup_src.exists():
-                        shutil.copy2(backup_src, backup_dst)
+                    shutil.copy2(backup_src, backup_dst)
 
-                        # Copy meta
-                        from cli.migration_menu import _get_meta_file, _restore_container_volumes
-                        meta_src = _get_meta_file(backup_src)
-                        if meta_src.exists():
-                            meta_dst = _get_meta_file(backup_dst)
-                            shutil.copy2(meta_src, meta_dst)
+                    from cli.migration_menu import _get_meta_file, _restore_container_volumes
+                    meta_src = _get_meta_file(backup_src)
+                    if meta_src.exists():
+                        shutil.copy2(meta_src, _get_meta_file(backup_dst))
 
-                        # Wait briefly for container to initialize before restore
-                        import time
-                        time.sleep(3)
-
-                        # Restore via hook, or fall back to generic volume restore
-                        base_name = container_name.split('_')[0] if '_' in container_name else container_name
-                        manifest = manifests.get(base_name)
-                        if manifest and hook_loader.has_hook(manifest, 'restore'):
-                            try:
-                                hook_loader.execute_hook(manifest, 'restore', backup_dst, container_name)
-                            except Exception:
-                                pass
-                        else:
-                            try:
-                                _restore_container_volumes(container_name, backup_dst)
-                            except Exception:
-                                pass
+                    base_name = container_name.split('_')[0] if '_' in container_name else container_name
+                    manifest = manifests.get(base_name)
+                    if manifest and hook_loader.has_hook(manifest, 'restore'):
+                        try:
+                            hook_loader.execute_hook(manifest, 'restore', backup_dst, container_name)
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            _restore_container_volumes(container_name, backup_dst)
+                        except Exception:
+                            pass
 
                 imported += 1
 
