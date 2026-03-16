@@ -1,6 +1,9 @@
 import json
 import subprocess
+from pathlib import Path
 from utils.docker_utils import ORCHIX_NETWORK
+
+_ORCHIX_ROOT = Path(__file__).parent.parent
 
 # Maps db_type → (image keywords, exposed ports)
 # Both methods are used: image name is fast and reliable,
@@ -102,7 +105,7 @@ def get_db_credentials(container_name):
     """
     from pathlib import Path
 
-    compose_file = Path(f'docker-compose-{container_name}.yml')
+    compose_file = _ORCHIX_ROOT / f'docker-compose-{container_name}.yml'
     if not compose_file.exists():
         return {}
 

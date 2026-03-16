@@ -9,6 +9,14 @@ from utils.docker_utils import ORCHIX_NETWORK
 from utils.validation import sanitize_yaml_value, validate_container_name
 
 
+def _gen_password(length=16):
+    """Generate a URL-safe token that never starts with '-' (avoids CLI arg parsing issues)."""
+    while True:
+        val = secrets.token_urlsafe(length)
+        if not val.startswith('-'):
+            return val
+
+
 def _parse_docker_error(stderr):
     """Parse Docker stderr into a short, readable error message."""
     text = stderr.strip()
@@ -140,7 +148,7 @@ class TemplateInstaller(BaseInstaller):
                     config[env['key']] = _db_creds[role]
                     show_step_detail(f"{env['label']}: [from {_selected_db_container}]")
                 elif env.get('generate'):
-                    val = secrets.token_urlsafe(16)
+                    val = _gen_password()
                     show_step_detail(f"{env['label']}: [auto-generated]")
                     config[env['key']] = val
                 else:
@@ -173,7 +181,7 @@ class TemplateInstaller(BaseInstaller):
                     show_step_detail(f"{env['label']}: [restored from existing volume]")
                     config[env['key']] = vol_key
                 else:
-                    val = secrets.token_urlsafe(16)
+                    val = _gen_password()
                     show_step_detail(f"{env['label']}: [auto-generated]")
                     config[env['key']] = val
             elif env.get('type') == 'select':
@@ -204,7 +212,7 @@ class TemplateInstaller(BaseInstaller):
                 if instance_name and env.get('volume_suffix') and env.get('volume_key_file') and env.get('volume_json_field'):
                     vol_name = f"{instance_name}_{env['volume_suffix']}"
                     vol_key = _read_key_from_volume(vol_name, env['volume_key_file'], env['volume_json_field'])
-                config[env['key']] = vol_key if vol_key else secrets.token_urlsafe(16)
+                config[env['key']] = vol_key if vol_key else _gen_password()
             else:
                 config[env['key']] = user_config.get(env['key'], env.get('default', ''))
         return config
