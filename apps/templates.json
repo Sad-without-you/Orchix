@@ -631,7 +631,12 @@
         {"name_suffix": "data", "mount": "/var/www/html"}
       ],
       "env": [
-        {"key": "SQLITE_DATABASE", "label": "Database", "default": "nextcloud"}
+        {"key": "POSTGRES_HOST", "label": "PostgreSQL Host", "required": true, "role": "db_host", "db_types": ["postgres"]},
+        {"key": "POSTGRES_USER", "label": "Database User", "default": "nextcloud", "required": true, "db_credential": "user"},
+        {"key": "POSTGRES_PASSWORD", "label": "Database Password", "type": "password", "generate": true, "db_credential": "password"},
+        {"key": "POSTGRES_DB", "label": "Database Name", "default": "nextcloud", "required": true, "db_credential": "database"},
+        {"key": "NEXTCLOUD_ADMIN_USER", "label": "Admin Username", "default": "admin", "required": true},
+        {"key": "NEXTCLOUD_ADMIN_PASSWORD", "label": "Admin Password", "type": "password", "generate": true}
       ],
       "restart": "unless-stopped"
     },
